@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Brettspiele</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+<main id="lobby" class="screen lobby">
+    <h1>Brettspiele</h1>
+    <p class="sub">Zusammen spielen, egal wie weit weg.</p>
+
+    <label class="field">Dein Name
+        <input id="name" maxlength="20" autocomplete="off" placeholder="z. B. Anna">
+    </label>
+
+    <p id="inviteNote" class="invite" hidden></p>
+
+    <section class="card">
+        <h2>Neues Spiel</h2>
+        <div id="gameList" class="row"></div>
+    </section>
+
+    <section class="card">
+        <h2>Raum beitreten</h2>
+        <div class="row">
+            <input id="code" maxlength="8" autocomplete="off" placeholder="Raumcode" class="code">
+            <button id="joinBtn" class="btn" type="button">Beitreten</button>
+        </div>
+    </section>
+
+    <section id="resumeCard" class="card" hidden>
+        <h2>Unterbrochenes Spiel</h2>
+        <button id="resumeBtn" class="btn" type="button"></button>
+    </section>
+
+    <p id="lobbyMsg" class="msg"></p>
+</main>
+
+<div id="gameScreen" class="screen game" hidden>
+    <header class="topbar">
+        <span id="roomInfo" class="room"></span>
+        <span id="status" class="status"></span>
+        <span class="spacer"></span>
+        <button id="copyLink" class="btn small" type="button">Einladungslink kopieren</button>
+        <button id="leaveBtn" class="btn small" type="button">Verlassen</button>
+    </header>
+    <div id="gameRoot"></div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

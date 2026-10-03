@@ -1,0 +1,10 @@
+{
+  "name": "brettspiele",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node serve.js",
+    "test": "node --test tests/*.test.mjs"
+  }
+}
