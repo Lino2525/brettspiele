@@ -251,7 +251,8 @@ export function mountParty(root, session) {
         const cur = st.mini;
         const head = el.mini.querySelector('.mhead');
         const body = el.mini.querySelector('.mbody');
-        head.innerHTML = `<strong>${esc(m.title)}</strong>${m.star ? '<span class="mstar">⭐ Sternrunde</span>' : ''}<span class="mtimer"></span>`;
+        const cycle = v.miniCycle ? `<span class="phint">Minispiel ${v.miniCycle.done} von ${v.miniCycle.total}</span>` : '';
+        head.innerHTML = `<strong>${esc(m.title)}</strong>${cycle}${m.star ? '<span class="mstar">⭐ Sternrunde</span>' : ''}<span class="mtimer"></span>`;
         if (m.phase !== cur.phase) {
             cur.instance?.destroy();
             cur.instance = null;

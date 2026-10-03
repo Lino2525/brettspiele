@@ -17,7 +17,6 @@ const STEP_MS = 380; // Animation pro Feld
 const EFFECT_MS = 2300; // Zeit nach dem Zug für Feldereignis und Anzeige
 const LOG_LIMIT = 40;
 const EVENT_LIMIT = 30;
-const RECENT_MINIS = 3; // so viele Minispiele in Folge ausgelassen, damit es abwechslungsreich bleibt
 
 const err = error => ({ error });
 const OK = { ok: true };
@@ -43,7 +42,8 @@ export class PartyGame {
             dice: null,
             mini: null,
             miniCounter: 0,
-            recentMini: [],
+            miniBag: [], // Minispiele, die in diesem Durchlauf noch nicht dran waren
+            lastMini: '',
             events: [],
             eventSeq: 0,
             log: [],
@@ -134,7 +134,8 @@ export class PartyGame {
         for (const p of s.players) Object.assign(p, { coins: START_COINS, stars: 0, pos: 0 });
         s.round = 0;
         s.mini = null;
-        s.recentMini = [];
+        s.miniBag = [];
+        s.lastMini = '';
         s.events = [];
         s.log = [];
         s.dice = null;
@@ -175,7 +176,7 @@ export class PartyGame {
         const s = this.s;
         s.round++;
         const n = s.players.length;
-        s.order = Array.from({ length: n }, (_, k) => (k + s.round - 1) % n);
+        s.order = Array.from({ length: n }, (_, k) => k); // immer dieselbe Reihenfolge: nach dem Minispiel fängt die Person nach der Letzten an
         s.turnIdx = 0;
         s.phase = 'board';
         this.#log(`Runde ${s.round} von ${s.rounds}${this.#isStarRound() ? ' (Sternrunde: im Minispiel gibt es einen Stern!)' : ''}`);
@@ -327,11 +328,19 @@ export class PartyGame {
 
     #startMini(now) {
         const s = this.s;
-        let pool = MINI_TYPES.filter(t => !s.recentMini.includes(t));
-        if (!pool.length) pool = MINI_TYPES;
-        const type = pool[Math.floor(this.rng() * pool.length)];
-        s.recentMini.push(type);
-        if (s.recentMini.length > RECENT_MINIS) s.recentMini.shift();
+        // Zähler: erst kommen alle Minispiele einmal dran (in zufälliger Reihenfolge), dann beginnt ein neuer Durchlauf
+        if (!s.miniBag?.length) {
+            let bag = [...MINI_TYPES];
+            for (let i = bag.length - 1; i > 0; i--) {
+                const j = Math.floor(this.rng() * (i + 1));
+                [bag[i], bag[j]] = [bag[j], bag[i]];
+            }
+            // Das letzte Spiel des alten Durchlaufs soll nicht gleich wieder das erste des neuen sein
+            if (bag[bag.length - 1] === s.lastMini) [bag[0], bag[bag.length - 1]] = [bag[bag.length - 1], bag[0]];
+            s.miniBag = bag;
+        }
+        const type = s.miniBag.pop();
+        s.lastMini = type;
         s.miniCounter++;
         s.mini = createMini({ type, id: s.miniCounter, rng: this.rng, players: s.players, now, star: this.#isStarRound() });
         s.phase = 'mini';
@@ -429,6 +438,7 @@ export class PartyGame {
             starPos: s.star,
             dice: s.dice,
             players: s.players.map(p => ({ name: p.name, connected: p.connected, coins: p.coins, stars: p.stars, pos: p.pos })),
+            miniCycle: { done: s.miniCounter === 0 ? 0 : MINI_TYPES.length - (s.miniBag?.length ?? 0), total: MINI_TYPES.length },
             mini: s.mini ? miniView(s.mini, seat, now, s.players) : null,
             events: s.events,
             eventSeq: s.eventSeq,

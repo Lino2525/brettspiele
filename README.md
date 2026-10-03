@@ -55,7 +55,7 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
 
 - **Sternenjagd** (2-6 Personen, Partyspiel mit Spielfeld und Minispielen): Rundkurs mit 28 Feldern (blau +3, rot −3,
   grün = Glücksfeld mit Zufallsereignis), Stern auf dem Brett (kauft man im Vorbeigehen für 5 Münzen, er wandert danach).
-  Nach jeder Runde (alle haben gewürfelt) spielen alle ein Minispiel: Volltreffer (richtiger Moment), Korbwurf, Blitzreaktion,
+  Die Reihenfolge der Würfe bleibt immer gleich. Nach jeder Runde (alle haben gewürfelt) spielen alle ein Minispiel; erst kommen alle 9 einmal dran (zufällige Reihenfolge, oben steht „Minispiel 3 von 9“), dann beginnt ein neuer Durchlauf: Volltreffer (richtiger Moment), Korbwurf, Blitzreaktion,
   Tipp-Marathon, Merkreihe, Kopfrechnen, Wissen (Allgemeinwissen), Flaggen (Flaggenbilder von flagcdn.com) und
   Zeichnen & Raten. Belohnung: 1. Platz 10 Münzen, 2. 6, 3. 4, sonst 2; in Sternrunden (jede dritte und die letzte)
   gewinnt der Erste einen Stern. Am Ende zählt ein Stern 10 Münzen. Rundenzahl (5-15) wählt der Host in der Lobby.

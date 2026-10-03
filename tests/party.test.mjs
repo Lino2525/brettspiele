@@ -302,14 +302,15 @@ test('Stern: kaufen im Vorbeigehen für 5 Münzen, danach liegt er woanders; ohn
     assert.equal(h.s.star, 3);
 });
 
-test('Nach allen Zügen startet ein Minispiel, danach Belohnung und nächste Runde mit anderer Startperson', () => {
+test('Nach allen Zügen startet ein Minispiel, danach Belohnung und nächste Runde, die die Person nach der Letzten beginnt', () => {
     const g = newGame(3);
     g.apply(0, { t: 'start' }, 0);
     let t = 0;
-    const firstStarter = g.s.order[0];
+    let lastRoller = -1;
     for (let k = 0; k < 3; k++) {
         t += 100;
-        g.apply(g.s.order[g.s.turnIdx], { t: 'roll' }, t);
+        lastRoller = g.s.order[g.s.turnIdx];
+        g.apply(lastRoller, { t: 'roll' }, t);
         t += 6 * 380 + 2400;
         g.tick(t);
     }
@@ -330,7 +331,8 @@ test('Nach allen Zügen startet ein Minispiel, danach Belohnung und nächste Run
     g.tick(t);
     assert.equal(g.s.phase, 'board');
     assert.equal(g.s.round, 2);
-    assert.notEqual(g.s.order[0], firstStarter, 'Startperson wechselt');
+    assert.equal(g.s.order[0], (lastRoller + 1) % 3, 'nach der Letzten kommt die Nächste');
+    assert.notEqual(g.s.order[0], lastRoller, 'niemand würfelt direkt zweimal hintereinander');
 });
 
 test('Sternrunde: jede dritte Runde und die letzte', () => {
@@ -380,4 +382,66 @@ test('Ansicht: kein Token, Lösung eines Quiz nicht sichtbar, Speichern/Wiederhe
     assert.equal(r.s.mini, null);
     r.tick(1000);
     assert.equal(r.s.phase, 'board');
+});
+
+// Spielt ein Spiel mit n Personen automatisch durch und liefert die Minispiel-Folge und die Würfelreihenfolge zurück.
+function autoplay(n, rounds, seed) {
+    const g = new PartyGame({ rng: seeded(seed) });
+    for (let i = 0; i < n; i++) g.join('t' + i, 'S' + i);
+    g.s.rounds = rounds;
+    g.apply(0, { t: 'start' }, 0);
+    let t = 0;
+    const types = [];
+    const rollers = [];
+    let lastMini = 0;
+    for (let step = 0; step < 20000 && g.s.phase !== 'over'; step++) {
+        t += 700;
+        const s = g.s;
+        if (s.phase === 'board' && s.turnPhase === 'roll') {
+            rollers.push(s.order[s.turnIdx]);
+            g.apply(s.order[s.turnIdx], { t: 'roll' }, t);
+        }
+        if (s.phase === 'mini' && s.mini && s.mini.id !== lastMini) {
+            lastMini = s.mini.id;
+            types.push(s.mini.type);
+            rollers.push('mini');
+        }
+        g.tick(t);
+    }
+    assert.equal(g.s.phase, 'over');
+    return { types, rollers };
+}
+
+test('Minispiele: erst läuft jedes einmal durch, dann beginnt ein neuer Durchlauf (kein Spiel doppelt hintereinander)', () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+        const { types } = autoplay(2, 15, seed);
+        assert.equal(types.length, 15);
+        assert.equal(new Set(types.slice(0, 9)).size, 9, `erster Durchlauf: ${types.slice(0, 9)}`);
+        assert.equal(new Set(types.slice(9)).size, 6, 'zweiter Durchlauf ohne Wiederholung');
+        for (let i = 1; i < types.length; i++) assert.notEqual(types[i], types[i - 1], 'nie dasselbe Spiel zweimal hintereinander');
+    }
+});
+
+test('Zähler in der Ansicht: wie viele Minispiele im aktuellen Durchlauf schon dran waren', () => {
+    const g = new PartyGame({ rng: seeded(3) });
+    g.join('a', 'A');
+    g.join('b', 'B');
+    g.apply(0, { t: 'start' }, 0);
+    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 9 });
+    let t = 0;
+    for (let i = 0; i < 3000 && !g.s.mini; i++) {
+        t += 700;
+        if (g.s.phase === 'board' && g.s.turnPhase === 'roll') g.apply(g.s.order[g.s.turnIdx], { t: 'roll' }, t);
+        g.tick(t);
+    }
+    assert.deepEqual(g.view(0, t).miniCycle, { done: 1, total: 9 });
+});
+
+test('Reihenfolge: mit zwei Personen würfelt niemand direkt zweimal hintereinander (auch über das Minispiel hinweg)', () => {
+    for (const n of [2, 3, 4, 6]) {
+        const { rollers } = autoplay(n, 8, n);
+        const seats = rollers.filter(r => r !== 'mini');
+        for (let i = 1; i < seats.length; i++) assert.notEqual(seats[i], seats[i - 1], `${n} Personen: Wiederholung bei Wurf ${i}`);
+        for (let i = 0; i < seats.length; i++) assert.equal(seats[i], i % n, 'immer dieselbe Reihenfolge');
+    }
 });
