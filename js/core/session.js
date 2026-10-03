@@ -8,9 +8,11 @@
 
 const PEER_PREFIX = 'brettspiele-';
 const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const ROOM_CODE_LENGTH = 6;
+const WRONG_PASSWORD_DELAY_MS = 1500; // bremst Raten
 
 export const makeRoomCode = () =>
-    Array.from(crypto.getRandomValues(new Uint8Array(5)), b => ROOM_ALPHABET[b % ROOM_ALPHABET.length]).join('');
+    Array.from(crypto.getRandomValues(new Uint8Array(ROOM_CODE_LENGTH)), b => ROOM_ALPHABET[b % ROOM_ALPHABET.length]).join('');
 
 export const normalizeRoomCode = text => String(text).toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -39,8 +41,9 @@ export class HostSession extends Session {
     #conns = new Map(); // seat -> DataConnection
     #seat = -1;
 
-    constructor({ game, gameId, roomCode, token, name, onSave }) {
+    constructor({ game, gameId, roomCode, token, name, password, onSave }) {
         super();
+        this.password = password || '';
         this.game = game;
         this.gameId = gameId;
         this.roomCode = roomCode;
@@ -92,6 +95,14 @@ export class HostSession extends Session {
         let seat = -1;
         conn.on('data', msg => {
             if (msg?.t === 'hello') {
+                // Wer schon einen Platz hat (Token), kommt ohne Passwort zurück, z. B. nach einem Neuladen.
+                if (this.password && !this.game.hasPlayer(String(msg.token)) && msg.password !== this.password) {
+                    setTimeout(() => {
+                        conn.send({ t: 'denied' });
+                        setTimeout(() => conn.close(), 500);
+                    }, WRONG_PASSWORD_DELAY_MS);
+                    return;
+                }
                 const joined = this.game.join(String(msg.token), msg.name);
                 if (joined < 0) {
                     conn.send({ t: 'full' });
@@ -138,8 +149,9 @@ export class ClientSession extends Session {
     #closed = false;
     #retryTimer = null;
 
-    constructor({ roomCode, token, name }) {
+    constructor({ roomCode, token, name, password }) {
         super();
+        this.password = password || '';
         this.roomCode = roomCode;
         this.token = token;
         this.name = name;
@@ -185,7 +197,7 @@ export class ClientSession extends Session {
         peer.on('open', () => {
             const conn = peer.connect(peerIdFor(this.roomCode), { reliable: true });
             this.#conn = conn;
-            conn.on('open', () => conn.send({ t: 'hello', token: this.token, name: this.name }));
+            conn.on('open', () => conn.send({ t: 'hello', token: this.token, name: this.name, password: this.password }));
             conn.on('data', msg => {
                 switch (msg?.t) {
                     case 'welcome':
@@ -198,8 +210,9 @@ export class ClientSession extends Session {
                     case 'view': this.emitView(msg.view); break;
                     case 'notice': this.onNotice(msg.text); break;
                     case 'full':
+                    case 'denied':
                         this.#closed = true;
-                        if (reject) reject(new Error('full'));
+                        if (reject) reject(new Error(msg.t));
                         break;
                 }
             });

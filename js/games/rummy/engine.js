@@ -56,6 +56,10 @@ export class RummyGame {
         return JSON.parse(JSON.stringify(this.s));
     }
 
+    hasPlayer(token) {
+        return this.s.players.some(p => p.token === token);
+    }
+
     join(token, name) {
         const s = this.s;
         let seat = s.players.findIndex(p => p.token === token);

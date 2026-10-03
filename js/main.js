@@ -1,5 +1,5 @@
 // Lobby: Namen merken, Raum erstellen / beitreten / fortsetzen und das gewählte Spiel einhängen.
-import { HostSession, ClientSession, makeRoomCode, normalizeRoomCode } from './core/session.js';
+import { HostSession, ClientSession, makeRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from './core/session.js';
 import { RummyGame } from './games/rummy/engine.js';
 import { mountRummy } from './games/rummy/ui.js';
 
@@ -37,6 +37,12 @@ function playerName() {
     store.set('bsp.name', name);
     return name;
 }
+
+const roomPassword = () => {
+    const pw = $('password').value;
+    store.set('bsp.password', pw);
+    return pw;
+};
 
 function setBusy(busy) {
     document.querySelectorAll('#lobby button').forEach(b => (b.disabled = busy));
@@ -77,6 +83,7 @@ async function hostGame(gameId, saved = null) {
     const name = playerName();
     if (!name) return;
     if (typeof Peer === 'undefined') return lobbyMsg('Die Verbindungsbibliothek konnte nicht geladen werden. Bist du online?');
+    const password = roomPassword();
     setBusy(true);
     lobbyMsg('Raum wird eingerichtet…');
     const G = GAMES[gameId];
@@ -92,6 +99,7 @@ async function hostGame(gameId, saved = null) {
                 roomCode,
                 token,
                 name,
+                password,
                 onSave: state => store.set(saveKey, JSON.stringify({ room: roomCode, state })),
             });
             try {
@@ -119,11 +127,12 @@ async function joinGame(rawCode) {
     const name = playerName();
     if (!name) return;
     const roomCode = normalizeRoomCode(rawCode);
-    if (roomCode.length !== 5) return lobbyMsg('Der Raumcode hat 5 Zeichen.');
+    if (roomCode.length !== ROOM_CODE_LENGTH) return lobbyMsg(`Der Raumcode hat ${ROOM_CODE_LENGTH} Zeichen.`);
     if (typeof Peer === 'undefined') return lobbyMsg('Die Verbindungsbibliothek konnte nicht geladen werden. Bist du online?');
+    const password = roomPassword();
     setBusy(true);
     lobbyMsg('Verbinde…');
-    const session = new ClientSession({ roomCode, token, name });
+    const session = new ClientSession({ roomCode, token, name, password });
     try {
         await session.connect();
         showGame(session, session.gameId);
@@ -132,6 +141,7 @@ async function joinGame(rawCode) {
         lobbyMsg(
             e.message === 'not-found' ? 'Diesen Raum gibt es nicht (oder er ist gerade nicht online).'
             : e.message === 'full' ? 'In diesem Raum sind schon zwei Spieler.'
+            : e.message === 'denied' ? 'Falsches oder fehlendes Passwort.'
             : `Verbindung fehlgeschlagen (${e.message}).`,
         );
         setBusy(false);
@@ -141,6 +151,7 @@ async function joinGame(rawCode) {
 // ---------- Start ----------
 
 $('name').value = store.get('bsp.name') || '';
+$('password').value = store.get('bsp.password') || '';
 
 for (const [id, game] of Object.entries(GAMES)) {
     const btn = document.createElement('button');

@@ -22,6 +22,13 @@ Die Seite muss im Internet erreichbar sein (z. B. GitHub Pages, Netlify oder Clo
 alle kostenlos). Es ist eine rein statische Seite, hochgeladen wird der ganze Ordner.
 Danach: Host klickt "Mini Rummy starten", kopiert den Einladungslink und schickt ihn.
 
+## Zugangsschutz
+
+- Raumcode: 6 Zeichen, nur mit dem Code (oder Link) kommt man in einen Raum. Ist der Raum voll, kommt niemand mehr rein.
+- Raumpasswort (optional): Der Host trägt es vor dem Start ein, der Gast beim Beitreten. Der Browser merkt es sich.
+  Wer schon einen Platz hat (z. B. nach Neuladen), braucht es nicht erneut. Falsche Eingaben werden 1,5 s verzögert.
+- Die Seite selbst bleibt öffentlich (GitHub Pages), jeder kann dort aber nur eigene Räume anlegen.
+
 ## Aufbau
 
 - `js/core/session.js`: Verbindung (Host hält den Spielstand, Gast schickt Aktionen)
