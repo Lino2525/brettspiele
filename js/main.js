@@ -32,15 +32,17 @@ function setAvatar(data) {
         if (data) sessionStorage.setItem('bsp.avatar', data);
         else sessionStorage.removeItem('bsp.avatar');
     } catch { /* s. o. */ }
+    if (!$('avatarPreview')) return;
     $('avatarPreview').hidden = !data;
     $('avatarPlus').hidden = !!data;
     $('avatarClear').hidden = !data;
     if (data) $('avatarPreview').src = data;
 }
 
-$('avatarBtn').addEventListener('click', () => $('avatarFile').click());
-$('avatarClear').addEventListener('click', () => setAvatar(null));
-$('avatarFile').addEventListener('change', async () => {
+// Die Avatar-Elemente sind optional, damit eine ältere, zwischengespeicherte index.html nicht die ganze Lobby lahmlegt.
+$('avatarBtn')?.addEventListener('click', () => $('avatarFile').click());
+$('avatarClear')?.addEventListener('click', () => setAvatar(null));
+$('avatarFile')?.addEventListener('change', async () => {
     const file = $('avatarFile').files[0];
     $('avatarFile').value = '';
     if (!file) return;
@@ -56,7 +58,13 @@ setAvatar(avatar);
 const token = store.get('bsp.token') || crypto.randomUUID();
 store.set('bsp.token', token);
 
-const lobbyMsg = text => ($('lobbyMsg').textContent = text);
+// Die Meldung steht unten auf der Seite, auf dem Handy also leicht außerhalb des Blickfelds: deshalb hinscrollen.
+const lobbyMsg = text => {
+    const el = $('lobbyMsg');
+    el.textContent = text;
+    el.classList.toggle('shown', !!text);
+    if (text) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+};
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function playerName() {
@@ -175,6 +183,8 @@ async function joinGame(rawCode) {
             e.message === 'not-found' ? 'Diesen Raum gibt es nicht (oder er ist gerade nicht online).'
             : e.message === 'full' ? 'In diesem Raum sind schon zwei Spieler.'
             : e.message === 'denied' ? 'Falsches oder fehlendes Passwort.'
+            : e.message === 'timeout' || e.message === 'ice-failed'
+                ? 'Keine Verbindung zum Host möglich. Ist das Spiel dort noch offen? Mit Mobilfunk bitte einmal WLAN probieren (oder umgekehrt).'
             : `Verbindung fehlgeschlagen (${e.message}).`,
         );
         setBusy(false);

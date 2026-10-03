@@ -11,6 +11,7 @@ const PEER_PREFIX = 'brettspiele-';
 const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const ROOM_CODE_LENGTH = 6;
 const WRONG_PASSWORD_DELAY_MS = 1500; // bremst Raten
+const CONNECT_TIMEOUT_MS = 20000;
 
 export const makeRoomCode = () =>
     Array.from(crypto.getRandomValues(new Uint8Array(ROOM_CODE_LENGTH)), b => ROOM_ALPHABET[b % ROOM_ALPHABET.length]).join('');
@@ -212,7 +213,12 @@ export class ClientSession extends Session {
         const peer = new Peer();
         this.#peer = peer;
         let welcomed = false;
+        // Ohne Antwort des Hosts nicht ewig "Verbinde…" anzeigen (z. B. wenn WebRTC im Netz blockiert wird).
+        const timer = setTimeout(() => {
+            if (!welcomed) lost('timeout');
+        }, CONNECT_TIMEOUT_MS);
         const lost = reason => {
+            clearTimeout(timer);
             if (this.#closed) return;
             if (!welcomed && reject) {
                 // Erster Verbindungsversuch gescheitert: dem Aufrufer melden statt endlos zu wiederholen.
@@ -230,11 +236,15 @@ export class ClientSession extends Session {
         peer.on('open', () => {
             const conn = peer.connect(peerIdFor(this.roomCode), { reliable: true });
             this.#conn = conn;
+            conn.peerConnection?.addEventListener('iceconnectionstatechange', () => {
+                if (conn.peerConnection.iceConnectionState === 'failed' && !welcomed) lost('ice-failed');
+            });
             conn.on('open', () => conn.send({ t: 'hello', token: this.token, name: this.name, password: this.password, avatar: this.avatar }));
             conn.on('data', msg => {
                 switch (msg?.t) {
                     case 'welcome':
                         welcomed = true;
+                        clearTimeout(timer);
                         this.gameId = msg.gameId;
                         this.onStatus('Verbunden');
                         if (resolve) resolve(this);
