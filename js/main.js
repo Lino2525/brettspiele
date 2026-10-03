@@ -1,6 +1,7 @@
 // Lobby: Namen merken, Raum erstellen / beitreten / fortsetzen und das gewählte Spiel einhängen.
 import { HostSession, ClientSession, makeRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from './core/session.js';
 import { fileToAvatar } from './core/avatar.js';
+import { music } from './core/music.js';
 import { RummyGame } from './games/rummy/engine.js';
 import { mountRummy } from './games/rummy/ui.js';
 import { MonopolyGame } from './games/monopoly/engine.js';
@@ -99,6 +100,7 @@ function showGame(session, gameId) {
     const game = GAMES[gameId];
     $('lobby').hidden = true;
     $('gameScreen').hidden = false;
+    music.start();
     $('roomInfo').textContent = `${game.title} · Raum ${session.roomCode}`;
     session.onStatus = text => ($('status').textContent = text);
     const ui = game.mount($('gameRoot'), session);
@@ -195,6 +197,9 @@ async function joinGame(rawCode) {
 }
 
 // ---------- Start ----------
+
+document.querySelectorAll('.music-slot').forEach(slot => music.mount(slot));
+music.init();
 
 $('name').value = store.get('bsp.name') || '';
 $('password').value = store.get('bsp.password') || '';

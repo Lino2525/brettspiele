@@ -14,6 +14,7 @@ const types = {
     '.json': 'application/json',
     '.png': 'image/png',
     '.ico': 'image/x-icon',
+    '.mp3': 'audio/mpeg',
 };
 
 http.createServer((req, res) => {
@@ -24,15 +25,41 @@ http.createServer((req, res) => {
         res.writeHead(403).end();
         return;
     }
-    fs.readFile(file, (err, data) => {
-        if (err) {
+    fs.stat(file, (err, stat) => {
+        if (err || !stat.isFile()) {
             res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Nicht gefunden');
             return;
         }
-        res.writeHead(200, {
+        const headers = {
             'Content-Type': types[path.extname(file)] || 'application/octet-stream',
             'Cache-Control': 'no-store',
-        });
-        res.end(data);
+            'Accept-Ranges': 'bytes',
+        };
+        // Teilabrufe (Range) braucht der Audio-Player zum Spulen und Wiederholen
+        const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+        let from = 0;
+        let to = stat.size - 1;
+        let status = 200;
+        if (range && (range[1] || range[2])) {
+            if (range[1]) {
+                from = Number(range[1]);
+                if (range[2]) to = Math.min(Number(range[2]), to);
+            } else {
+                from = Math.max(0, stat.size - Number(range[2]));
+            }
+            if (from > to) {
+                res.writeHead(416, { 'Content-Range': `bytes */${stat.size}` }).end();
+                return;
+            }
+            status = 206;
+            headers['Content-Range'] = `bytes ${from}-${to}/${stat.size}`;
+        }
+        headers['Content-Length'] = to - from + 1;
+        res.writeHead(status, headers);
+        if (req.method === 'HEAD') {
+            res.end();
+            return;
+        }
+        fs.createReadStream(file, { start: from, end: to }).pipe(res);
     });
 }).listen(port, () => console.log(`Brettspiele läuft auf http://localhost:${port}`));

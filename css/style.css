@@ -40,6 +40,16 @@ body {
 }
 
 .lobby h1 { margin: 0; font-size: 2rem; }
+.lobby-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* Musik: Stummschalter, Lautstärke, Dateiwahl */
+.music { display: inline-flex; align-items: center; gap: 6px; }
+.music input[type=range] { width: 84px; accent-color: var(--accent); padding: 0; }
+.micon { font: inherit; font-size: 1.05rem; line-height: 1; min-width: 34px; height: 34px; color: var(--text); background: #3a4e43; border: 0; border-radius: 8px; cursor: pointer; }
+.micon:hover { background: #4a6657; }
+.micon.small { min-width: 26px; font-size: .8rem; }
+.micon.need { background: var(--accent); color: #1d1a10; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 5px rgba(242, 182, 50, .3); } }
 .sub { color: var(--muted); margin: 4px 0 24px; }
 
 .field { display: block; font-size: .9rem; color: var(--muted); margin-bottom: 16px; }

@@ -45,6 +45,15 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
   Handel (Geld, Grundstücke, Freikarten), Schulden und Bankrott. Alle sehen Würfel, Figuren und Karten live.
   Bauen, Hypotheken und Verkäufe sind nur im eigenen Zug möglich (oder bei eigenen Schulden).
 
+## Musik
+
+Beim Spielstart läuft Hintergrundmusik (in Endlosschleife, bei jedem lokal und nicht synchron). Oben gibt es
+Stummschalter, Lautstärkeregler und ♪ zum Auswählen einer eigenen Audiodatei.
+
+- Lokal (`node serve.js`) wird automatisch die Datei aus `Music/` benutzt (Name in `js/core/music.js`).
+- Der Ordner `Music/` steht in der `.gitignore` und wird **nicht** nach GitHub hochgeladen (Urheberrecht, Dateigröße).
+  Im Internet wählt jeder die Datei einmal selbst über ♪ aus. Sie bleibt im Browser gespeichert und wird nie hochgeladen.
+
 ## Aufbau
 
 - `js/core/session.js`: Verbindung (Host hält den Spielstand, Gast schickt Aktionen)
