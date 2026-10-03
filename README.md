@@ -61,6 +61,35 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
   gewinnt der Erste einen Stern. Am Ende zählt ein Stern 10 Münzen. Rundenzahl (5-15) wählt der Host in der Lobby.
   Inhalte (Fragen, Flaggen, Begriffe) stehen in `js/games/party/data.js`. Eigenständiges Design, keine geschützten Figuren.
 
+### Gesellschaftsspiele für 3 bis 6 Personen
+
+Diese fünf Spiele laufen alle mit mindestens 3 Personen. Die gemeinsame Grundlage (Mitspieler, Teams, Warteraum,
+Ergebnisfenster) liegt in `js/games/common/` (`room.js` für den Host, `kit.js` für die Oberfläche), jedes Spiel
+besteht nur noch aus Regeln (`engine.js`), Inhalten und Spielfläche (`ui.js`). Styles: `css/games.css`.
+Teams (zwei Teams, Rot und Blau) gibt es ab 4 Personen bei Stadt-Land-Fluss, Stufenquiz und Wortraten: Der Host
+schaltet sie im Warteraum ein und kann neu mischen, jede Person kann das Team selbst wechseln; das Team gewinnt
+oder verliert gemeinsam (Teamsumme).
+
+- **Lügenwürfel** (Bluffspiel): Alle würfeln geheim (3, 4 oder 5 Würfel pro Person). Reihum bietet man, wie viele Würfel
+  eines Wertes insgesamt am Tisch liegen, und überbietet das letzte Gebot oder sagt „Lüge!“. Wer falsch liegt, verliert
+  einen Würfel. Einser sind wahlweise Joker. Wer zuletzt noch Würfel hat, gewinnt. Wer zu lange braucht, zweifelt automatisch an.
+- **Stadt-Land-Fluss**: Ausgelosten Buchstaben, 3 bis 8 wählbare Kategorien (Standard Stadt, Land, Fluss, Name, Tier,
+  Beruf). Wer fertig ist, ruft „Stopp“, die anderen haben noch 12 Sekunden. Punkte: 20 für eine Antwort, die nur man selbst
+  hat, 10 für eine einzigartige, 5 für gleiche Antworten. In der Auswertung kann die Gruppe Antworten mit 👎 anzweifeln
+  (Mehrheit der anderen entscheidet). In Teams zählen gleiche Antworten im selben Team nicht als doppelt.
+- **Undercover / Spion**: Variante Undercover: alle bekommen ein Wort, eine Person ein ähnliches anderes (160 Wortpaare),
+  niemand weiß, ob das eigene das richtige ist. Variante Spion: eine Person bekommt gar kein Wort und darf es raten,
+  wenn sie enttarnt wird. Hinweise werden getippt (ein Wort pro Zug, zwei Runden), dann stimmen alle ab. Bleiben nur noch
+  zwei Personen übrig, gewinnt der Undercover. Die Siege werden über Neustarts hinweg gezählt.
+- **Stufenquiz**: Pro Runde eine Kategorie (6 Kategorien, rund 300 Fragen: Erde & Länder, Geschichte, Natur & Tiere,
+  Wissenschaft & Technik, Film/TV/Musik, Essen/Sport/Alltag). Jede Person wählt geheim eine Stufe von 1 (ganz leicht) bis
+  10 (richtig schwer) und bekommt dazu eine eigene Frage mit vier Antworten. Richtig = so viele Punkte wie die Stufe, falsch = 0.
+  Die Fragen stehen in `js/games/ladder/questions.js` (`[Frage, richtig, falsch, falsch, falsch]`).
+- **Wortraten**: Zu einem gesuchten Begriff (rund 100 Begriffe) werden alle 9 Sekunden Hinweise aufgedeckt, vom ungenauen bis zum
+  fast eindeutigen (6 Hinweise). Je früher richtig getippt, desto mehr Punkte (12 bis 2), die ersten beiden Treffer bekommen
+  Bonus. Zwei Versuche pro Hinweis, Tippfehler werden verziehen. In Teams reicht ein Treffer für das ganze Team.
+  Begriffe: `js/games/wordguess/words.js`.
+
 ## Musik
 
 Beim Spielstart läuft ruhige Klaviermusik in Endlosschleife (d-Moll, getragen, leicht dramatisch, mit leisem Wind).

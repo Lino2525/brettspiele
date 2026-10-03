@@ -1,0 +1,156 @@
+/* ---------- Gesellschaftsspiele für 3 bis 6 Personen (gemeinsame Teile) ---------- */
+
+.game:has(.cg) { height: auto; min-height: 100dvh; }
+
+.cg { position: relative; max-width: 760px; margin: 0 auto; padding: 10px 12px 28px; display: flex; flex-direction: column; gap: 10px; min-height: 70dvh; }
+.cg-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-weight: 700; }
+.cg-title { color: var(--accent); }
+.cg-info { color: var(--muted); font-weight: 400; font-size: .9rem; }
+.cg-timer { margin-left: auto; font-weight: 800; color: var(--accent); min-width: 3em; text-align: right; }
+.cg-score { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.cg-chip { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel); border-radius: 10px; border: 2px solid transparent; min-width: 0; }
+.cg-chip.me .cg-name { font-weight: 700; }
+.cg-chip.off { opacity: .5; }
+.cg-chip.on-turn { border-color: var(--accent); }
+.cg-chip.out { opacity: .45; text-decoration: line-through; }
+.cg-chip.team0 { border-left: 4px solid #e53935; }
+.cg-chip.team1 { border-left: 4px solid #1e88e5; }
+.cg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cg-note { color: var(--ok); font-weight: 700; }
+.cg-pts { color: var(--accent); }
+.cg-av { display: inline-flex; flex: none; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid #fff; color: #fff; font-style: normal; font-weight: 800; font-size: .75rem; background-size: cover; background-position: center; vertical-align: middle; }
+.cg-teams { grid-column: 1 / -1; display: flex; gap: 8px; }
+.cg-team { flex: 1; text-align: center; padding: 6px; border-radius: 10px; font-weight: 600; }
+.cg-team.t0 { background: rgba(229, 57, 53, .25); }
+.cg-team.t1 { background: rgba(30, 136, 229, .25); }
+.cg-stage { background: var(--panel); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.cg-stage[hidden] { display: none; }
+.cg-overlay { position: absolute; inset: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center; background: rgba(10, 16, 13, .72); padding: 24px 12px; }
+.cg-overlay[hidden] { display: none; }
+.cg-box { width: min(100%, 480px); background: var(--panel); border-radius: 14px; padding: 20px 22px; text-align: center; max-height: calc(100dvh - 90px); overflow-y: auto; }
+.cg-box h2 { margin-top: 0; }
+.cg-box p { color: var(--muted); }
+.cg-box .row { margin-bottom: 10px; }
+.cg-box .row.wrap { justify-content: center; }
+.cg-box .check { color: var(--text); font-size: .9rem; display: block; text-align: left; }
+.cg-teamcols { display: flex; gap: 10px; margin-bottom: 10px; }
+.cg-teamcol { flex: 1; border-radius: 10px; padding: 4px 8px; }
+.cg-teamcol.t0 { background: rgba(229, 57, 53, .2); }
+.cg-teamcol.t1 { background: rgba(30, 136, 229, .2); }
+.cg-teamcol h3 { margin: 4px 0; font-size: 1rem; }
+.cg-teamcol .plist { margin: 0; }
+.cg-box .ranking td:nth-child(2), .cg-box .ranking th:nth-child(2) { text-align: right; }
+.cg-box .ranking td:nth-child(1), .cg-box .ranking th:nth-child(1) { text-align: left; }
+.cg-box .ranking tr.me td { background: rgba(242, 182, 50, .12); }
+.cg .toast { z-index: 300; }
+.cg form { margin: 0; }
+
+/* Lügenwürfel */
+.lw-die { display: inline-block; font-size: 2.6rem; line-height: 1; margin: 0 2px; color: #f1f0ea; }
+.lw-die.joker { color: var(--accent); }
+.lw-die.hit { color: var(--ok); text-shadow: 0 0 8px rgba(127, 214, 143, .7); }
+.lw-die.dim { opacity: .35; }
+.lw-hand { display: flex; justify-content: center; flex-wrap: wrap; font-size: 1rem; padding: 8px; background: #14201a; border-radius: 12px; }
+.lw-hand .lw-die { font-size: 3.2rem; }
+.lw-bid { text-align: center; }
+.lw-big { font-size: 1.5rem; font-weight: 800; margin-top: 4px; }
+.lw-big .lw-die { font-size: 2rem; vertical-align: -.15em; }
+.lw-hist { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; color: var(--muted); font-size: .85rem; }
+.lw-hist .lw-die { font-size: 1.1rem; vertical-align: -.1em; }
+.lw-ctl { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.lw-row { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.lw-qty { font-size: 2.2rem; font-weight: 900; min-width: 2.2em; text-align: center; }
+.lw-faces { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.lw-face { padding: 2px 8px; }
+.lw-face .lw-die { font-size: 2.2rem; color: inherit; }
+.lw-reveal { display: flex; flex-direction: column; gap: 6px; }
+.lw-rrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 10px; background: #14201a; flex-wrap: wrap; }
+.lw-rrow.lost { outline: 2px solid var(--danger); }
+.lw-rname { font-weight: 700; }
+.lw-rrow .lw-die { font-size: 2rem; }
+
+/* Stadt-Land-Fluss */
+.slf-letter { align-self: center; width: 110px; height: 110px; display: flex; align-items: center; justify-content: center; font-size: 4.5rem; font-weight: 900; color: #1d1a10; background: var(--accent); border-radius: 18px; }
+.slf-letter.small { width: 44px; height: 44px; font-size: 1.8rem; border-radius: 10px; }
+.slf-alarm { text-align: center; color: #ffb4a8; font-weight: 700; margin: 0; }
+.slf-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.slf-field { display: flex; flex-direction: column; gap: 3px; font-size: .85rem; color: var(--muted); }
+.slf-field input { font-size: 1.05rem; }
+.slf-top { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.slf-sums { display: flex; flex-wrap: wrap; gap: 6px; }
+.slf-sum { background: #14201a; padding: 4px 10px; border-radius: 8px; }
+.slf-card { background: #14201a; border-radius: 12px; padding: 8px 10px; }
+.slf-card h3 { margin: 0 0 6px; font-size: .95rem; color: var(--accent); }
+.slf-ans { display: flex; align-items: center; gap: 8px; padding: 3px 0; flex-wrap: wrap; }
+.slf-ans.me .slf-who { font-weight: 700; }
+.slf-who { min-width: 5.5em; max-width: 8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: .85rem; }
+.slf-text { flex: 1; font-weight: 600; min-width: 5em; }
+.slf-ans.bad .slf-text { text-decoration: line-through; color: var(--muted); }
+.slf-pts { color: var(--ok); font-weight: 700; min-width: 3em; text-align: right; font-size: .85rem; }
+.slf-ans.bad .slf-pts { color: #ffb4a8; font-weight: 400; }
+.slf-flag { font: inherit; background: #2c3f35; color: var(--text); border: 1px solid transparent; border-radius: 8px; padding: 2px 8px; cursor: pointer; }
+.slf-flag.on { border-color: var(--danger); background: #4a2020; }
+.slf-flagn { color: var(--muted); font-size: .85rem; }
+@media (max-width: 520px) { .slf-form { grid-template-columns: 1fr; } .slf-letter { width: 84px; height: 84px; font-size: 3.4rem; } }
+
+/* Undercover / Spion */
+.uc-word { text-align: center; padding: 12px; background: #14201a; border-radius: 12px; font-size: 1.15rem; }
+.uc-word b { font-size: 1.5rem; color: var(--accent); }
+.uc-word.spy { color: #ffb4a8; }
+.uc-form { display: flex; gap: 8px; }
+.uc-form input { flex: 1; font-size: 1.1rem; min-width: 0; }
+.uc-round { background: #14201a; border-radius: 12px; padding: 8px 10px; }
+.uc-round h4 { margin: 0 0 6px; color: var(--muted); font-weight: 600; font-size: .85rem; }
+.uc-clue { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.uc-clue span { font-weight: 700; color: var(--accent); }
+.uc-clue.me b { text-decoration: underline; }
+.uc-votes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.uc-vote { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 1.05rem; padding: 12px; }
+.uc-out { text-align: center; }
+.uc-tally { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; color: var(--muted); }
+
+/* Stufenquiz */
+.ld-cat { text-align: center; font-weight: 800; font-size: 1.1rem; }
+.ld-levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.ld-lvl { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; font: inherit; color: #fff; background: var(--c); border: 3px solid transparent; border-radius: 12px; cursor: pointer; }
+.ld-lvl b { font-size: 1.6rem; }
+.ld-lvl small { font-size: .7rem; opacity: .9; }
+.ld-lvl.on { border-color: #fff; box-shadow: 0 0 14px var(--c); transform: scale(1.05); }
+.ld-badge { display: inline-block; background: var(--c); color: #fff; border-radius: 8px; padding: 1px 8px; font-size: .85rem; font-weight: 700; }
+.ld-q { font-size: 1.25rem; font-weight: 700; text-align: center; margin: 6px 0; }
+.ld-opt { text-align: left; }
+.ld-others { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.ld-chiplvl { background: var(--c); color: #fff; border-radius: 8px; padding: 2px 8px; font-size: .8rem; }
+.ld-rrow { background: #14201a; border-radius: 12px; padding: 8px 10px; border-left: 5px solid #777; }
+.ld-rrow.ok { border-left-color: #4caf50; }
+.ld-rrow.bad { border-left-color: #e53935; }
+.ld-rrow.me { outline: 1px solid var(--accent); }
+.ld-rhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ld-gain { margin-left: auto; font-weight: 800; color: var(--ok); }
+.ld-rrow.bad .ld-gain { color: #ffb4a8; font-weight: 600; }
+.ld-rq { margin: 4px 0 2px; }
+.ld-ra { color: var(--muted); font-size: .9rem; }
+@media (max-width: 420px) { .ld-levels { grid-template-columns: repeat(5, 1fr); gap: 5px; } .ld-lvl b { font-size: 1.3rem; } }
+
+/* Wortraten */
+.wg-hints { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.wg-hint { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #14201a; color: var(--muted); font-size: 1.05rem; min-height: 2.6em; }
+.wg-hint i { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #2c3f35; font-style: normal; font-size: .75rem; flex: none; }
+.wg-hint.on { background: #3b3320; color: var(--text); font-weight: 700; animation: wgpop .35s ease-out; }
+.wg-hint.on i { background: var(--accent); color: #1d1a10; }
+@keyframes wgpop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.wg-done { color: var(--ok); font-weight: 700; font-size: 1.1rem; }
+.wg-feed { display: flex; flex-direction: column; gap: 3px; color: var(--muted); font-size: .9rem; }
+.wg-feed .ok { color: var(--ok); font-weight: 700; }
+.wg-solution { text-align: center; font-size: 1.3rem; }
+.wg-solution b { color: var(--accent); font-size: 1.8rem; }
+@media (max-width: 420px) { .wg-hints { grid-template-columns: 1fr; } }
+
+@media (max-width: 520px) {
+    .cg { padding: 8px 8px 24px; gap: 8px; }
+    .cg-score { grid-template-columns: 1fr 1fr; gap: 4px; }
+    .cg-chip { padding: 4px 8px; gap: 6px; font-size: .85rem; }
+    .cg-stage { padding: 10px; }
+    .lw-die { font-size: 2.2rem; }
+    .lw-hand .lw-die { font-size: 2.8rem; }
+}

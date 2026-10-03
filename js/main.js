@@ -11,6 +11,16 @@ import { mountSongQuiz } from './games/songquiz/ui.js';
 import { resolveSong } from './games/songquiz/itunes.js';
 import { PartyGame } from './games/party/engine.js';
 import { mountParty } from './games/party/ui.js';
+import { LiarsGame } from './games/liars/engine.js';
+import { mountLiars } from './games/liars/ui.js';
+import { SlfGame } from './games/slf/engine.js';
+import { mountSlf } from './games/slf/ui.js';
+import { UndercoverGame } from './games/undercover/engine.js';
+import { mountUndercover } from './games/undercover/ui.js';
+import { LadderGame } from './games/ladder/engine.js';
+import { mountLadder } from './games/ladder/ui.js';
+import { WordGuessGame } from './games/wordguess/engine.js';
+import { mountWordGuess } from './games/wordguess/ui.js';
 
 // Neue Spiele werden hier eingetragen: Engine (Host), Oberfläche (alle).
 // Lieder-Raten: schon gespielte Songs merkt sich der Host im Browser, damit bei einem neuen Spiel nicht dieselben kommen.
@@ -37,6 +47,11 @@ const GAMES = {
         attach: attachSongQuiz,
     },
     party: { title: 'Sternenjagd', Engine: PartyGame, mount: mountParty, resumable: state => state.phase !== 'waiting' && state.phase !== 'over' },
+    liars: { title: 'Lügenwürfel', Engine: LiarsGame, mount: mountLiars, resumable: state => state.phase === 'bidding' || state.phase === 'reveal' },
+    slf: { title: 'Stadt-Land-Fluss', Engine: SlfGame, mount: mountSlf, resumable: state => state.phase === 'write' || state.phase === 'review' },
+    undercover: { title: 'Undercover / Spion', Engine: UndercoverGame, mount: mountUndercover, resumable: state => state.phase !== 'waiting' && state.phase !== 'over' },
+    ladder: { title: 'Stufenquiz', Engine: LadderGame, mount: mountLadder, resumable: state => ['choose', 'answer', 'reveal'].includes(state.phase) },
+    wordguess: { title: 'Wortraten', Engine: WordGuessGame, mount: mountWordGuess, resumable: state => state.phase === 'play' || state.phase === 'reveal' },
     monopoly: { title: 'Immobilienspiel', Engine: MonopolyGame, mount: mountMonopoly, resumable: state => state.phase === 'playing' },
 };
 
