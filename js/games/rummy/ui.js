@@ -12,7 +12,7 @@ const TEMPLATE = `
     <div class="table"></div>
   </div>
   <div class="me-bar">
-    <div class="turn"></div>
+    <div class="turn"><img class="turn-avatar small" alt="" hidden><span class="turn-text"></span></div>
     <div class="hint"></div>
   </div>
   <div class="rack"></div>
@@ -26,6 +26,7 @@ const TEMPLATE = `
   </div>
   <div class="overlay" hidden><div class="overlay-box"></div></div>
   <div class="toast" hidden></div>
+  <img class="turn-avatar big" alt="" hidden>
 </div>`;
 
 const clone = sets => sets.map(s => [...s]);
@@ -55,12 +56,13 @@ export function mountRummy(root, session) {
     const $ = sel => root.querySelector(sel);
     const el = {
         dot: $('.dot'), oppName: $('.opp-name'), oppCount: $('.opp-count'), pool: $('.pool'), score: $('.score'),
-        banner: $('.banner'), table: $('.table'), turn: $('.turn'), hint: $('.hint'), rack: $('.rack'),
+        banner: $('.banner'), table: $('.table'), turn: $('.turn-text'), hint: $('.hint'), rack: $('.rack'),
+        avatarBig: $('.turn-avatar.big'), avatarSmall: $('.turn-avatar.small'),
         end: $('.end'), draw: $('.draw'), reset: $('.reset'),
         overlay: $('.overlay'), overlayBox: $('.overlay-box'), toast: $('.toast'),
     };
 
-    const st = { view: null, moveNo: -1, tableD: [], rackD: [] };
+    const st = { view: null, moveNo: -1, tableD: [], rackD: [], avatars: [null, null] };
     let toastTimer = null;
 
     const myTurn = () => st.view && st.view.phase === 'playing' && st.view.turn === st.view.seat;
@@ -138,7 +140,27 @@ export function mountRummy(root, session) {
         el.table.classList.toggle('live', !!showLive);
 
         renderTurnAndHint(mine);
+        renderAvatar();
         renderOverlay();
+    }
+
+    // Zeigt das Bild der Person am Zug (am Rundenende das der Gewinnerin bzw. des Gewinners).
+    function renderAvatar() {
+        const v = st.view;
+        const seat = !v ? null : v.phase === 'playing' ? v.turn : v.phase === 'over' ? v.winner : null;
+        const src = seat === null ? null : st.avatars[seat];
+        for (const img of [el.avatarBig, el.avatarSmall]) {
+            const changed = (img.getAttribute('src') || null) !== src;
+            if (changed) {
+                if (src) img.src = src;
+                else img.removeAttribute('src');
+                // Animation neu starten, damit der Wechsel sichtbar ist
+                img.style.animation = 'none';
+                void img.offsetWidth;
+                img.style.animation = '';
+            }
+            img.hidden = !src;
+        }
     }
 
     function renderTurnAndHint(mine) {
@@ -361,6 +383,10 @@ export function mountRummy(root, session) {
         render();
     };
     session.onNotice = text => toast(text);
+    session.onAvatars = list => {
+        st.avatars = list;
+        if (st.view) renderAvatar();
+    };
 
     return {
         destroy() {

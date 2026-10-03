@@ -29,6 +29,13 @@ Danach: Host klickt "Mini Rummy starten", kopiert den Einladungslink und schickt
   Wer schon einen Platz hat (z. B. nach Neuladen), braucht es nicht erneut. Falsche Eingaben werden 1,5 s verzögert.
 - Die Seite selbst bleibt öffentlich (GitHub Pages), jeder kann dort aber nur eigene Räume anlegen.
 
+## Avatar
+
+Neben dem Namen kann man ein Bild auswählen. Es wird im Browser auf höchstens 300 px verkleinert, nur im
+`sessionStorage` des Tabs gehalten (weg beim Schließen) und über die Direktverbindung an die Person im selben
+Raum geschickt. Es liegt nie auf einem Server und nie im Projekt. Angezeigt wird immer das Bild der Person am Zug.
+Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist öffentlich.
+
 ## Aufbau
 
 - `js/core/session.js`: Verbindung (Host hält den Spielstand, Gast schickt Aktionen)

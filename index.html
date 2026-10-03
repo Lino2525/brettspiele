@@ -12,9 +12,20 @@
     <h1>Brettspiele</h1>
     <p class="sub">Zusammen spielen, egal wie weit weg.</p>
 
-    <label class="field">Dein Name
-        <input id="name" maxlength="20" autocomplete="off" placeholder="z. B. Anna">
-    </label>
+    <div class="name-row">
+        <label class="field">Dein Name
+            <input id="name" maxlength="20" autocomplete="off" placeholder="z. B. Anna">
+        </label>
+        <div class="avatar-pick">
+            <button id="avatarBtn" class="avatar-btn" type="button" title="Avatar-Bild auswählen">
+                <span id="avatarPlus">+</span>
+                <img id="avatarPreview" alt="Dein Avatar" hidden>
+            </button>
+            <button id="avatarClear" class="link" type="button" hidden>entfernen</button>
+            <input id="avatarFile" type="file" accept="image/*" hidden>
+        </div>
+    </div>
+    <p class="hint-small">Avatar (optional): Er wird nur an deine Mitspielerin oder deinen Mitspieler geschickt und gelöscht, sobald du den Tab schließt.</p>
 
     <label class="field">Raumpasswort (optional)
         <input id="password" maxlength="40" autocomplete="off" placeholder="Beim Starten festlegen, beim Beitreten eingeben">

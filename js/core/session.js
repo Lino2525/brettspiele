@@ -4,6 +4,7 @@
 //   session.onView = fn(view)     neuer Spielstand aus Sicht dieses Spielers
 //   session.onNotice = fn(text)   Meldung (z. B. "Du bist nicht am Zug.")
 //   session.onStatus = fn(text)   Verbindungsstatus
+//   session.onAvatars = fn(list)  Avatar-Bilder (Data-URL oder null) je Platz, nur im Arbeitsspeicher
 //   session.close()
 
 const PEER_PREFIX = 'brettspiele-';
@@ -18,11 +19,31 @@ export const normalizeRoomCode = text => String(text).toUpperCase().replace(/[^A
 
 const peerIdFor = code => PEER_PREFIX + code;
 
+export const MAX_AVATAR_CHARS = 150_000;
+
+// Avatare kommen von fremden Browsern: nur kleine Bild-Data-URLs durchlassen, alles andere verwerfen.
+export const cleanAvatar = data =>
+    typeof data === 'string' && data.length <= MAX_AVATAR_CHARS && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(data)
+        ? data
+        : null;
+
 class Session {
     lastView = null;
+    lastAvatars = [null, null];
     onNotice = () => {};
     onStatus = () => {};
     #onView = null;
+    #onAvatars = null;
+
+    set onAvatars(fn) {
+        this.#onAvatars = fn;
+        if (fn) fn(this.lastAvatars);
+    }
+
+    emitAvatars(list) {
+        this.lastAvatars = [cleanAvatar(list?.[0]), cleanAvatar(list?.[1])];
+        this.#onAvatars?.(this.lastAvatars);
+    }
 
     // Beim Setzen wird der letzte Stand sofort nachgereicht, damit die Reihenfolge beim Start egal ist.
     set onView(fn) {
@@ -40,10 +61,12 @@ export class HostSession extends Session {
     #peer = null;
     #conns = new Map(); // seat -> DataConnection
     #seat = -1;
+    #avatars = [null, null]; // nur im Arbeitsspeicher, nie im gespeicherten Spielstand
 
-    constructor({ game, gameId, roomCode, token, name, password, onSave }) {
+    constructor({ game, gameId, roomCode, token, name, password, avatar, onSave }) {
         super();
         this.password = password || '';
+        this.avatar = cleanAvatar(avatar);
         this.game = game;
         this.gameId = gameId;
         this.roomCode = roomCode;
@@ -80,7 +103,14 @@ export class HostSession extends Session {
 
     start() {
         this.#seat = this.game.join(this.token, this.name);
+        this.#avatars[this.#seat] = this.avatar;
         this.#broadcast();
+        this.#sendAvatars();
+    }
+
+    #sendAvatars() {
+        this.emitAvatars(this.#avatars);
+        for (const conn of this.#conns.values()) conn.send({ t: 'avatars', list: this.#avatars });
     }
 
     send(action) {
@@ -113,7 +143,9 @@ export class HostSession extends Session {
                 this.#conns.get(seat)?.close();
                 this.#conns.set(seat, conn);
                 conn.send({ t: 'welcome', gameId: this.gameId, seat });
+                this.#avatars[seat] = cleanAvatar(msg.avatar);
                 this.#broadcast();
+                this.#sendAvatars();
             } else if (msg?.t === 'act' && seat >= 0) {
                 this.#handle(seat, msg.action, text => conn.send({ t: 'notice', text }));
             }
@@ -149,9 +181,10 @@ export class ClientSession extends Session {
     #closed = false;
     #retryTimer = null;
 
-    constructor({ roomCode, token, name, password }) {
+    constructor({ roomCode, token, name, password, avatar }) {
         super();
         this.password = password || '';
+        this.avatar = cleanAvatar(avatar);
         this.roomCode = roomCode;
         this.token = token;
         this.name = name;
@@ -197,7 +230,7 @@ export class ClientSession extends Session {
         peer.on('open', () => {
             const conn = peer.connect(peerIdFor(this.roomCode), { reliable: true });
             this.#conn = conn;
-            conn.on('open', () => conn.send({ t: 'hello', token: this.token, name: this.name, password: this.password }));
+            conn.on('open', () => conn.send({ t: 'hello', token: this.token, name: this.name, password: this.password, avatar: this.avatar }));
             conn.on('data', msg => {
                 switch (msg?.t) {
                     case 'welcome':
@@ -208,6 +241,7 @@ export class ClientSession extends Session {
                         resolve = reject = null;
                         break;
                     case 'view': this.emitView(msg.view); break;
+                    case 'avatars': this.emitAvatars(msg.list); break;
                     case 'notice': this.onNotice(msg.text); break;
                     case 'full':
                     case 'denied':

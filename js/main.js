@@ -1,5 +1,6 @@
 // Lobby: Namen merken, Raum erstellen / beitreten / fortsetzen und das gewählte Spiel einhängen.
 import { HostSession, ClientSession, makeRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from './core/session.js';
+import { fileToAvatar } from './core/avatar.js';
 import { RummyGame } from './games/rummy/engine.js';
 import { mountRummy } from './games/rummy/ui.js';
 
@@ -20,6 +21,37 @@ const store = {
         try { localStorage.removeItem(key); } catch { /* s. o. */ }
     },
 };
+
+// Der Avatar liegt bewusst nur im sessionStorage: weg, sobald der Tab geschlossen wird.
+let avatar = null;
+try { avatar = sessionStorage.getItem('bsp.avatar'); } catch { /* ohne Speicher: kein Avatar nach Neuladen */ }
+
+function setAvatar(data) {
+    avatar = data;
+    try {
+        if (data) sessionStorage.setItem('bsp.avatar', data);
+        else sessionStorage.removeItem('bsp.avatar');
+    } catch { /* s. o. */ }
+    $('avatarPreview').hidden = !data;
+    $('avatarPlus').hidden = !!data;
+    $('avatarClear').hidden = !data;
+    if (data) $('avatarPreview').src = data;
+}
+
+$('avatarBtn').addEventListener('click', () => $('avatarFile').click());
+$('avatarClear').addEventListener('click', () => setAvatar(null));
+$('avatarFile').addEventListener('change', async () => {
+    const file = $('avatarFile').files[0];
+    $('avatarFile').value = '';
+    if (!file) return;
+    try {
+        setAvatar(await fileToAvatar(file));
+        lobbyMsg('');
+    } catch (e) {
+        lobbyMsg(e.message);
+    }
+});
+setAvatar(avatar);
 
 const token = store.get('bsp.token') || crypto.randomUUID();
 store.set('bsp.token', token);
@@ -100,6 +132,7 @@ async function hostGame(gameId, saved = null) {
                 token,
                 name,
                 password,
+                avatar,
                 onSave: state => store.set(saveKey, JSON.stringify({ room: roomCode, state })),
             });
             try {
@@ -132,7 +165,7 @@ async function joinGame(rawCode) {
     const password = roomPassword();
     setBusy(true);
     lobbyMsg('Verbinde…');
-    const session = new ClientSession({ roomCode, token, name, password });
+    const session = new ClientSession({ roomCode, token, name, password, avatar });
     try {
         await session.connect();
         showGame(session, session.gameId);
