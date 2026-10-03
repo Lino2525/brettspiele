@@ -21,6 +21,7 @@ const PREFETCH = 3;
 const RETRY_MS = 8000;
 const RECENT_ARTISTS = 8;
 const MAX_ANSWER_LENGTH = 80;
+const CORE_SHARE = 0.75; // so oft kommt ein Song aus dem Schwerpunkt (Party-Pop um 2010), sonst aus allen Jahrzehnten
 
 const err = error => ({ error });
 const OK = { ok: true };
@@ -356,7 +357,12 @@ export class SongQuizGame {
         const recent = new Set([...s.recent, ...s.queue.map(q => q.artist)]);
         const varied = pool.filter(c => !recent.has(c.artist));
         const from = varied.length ? varied : pool;
-        return from[Math.floor(this.rng() * from.length)];
+        // Schwerpunkt bevorzugen: meist ein Song aus dem Kern (Party-Pop um 2010), ab und zu aus allen anderen Jahrzehnten
+        const core = from.filter(c => c.core);
+        const rest = from.filter(c => !c.core);
+        const useCore = core.length > 0 && (rest.length === 0 || this.rng() < CORE_SHARE);
+        const list = useCore ? core : rest;
+        return list[Math.floor(this.rng() * list.length)];
     }
 
     #maybeFill(now) {

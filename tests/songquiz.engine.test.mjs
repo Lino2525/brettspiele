@@ -279,3 +279,26 @@ test('Speichern und Wiederherstellen: laufende Runde wird aufgelöst', async () 
     assert.equal(copy.s.players[0].connected, false);
     assert.equal(copy.join('t0', 'x'), 0);
 });
+
+test('Schwerpunkt: etwa drei von vier Songs kommen aus dem Kern, der Rest aus allen Jahrzehnten', async () => {
+    const catalog = Array.from({ length: 400 }, (_, i) => ({ id: `S${i}`, title: `S${i}`, artist: `A${i}`, decade: i % 2 ? 2010 : 1980, lang: 'en', core: i % 2 === 1 }));
+    let core = 0;
+    // viele Spiele anstoßen und die gezogenen Songs zählen
+    for (let k = 0; k < 15; k++) {
+        const game = new SongQuizGame({ rng: seeded(100 + k), catalog, songProvider: provider });
+        game.join('a', 'A');
+        game.join('b', 'B');
+        game.apply(0, { t: 'start' });
+        const clock = { t: 1_000_000 };
+        for (let r = 1; r <= ROUNDS; r++) {
+            await until(game, clock, () => game.s.round?.phase === 'prepare' && game.s.roundNo === r);
+            if (catalog.find(c => c.id === game.s.round.song.id).core) core++;
+            game.apply(0, { t: 'ready', round: game.s.round.id }, clock.t);
+            game.apply(1, { t: 'ready', round: game.s.round.id }, clock.t);
+            game.apply(0, { t: 'skip' }, clock.t);
+            game.apply(0, { t: 'next' }, clock.t);
+        }
+    }
+    const share = core / (15 * ROUNDS);
+    assert.ok(share > 0.68 && share < 0.82, `Anteil Schwerpunkt: ${(share * 100).toFixed(0)} %`);
+});
