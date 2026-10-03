@@ -53,6 +53,14 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
   holt der Host zur Laufzeit über die kostenlose iTunes-Suche von Apple (30-Sekunden-Vorschau direkt von Apples Servern);
   es wird nichts gespeichert oder gehostet. Ohne Verbindung zu Apple funktioniert das Spiel nicht.
 
+- **Sternenjagd** (2-6 Personen, Partyspiel mit Spielfeld und Minispielen): Rundkurs mit 28 Feldern (blau +3, rot −3,
+  grün = Glücksfeld mit Zufallsereignis), Stern auf dem Brett (kauft man im Vorbeigehen für 5 Münzen, er wandert danach).
+  Nach jeder Runde (alle haben gewürfelt) spielen alle ein Minispiel: Volltreffer (richtiger Moment), Korbwurf, Blitzreaktion,
+  Tipp-Marathon, Merkreihe, Kopfrechnen, Wissen (Allgemeinwissen), Flaggen (Flaggenbilder von flagcdn.com) und
+  Zeichnen & Raten. Belohnung: 1. Platz 10 Münzen, 2. 6, 3. 4, sonst 2; in Sternrunden (jede dritte und die letzte)
+  gewinnt der Erste einen Stern. Am Ende zählt ein Stern 10 Münzen. Rundenzahl (5-15) wählt der Host in der Lobby.
+  Inhalte (Fragen, Flaggen, Begriffe) stehen in `js/games/party/data.js`. Eigenständiges Design, keine geschützten Figuren.
+
 ## Musik
 
 Beim Spielstart läuft ruhige Klaviermusik in Endlosschleife (d-Moll, getragen, leicht dramatisch, mit leisem Wind).

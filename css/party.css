@@ -1,0 +1,161 @@
+/* ---------- Sternenjagd ---------- */
+
+.game:has(.party) { height: auto; min-height: 100dvh; }
+
+.party {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 10px 12px 24px;
+}
+
+.ptop { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-weight: 700; }
+.phint { font-weight: 400; font-size: .85rem; color: var(--muted); }
+
+.pscore { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.pchip { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel); border-radius: 10px; border: 2px solid transparent; }
+.pchip.on-turn { border-color: var(--accent); }
+.pchip.me .pname { font-weight: 700; }
+.pchip.off { opacity: .5; }
+.pname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pst2 { color: #ffd54f; font-weight: 700; }
+.pco { color: #9be7a8; font-weight: 700; }
+.ptk { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; color: #fff; font-weight: 800; font-size: .8rem; background-size: cover; background-position: center; }
+.ptk.sm { width: 16px; height: 16px; margin-right: 6px; border-width: 1px; }
+
+/* Spielbrett: Rundkurs auf einem Raster von 9 x 7 Feldern */
+.pboard-wrap { display: flex; justify-content: center; }
+.pboard {
+    width: min(100%, calc((100dvh - 200px) * 1.2857));
+    min-width: 300px;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(7, 1fr);
+    gap: 4px;
+    aspect-ratio: 9 / 7;
+    padding: 6px;
+    background: #1f3a2c;
+    border-radius: 14px;
+}
+.pcell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: clamp(.55rem, 2vw, .95rem);
+    color: #fff;
+}
+.pcell.t-start { background: #6d4c9f; }
+.pcell.t-blue { background: #2b6fd6; }
+.pcell.t-red { background: #cf3b3b; }
+.pcell.t-green { background: #2e9e4f; }
+.pcell.has-star { outline: 3px solid #ffd54f; outline-offset: -3px; z-index: 1; }
+.pst { position: absolute; top: -6px; right: -4px; font-size: clamp(.7rem, 2.4vw, 1.2rem); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .6)); }
+.ptoks { display: flex; flex-wrap: wrap; gap: 1px; justify-content: center; max-width: 100%; }
+.pt { display: inline-flex; align-items: center; justify-content: center; width: clamp(12px, 3.3vw, 24px); height: clamp(12px, 3.3vw, 24px); border-radius: 50%; border: 2px solid #fff; font-style: normal; font-size: clamp(.45rem, 1.5vw, .75rem); font-weight: 800; background-size: cover; background-position: center; box-shadow: 0 1px 3px rgba(0, 0, 0, .5); }
+
+.pcenter { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 6px; background: rgba(0, 0, 0, .18); border-radius: 10px; text-align: center; overflow: hidden; }
+.pdie { display: inline-block; font-size: clamp(2.2rem, 8vw, 4rem); line-height: 1; }
+.pdie.rolling { animation: pshake .16s infinite; }
+@keyframes pshake { 0% { transform: rotate(-10deg); } 50% { transform: rotate(10deg) translateY(-3px); } 100% { transform: rotate(-10deg); } }
+.pstatus { font-weight: 700; font-size: clamp(.9rem, 2.6vw, 1.2rem); min-height: 1.3em; }
+.pact { min-height: 2.6em; }
+.pfeed { display: flex; flex-direction: column; gap: 2px; font-size: clamp(.7rem, 2vw, .95rem); color: #ffe9a8; min-height: 3.6em; }
+
+/* Minispiele */
+.pmini { background: var(--panel); border-radius: 14px; padding: 12px; }
+.pmini[hidden] { display: none; }
+.pboard-wrap[hidden] { display: none; }
+.mhead { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.mhead strong { font-size: 1.1rem; }
+.mhead .mtimer { margin-left: auto; font-weight: 800; color: var(--accent); }
+.mstar { color: #ffd54f; font-weight: 700; font-size: .85rem; }
+.mintro { text-align: center; padding: 18px 8px; }
+.mintro h2 { margin: 0 0 8px; }
+.mbody { min-height: 280px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.mg-wait { margin-top: 8px; padding: 10px 14px; background: #14201a; border-radius: 10px; color: var(--muted); }
+
+/* Volltreffer */
+.tm-bar { position: relative; width: min(100%, 560px); height: 46px; background: #14201a; border-radius: 10px; overflow: hidden; margin: 18px 0 8px; }
+.tm-zone { position: absolute; top: 0; bottom: 0; background: rgba(76, 175, 80, .75); }
+.tm-mark { position: absolute; top: 0; bottom: 0; width: 6px; margin-left: -3px; background: #fff; box-shadow: 0 0 8px #fff; }
+.tm-res { min-height: 1.4em; font-weight: 800; color: var(--ok); }
+.tm-info, .hp-info, .rx-info, .mt-info, .mem-info { color: var(--muted); }
+
+/* Korbwurf */
+.hp-canvas { width: min(100%, 320px); height: auto; border-radius: 12px; touch-action: none; background: #16301f; }
+.hp-hint { color: var(--muted); font-size: .85rem; }
+
+/* Blitzreaktion */
+.rx-pad { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: min(100%, 460px); height: 260px; border-radius: 16px; background: #37474f; font-size: 1.5rem; cursor: pointer; user-select: none; touch-action: none; }
+.rx-pad.wait { background: #c62828; }
+.rx-pad.go { background: #2e7d32; }
+.rx-pad.early { background: #6d4c41; }
+.rx-pad.done { background: #1565c0; }
+.rx-sub { font-size: 1rem; opacity: .85; }
+
+/* Tipp-Marathon */
+.tp-count { font-size: 4.5rem; font-weight: 900; line-height: 1; }
+.tp-btn { width: min(100%, 360px); height: 150px; font-size: 1.8rem; touch-action: manipulation; }
+.tp-time { color: var(--muted); }
+
+/* Merkreihe */
+.mem-pads { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(100%, 320px); }
+.mem-pad { aspect-ratio: 1; border: 0; border-radius: 16px; background: var(--c); opacity: .35; cursor: pointer; touch-action: manipulation; }
+.mem-pad.lit { opacity: 1; box-shadow: 0 0 22px var(--c); }
+.mem-pad:disabled { cursor: default; }
+
+/* Kopfrechnen */
+.mt-q { font-size: 2.6rem; font-weight: 800; margin: 10px 0; }
+.mt-form { display: flex; gap: 8px; }
+.mt-input { width: 8em; font-size: 1.5rem; text-align: center; }
+.mt-fb { min-height: 1.4em; font-weight: 700; }
+.mt-fb.ok { color: var(--ok); }
+.mt-fb.bad { color: #ffb4a8; }
+
+/* Wissen und Flaggen */
+.qz-bar { width: min(100%, 560px); height: 8px; background: #14201a; border-radius: 6px; overflow: hidden; }
+.qz-bar i { display: block; height: 100%; width: 100%; background: var(--accent); transition: width .1s linear; }
+.qz-img img { width: min(70vw, 280px); border-radius: 6px; border: 2px solid #fff; background: #fff; }
+.qz-q { font-size: 1.2rem; font-weight: 700; text-align: center; max-width: 560px; }
+.qz-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: min(100%, 560px); }
+.qz-opt { font: inherit; padding: 12px 10px; border: 2px solid #3c5045; border-radius: 10px; background: #26362e; color: var(--text); cursor: pointer; }
+.qz-opt:hover:not(:disabled) { border-color: var(--accent); }
+.qz-opt.mine { border-color: var(--accent); background: #3b3320; }
+.qz-opt.right { border-color: #4caf50; background: #1e4a2a; }
+.qz-opt.wrong { border-color: #e53935; background: #4a2020; }
+.qz-opt:disabled { cursor: default; }
+.qz-note { min-height: 1.4em; color: var(--muted); }
+@media (max-width: 520px) { .qz-opts { grid-template-columns: 1fr; } }
+
+/* Zeichnen und Raten */
+.dr-top { font-size: 1.1rem; }
+.dr-mask { letter-spacing: .12em; }
+.dr-canvas { width: min(100%, 440px); height: auto; border-radius: 12px; background: #1b2a22; touch-action: none; cursor: crosshair; }
+.dr-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.dr-color { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #3c5045; cursor: pointer; padding: 0; }
+.dr-color.on { border-color: var(--accent); }
+.dr-form { display: flex; gap: 8px; width: min(100%, 440px); }
+.dr-input { flex: 1; font-size: 1.1rem; }
+.dr-note { color: var(--muted); font-size: .9rem; }
+
+.pmini .ranking tr.me td { background: rgba(242, 182, 50, .12); }
+.pmini .ranking td:nth-child(2), .pmini .ranking th:nth-child(2) { text-align: left; }
+.prize { color: #9be7a8; }
+.prize.star { color: #ffd54f; }
+.overlay-box .ranking td:nth-child(2), .overlay-box .ranking th:nth-child(2) { text-align: left; }
+.overlay-box .ranking tr.me td { background: rgba(242, 182, 50, .12); }
+
+@media (max-width: 520px) {
+    .party { padding: 8px 8px 20px; gap: 8px; }
+    .pscore { grid-template-columns: 1fr 1fr; gap: 4px; }
+    .pchip { padding: 4px 8px; gap: 6px; font-size: .85rem; }
+    .ptk { width: 22px; height: 22px; font-size: .7rem; }
+}

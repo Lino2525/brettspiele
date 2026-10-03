@@ -9,6 +9,8 @@ import { mountMonopoly } from './games/monopoly/ui.js';
 import { SongQuizGame } from './games/songquiz/engine.js';
 import { mountSongQuiz } from './games/songquiz/ui.js';
 import { resolveSong } from './games/songquiz/itunes.js';
+import { PartyGame } from './games/party/engine.js';
+import { mountParty } from './games/party/ui.js';
 
 // Neue Spiele werden hier eingetragen: Engine (Host), Oberfläche (alle).
 // Lieder-Raten: schon gespielte Songs merkt sich der Host im Browser, damit bei einem neuen Spiel nicht dieselben kommen.
@@ -34,6 +36,7 @@ const GAMES = {
         music: false, // hier hört man die Song-Ausschnitte, keine Hintergrundmusik
         attach: attachSongQuiz,
     },
+    party: { title: 'Sternenjagd', Engine: PartyGame, mount: mountParty, resumable: state => state.phase !== 'waiting' && state.phase !== 'over' },
     monopoly: { title: 'Immobilienspiel', Engine: MonopolyGame, mount: mountMonopoly, resumable: state => state.phase === 'playing' },
 };
 
