@@ -21,7 +21,11 @@ const state = {
     muted: store.get('bsp.muted') === '1',
 };
 const controls = new Set();
-const updateControls = () => controls.forEach(c => c.update());
+const listeners = new Set();
+const updateControls = () => {
+    controls.forEach(c => c.update());
+    listeners.forEach(fn => fn({ volume: state.volume, muted: state.muted }));
+};
 
 // Lautstärke wahrnehmungsgerecht (quadratisch) auf die Verstärkung abbilden
 const gainFor = () => (state.muted ? 0 : state.volume ** 2 * 1.6);
@@ -70,6 +74,13 @@ function resumeContext() {
 }
 
 export const music = {
+    // Andere Klangquellen (z. B. die Song-Ausschnitte beim Lieder-Raten) folgen demselben Regler
+    subscribe(fn) {
+        listeners.add(fn);
+        fn({ volume: state.volume, muted: state.muted });
+        return () => listeners.delete(fn);
+    },
+
     get context() {
         return state.ctx; // für Tests und Fehlersuche
     },

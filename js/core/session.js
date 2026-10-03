@@ -21,7 +21,7 @@ export const normalizeRoomCode = text => String(text).toUpperCase().replace(/[^A
 const peerIdFor = code => PEER_PREFIX + code;
 
 export const MAX_AVATAR_CHARS = 150_000;
-const AVATAR_SLOTS = 4; // so viele Plätze gibt es höchstens in einem Raum
+const AVATAR_SLOTS = 10; // so viele Plätze gibt es höchstens in einem Raum
 
 // Avatare kommen von fremden Browsern: nur kleine Bild-Data-URLs durchlassen, alles andere verwerfen.
 export const cleanAvatar = data =>
@@ -63,6 +63,7 @@ export class HostSession extends Session {
     #peer = null;
     #conns = new Map(); // seat -> DataConnection
     #seat = -1;
+    #ticker = null;
     #avatars = Array(AVATAR_SLOTS).fill(null); // nur im Arbeitsspeicher, nie im gespeicherten Spielstand
 
     constructor({ game, gameId, roomCode, token, name, password, avatar, onSave }) {
@@ -108,6 +109,12 @@ export class HostSession extends Session {
         this.#avatars[this.#seat] = this.avatar;
         this.#broadcast();
         this.#sendAvatars();
+        // Spiele mit Zeitsteuerung (z. B. Lieder-Raten) bekommen vom Host einen regelmäßigen Takt
+        if (typeof this.game.tick === 'function') {
+            this.#ticker = setInterval(() => {
+                if (this.game.tick(Date.now())) this.#broadcast();
+            }, 500);
+        }
     }
 
     #sendAvatars() {
@@ -120,6 +127,7 @@ export class HostSession extends Session {
     }
 
     close() {
+        clearInterval(this.#ticker);
         this.#peer?.destroy();
     }
 
@@ -163,8 +171,12 @@ export class HostSession extends Session {
 
     #handle(seat, action, notify) {
         const result = this.game.apply(seat, action);
-        if (result.error) notify(result.error);
-        else this.#broadcast();
+        if (result.error) {
+            notify(result.error);
+        } else {
+            if (result.notice) notify(result.notice); // Rückmeldung nur an die handelnde Person (z. B. "Richtig!")
+            this.#broadcast();
+        }
     }
 
     #broadcast() {

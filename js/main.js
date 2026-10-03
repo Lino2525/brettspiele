@@ -6,10 +6,34 @@ import { RummyGame } from './games/rummy/engine.js';
 import { mountRummy } from './games/rummy/ui.js';
 import { MonopolyGame } from './games/monopoly/engine.js';
 import { mountMonopoly } from './games/monopoly/ui.js';
+import { SongQuizGame } from './games/songquiz/engine.js';
+import { mountSongQuiz } from './games/songquiz/ui.js';
+import { resolveSong } from './games/songquiz/itunes.js';
 
 // Neue Spiele werden hier eingetragen: Engine (Host), Oberfläche (alle).
+// Lieder-Raten: schon gespielte Songs merkt sich der Host im Browser, damit bei einem neuen Spiel nicht dieselben kommen.
+const PLAYED_KEY = 'bsp.quiz.played';
+function attachSongQuiz(engine) {
+    let played;
+    try { played = new Set(JSON.parse(localStorage.getItem(PLAYED_KEY) || '[]')); } catch { played = new Set(); }
+    engine.attachRuntime({
+        songProvider: resolveSong,
+        history: played,
+        onHistory: () => { try { localStorage.setItem(PLAYED_KEY, JSON.stringify([...played])); } catch { /* ohne Speicher: nur für diese Sitzung */ } },
+        onHistoryReset: () => { try { localStorage.removeItem(PLAYED_KEY); } catch { /* s. o. */ } },
+    });
+}
+
 const GAMES = {
     rummy: { title: 'Mini Rummy', Engine: RummyGame, mount: mountRummy, resumable: state => state.phase !== 'waiting' },
+    songquiz: {
+        title: 'Lieder-Raten',
+        Engine: SongQuizGame,
+        mount: mountSongQuiz,
+        resumable: state => state.phase !== 'waiting',
+        music: false, // hier hört man die Song-Ausschnitte, keine Hintergrundmusik
+        attach: attachSongQuiz,
+    },
     monopoly: { title: 'Immobilienspiel', Engine: MonopolyGame, mount: mountMonopoly, resumable: state => state.phase === 'playing' },
 };
 
@@ -100,7 +124,7 @@ function showGame(session, gameId) {
     const game = GAMES[gameId];
     $('lobby').hidden = true;
     $('gameScreen').hidden = false;
-    music.start();
+    if (game.music !== false) music.start();
     $('roomInfo').textContent = `${game.title} · Raum ${session.roomCode}`;
     session.onStatus = text => ($('status').textContent = text);
     const ui = game.mount($('gameRoot'), session);
@@ -133,6 +157,7 @@ async function hostGame(gameId, saved = null) {
     lobbyMsg('Raum wird eingerichtet…');
     const G = GAMES[gameId];
     const engine = saved ? G.Engine.restore(saved.state) : new G.Engine();
+    G.attach?.(engine);
     const saveKey = `bsp.host.${gameId}`;
 
     try {

@@ -1,6 +1,6 @@
 # Brettspiele
 
-Zwei bis vier Personen spielen zusammen im Browser, egal wo. Kein Server, keine Kosten:
+Zwei bis vier (Lieder-Raten: bis zehn) Personen spielen zusammen im Browser, egal wo. Kein Server, keine Kosten:
 Die Browser verbinden sich direkt (WebRTC über PeerJS), ein Spieler ist der Host.
 
 ## Lokal starten
@@ -44,6 +44,14 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
   Steuern, Gefängnis (Geld, Freikarte, Pasch, dritter Versuch), Ereignis- und Gemeinschaftskarten, Hypotheken,
   Handel (Geld, Grundstücke, Freikarten), Schulden und Bankrott. Alle sehen Würfel, Figuren und Karten live.
   Bauen, Hypotheken und Verkäufe sind nur im eigenen Zug möglich (oder bei eigenen Schulden).
+
+- **Lieder-Raten** (2-10 Personen): kurze Ausschnitte (5 s) bekannter Hits erraten, Titel oder Künstler tippen.
+  Wertung: Titel 1 Punkt, Künstler 1 Punkt, beides in einer Runde +1 Bonus, wer Titel bzw. Künstler als Erste/r errät +1.
+  20 Runden pro Durchgang, danach "Weitere 20 Runden" (Songs wiederholen sich nicht, auch nicht bei einem neuen Spiel,
+  der Host merkt sich die gespielten Songs im Browser). Nach 10 s und 20 s gibt es Hinweise (Wortlängen, Anfangsbuchstaben)
+  und einen längeren Ausschnitt. Die Songliste (`js/games/songquiz/catalog.js`) enthält nur Titel und Künstler. Die Töne
+  holt der Host zur Laufzeit über die kostenlose iTunes-Suche von Apple (30-Sekunden-Vorschau direkt von Apples Servern);
+  es wird nichts gespeichert oder gehostet. Ohne Verbindung zu Apple funktioniert das Spiel nicht.
 
 ## Musik
 

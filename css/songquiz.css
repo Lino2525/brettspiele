@@ -1,0 +1,85 @@
+/* ---------- Lieder-Raten ---------- */
+
+.quiz {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 10px 14px 24px;
+}
+.game:has(.quiz) { height: auto; min-height: 100dvh; }
+
+.qtop { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 34px; font-weight: 700; }
+.qbar { height: 8px; border-radius: 6px; background: #14201a; overflow: hidden; }
+.qbar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 6px; transition: width .25s linear; }
+.qbar i.reveal { background: var(--ok); }
+.qbar i.wait { background: #55705f; }
+
+.qstage {
+    position: relative;
+    min-height: 230px;
+    padding: 18px 16px;
+    border-radius: 16px;
+    background: radial-gradient(circle at 50% 0%, #3c5f4b, #22352b 70%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+}
+.qstatus { font-size: 1.15rem; font-weight: 600; min-height: 1.4em; }
+.qmask { display: flex; flex-direction: column; gap: 6px; font-size: 1.25rem; letter-spacing: .14em; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.qmask small { display: inline-block; min-width: 5.5em; margin-right: 8px; letter-spacing: 0; font-family: system-ui, sans-serif; font-size: .8rem; color: var(--muted); text-align: right; }
+
+/* Equalizer: bewegt sich nur, solange Ton läuft */
+.eq { display: flex; align-items: flex-end; gap: 5px; height: 64px; }
+.eq i { display: block; width: 9px; height: 10px; border-radius: 4px; background: var(--accent); opacity: .55; }
+.eq.on i { opacity: 1; animation: eq 0.9s ease-in-out infinite; }
+.eq.on i:nth-child(2) { animation-delay: -.2s; } .eq.on i:nth-child(3) { animation-delay: -.5s; }
+.eq.on i:nth-child(4) { animation-delay: -.1s; } .eq.on i:nth-child(5) { animation-delay: -.7s; }
+.eq.on i:nth-child(6) { animation-delay: -.35s; } .eq.on i:nth-child(7) { animation-delay: -.6s; }
+@keyframes eq { 0%, 100% { height: 10px; } 50% { height: 60px; } }
+
+.qreveal { display: flex; align-items: center; gap: 16px; text-align: left; }
+.qreveal[hidden] { display: none; }
+.qcover { width: 112px; height: 112px; border-radius: 10px; object-fit: cover; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); background: #1a251f; }
+.qcover[hidden] { display: none; }
+.qsong { display: flex; flex-direction: column; gap: 4px; }
+.qsong strong { font-size: 1.3rem; }
+.qsong span { color: var(--muted); }
+.qgain { margin-top: 6px; font-weight: 800; color: var(--ok); }
+.qgain.none { color: var(--muted); font-weight: 500; }
+
+.qform { display: flex; gap: 8px; }
+.qinput { flex: 1; font-size: 1.1rem; padding: 12px 14px; }
+.qinput:disabled { opacity: .5; }
+.qmine { display: flex; gap: 14px; justify-content: center; min-height: 1.4em; color: var(--muted); font-size: .95rem; }
+.qmine .got { color: var(--ok); font-weight: 700; }
+.qrow { display: flex; justify-content: center; }
+
+.qplayers { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+.qp { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel); border-radius: 10px; border: 2px solid transparent; }
+.qp.me { border-color: var(--accent); }
+.qp.off { opacity: .5; }
+.qav { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #3a4e43 center/cover; font-weight: 800; font-size: .85rem; }
+.qname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.marks { display: flex; gap: 2px; }
+.marks i { font-style: normal; filter: grayscale(1); opacity: .25; font-size: .85rem; }
+.marks i.on { filter: none; opacity: 1; }
+.qp .gain { color: var(--ok); }
+.qscore { min-width: 2.2em; text-align: right; font-weight: 800; }
+
+.tapfix { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: rgba(10, 16, 13, .7); }
+.tapfix[hidden] { display: none; }
+
+@media (max-width: 520px) {
+    .qreveal { flex-direction: column; text-align: center; }
+    .qplayers { grid-template-columns: 1fr; }
+}
+
+/* Rangliste im Siegerfenster: Namen linksbündig */
+.quiz .ranking td:nth-child(1), .quiz .ranking th:nth-child(1) { width: 2.2em; text-align: left; }
+.quiz .ranking td:nth-child(2), .quiz .ranking th:nth-child(2) { text-align: left; }
