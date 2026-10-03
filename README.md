@@ -63,7 +63,7 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
 
 ### Gesellschaftsspiele für 3 bis 6 Personen
 
-Diese fünf Spiele laufen alle mit mindestens 3 Personen. Die gemeinsame Grundlage (Mitspieler, Teams, Warteraum,
+**Diese fünf Spiele sind keine eigenen Spiele mehr, sondern Minispiele in Sternenjagd** (js/games/party/subgames.js; Sternenjagd läuft jetzt mit 3 bis 6 Personen, es gibt 14 Minispiele pro Durchlauf). In Teams (ab 4 Personen, nicht in Sternrunden) wird der Teamdurchschnitt gewertet, das bessere Team bekommt Platz 1. Die gemeinsame Grundlage (Mitspieler, Teams, Warteraum,
 Ergebnisfenster) liegt in `js/games/common/` (`room.js` für den Host, `kit.js` für die Oberfläche), jedes Spiel
 besteht nur noch aus Regeln (`engine.js`), Inhalten und Spielfläche (`ui.js`). Styles: `css/games.css`.
 Teams (zwei Teams, Rot und Blau) gibt es ab 4 Personen bei Stadt-Land-Fluss, Stufenquiz und Wortraten: Der Host

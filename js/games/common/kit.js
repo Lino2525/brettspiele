@@ -59,8 +59,12 @@ function dataToAction(target) {
 //   stage(v, ctx) -> HTML der Spielfläche, over(v, ctx) -> HTML des Ergebnisses,
 //   input(target, ctx), click(act, target, ctx) -> true wenn selbst behandelt, update(v, ctx) nach jeder Ansicht,
 // }
-export function mountGame(root, session, game) {
+// opts.embedded: nur die Spielfläche (für Minispiele in Sternenjagd), ohne Punktetafel, Warteraum und Ergebnisfenster.
+export function mountGame(root, session, game, opts = {}) {
+    const embedded = !!opts.embedded;
     root.innerHTML = TEMPLATE;
+    const cg = root.querySelector('.cg');
+    if (embedded) cg.classList.add('embedded');
     const $ = sel => root.querySelector(sel);
     const el = { top: $('.cg-info'), title: $('.cg-title'), timer: $('.cg-timer'), score: $('.cg-score'), stage: $('.cg-stage'), overlay: $('.cg-overlay'), box: $('.cg-box'), toast: $('.toast') };
     const st = { view: null, avatars: [], receivedAt: 0, deadline: 0 };
@@ -68,6 +72,7 @@ export function mountGame(root, session, game) {
     el.title.textContent = game.name;
 
     const ctx = {
+        root: cg,
         get v() { return st.view; },
         avatars: () => st.avatars,
         send: action => session.send(action),
@@ -138,6 +143,16 @@ export function mountGame(root, session, game) {
 
     function render() {
         const v = st.view;
+        if (embedded) {
+            const mine = v.players[v.seat];
+            const team = v.teamMode && mine ? `Du bist im ${v.teamNames[mine.team]} · ` : '';
+            el.top.textContent = team + (game.top?.(v) || '');
+            el.stage.hidden = false;
+            setHTML(el.stage, game.stage(v, ctx) || '');
+            game.update?.(v, ctx, el.stage);
+            updateTimer();
+            return;
+        }
         el.top.textContent = game.top?.(v) || '';
         renderScore();
         if (v.phase === 'waiting') {
@@ -169,13 +184,13 @@ export function mountGame(root, session, game) {
         game.tick?.(st.view, ctx);
     }, 250);
 
-    root.addEventListener('click', e => {
+    cg.addEventListener('click', e => {
         const t = e.target.closest('[data-act]');
         if (!t || !st.view || t.disabled) return;
         if (game.click?.(t.dataset.act, t, ctx)) return;
         session.send(dataToAction(t));
     });
-    root.addEventListener('submit', e => {
+    cg.addEventListener('submit', e => {
         const form = e.target.closest('form[data-form]');
         if (!form) return;
         e.preventDefault();
@@ -189,8 +204,8 @@ export function mountGame(root, session, game) {
         session.send(action);
         if (!form.hasAttribute('data-keepvalue')) for (const input of form.querySelectorAll('[name]')) input.value = '';
     });
-    root.addEventListener('input', e => game.input?.(e.target, ctx));
-    root.addEventListener('focusout', e => game.blur?.(e.target, ctx));
+    cg.addEventListener('input', e => game.input?.(e.target, ctx));
+    cg.addEventListener('focusout', e => game.blur?.(e.target, ctx));
 
     session.onView = v => {
         st.view = v;

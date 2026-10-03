@@ -6,9 +6,9 @@ import { normalize, matchesAny } from '../songquiz/answer.js';
 import { WORDS, HINTS_PER_WORD } from './words.js';
 
 export const ROUND_OPTIONS = [8, 10, 12, 15];
-export const HINT_MS = 9000; // so lange steht jeder Hinweis, bevor der nächste kommt
-export const FINAL_MS = 12000; // Zeit nach dem letzten Hinweis
-export const REVEAL_MS = 9000;
+export const HINT_MS = 7000; // so lange steht jeder Hinweis, bevor der nächste kommt
+export const FINAL_MS = 8000; // Zeit nach dem letzten Hinweis
+export const REVEAL_MS = 6000;
 export const TRIES_PER_HINT = 2; // Rateversuche pro Person und Hinweis
 export const FIRST_BONUS = [3, 1]; // Zusatzpunkte für die ersten beiden Treffer
 

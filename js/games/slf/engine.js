@@ -8,10 +8,10 @@ export const CATEGORIES = ['Stadt', 'Land', 'Fluss', 'Name', 'Tier', 'Beruf', 'E
 export const DEFAULT_CATEGORIES = ['Stadt', 'Land', 'Fluss', 'Name', 'Tier', 'Beruf'];
 export const ROUND_OPTIONS = [4, 6, 8, 10];
 export const LETTERS = 'ABDEFGHKLMNOPRSTUWZ'.split('');
-export const WRITE_MS = 120000; // höchstens so lange wird geschrieben
-export const STOP_MS = 12000; // so lange haben die anderen nach "Stopp" noch Zeit
+export const WRITE_MS = 75000; // höchstens so lange wird geschrieben
+export const STOP_MS = 8000; // so lange haben die anderen nach "Stopp" noch Zeit
 export const GRACE_MS = 1200; // Spielraum für noch unterwegs befindliche Antworten
-export const REVIEW_MS = 75000;
+export const REVIEW_MS = 30000;
 const MAX_LEN = 40;
 
 export function normalizeAnswer(text) {

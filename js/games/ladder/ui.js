@@ -1,11 +1,11 @@
 // Oberfläche des Stufenquiz: Stufe wählen, eigene Frage beantworten, Auflösung mit Punkten.
-import { mountGame, esc, scoreOverHTML } from '../common/kit.js';
+import { esc, scoreOverHTML } from '../common/kit.js';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 // Farbverlauf der Stufen von grün (leicht) nach rot (schwer)
 const levelColor = n => `hsl(${Math.round(125 - (n - 1) * (125 / 9))}, 62%, 38%)`;
 
-export function mountLadder(root, session) {
+export function createLadderUI() {
     function chooseHTML(v) {
         const buttons = Array.from({ length: v.maxLevel }, (_, i) => i + 1)
             .map(n => `<button class="ld-lvl${v.myChoice === n ? ' on' : ''}" type="button" style="--c:${levelColor(n)}" data-act="level" data-n="${n}"><b>${n}</b><small>${n} ${n === 1 ? 'Punkt' : 'Punkte'}</small></button>`)
@@ -52,5 +52,5 @@ export function mountLadder(root, session) {
         over: v => scoreOverHTML(v, v.totals),
     };
 
-    return mountGame(root, session, game);
+    return game;
 }

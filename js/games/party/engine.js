@@ -1,11 +1,11 @@
-// Spielablauf von Sternenjagd (2 bis 6 Spieler), ein Partyspiel mit Spielfeld und Minispielen.
+// Spielablauf von Sternenjagd (3 bis 6 Spieler), ein Partyspiel mit Spielfeld und Minispielen.
 // Läuft nur beim Host. Jede Runde: alle würfeln nacheinander und ziehen über den Rundkurs, danach spielen
 // alle ein Minispiel. Ein Stern zählt am Ende 10 Münzen; wer nach der letzten Runde am meisten hat, gewinnt.
 // tick() wird vom Host regelmäßig aufgerufen und steuert alle Zeiten (Würfel-Wartezeit, Minispiele, Ergebnisse).
 import { RING, SPACE_TYPES, COIN_GAIN, COIN_LOSS } from './board.js';
 import { MINI_TYPES, createMini, tickMini, miniAction, miniView, computeRewards } from './minigames.js';
 
-export const MIN_PLAYERS = 2;
+export const MIN_PLAYERS = 3;
 export const MAX_PLAYERS = 6;
 export const ROUND_OPTIONS = [5, 8, 10, 12, 15];
 export const STAR_PRICE = 5; // so viele Münzen kostet ein Stern auf dem Spielfeld
@@ -85,6 +85,7 @@ export class PartyGame {
 
     setConnected(seat, connected) {
         if (this.s.players[seat]) this.s.players[seat].connected = connected;
+        this.s.mini?.engine?.setConnected(seat, connected); // auch die Gesellschaftsspiele unter den Minispielen
     }
 
     // ---------- Aktionen ----------
@@ -357,7 +358,7 @@ export class PartyGame {
         const s = this.s;
         const m = s.mini;
         const seats = s.players.map((p, i) => i);
-        const rewards = computeRewards(m.scores, seats, m.star);
+        const rewards = computeRewards(m.scores, seats, m.star, !!m.teams);
         for (const r of rewards) {
             s.players[r.seat].coins += r.coins;
             s.players[r.seat].stars += r.stars;

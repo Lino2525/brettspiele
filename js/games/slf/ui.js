@@ -1,8 +1,8 @@
 // Oberfläche von Stadt-Land-Fluss: Schreibphase mit Buchstabe, Auswertung mit Anzweifeln, Endwertung.
-import { mountGame, esc, scoreOverHTML } from '../common/kit.js';
+import { esc, scoreOverHTML } from '../common/kit.js';
 import { startsWithLetter } from './engine.js';
 
-export function mountSlf(root, session) {
+export function createSlfUI() {
     // Eigene Eingaben bleiben lokal erhalten und werden kurz nach dem Tippen an den Host geschickt.
     const local = { round: -1, vals: [], timer: null, dirty: false };
 
@@ -75,7 +75,7 @@ export function mountSlf(root, session) {
             const cats = v.allCategories.map((c, i) => `<button class="btn small${v.categories.includes(c) ? ' primary' : ''}" type="button" data-act="toggleCat" data-i="${i}"${isHost ? '' : ' disabled'}>${esc(c)}</button>`).join('');
             return `<p class="muted">Runden:</p><div class="row center">${rounds}</div><p class="muted">Kategorien (3 bis 8):</p><div class="row center wrap">${cats}</div>`;
         },
-        top: v => (v.phase === 'waiting' ? '' : `Runde ${v.round} von ${v.rounds}${v.phase === 'write' ? ` · Buchstabe ${v.letter}` : ''}`),
+        top: v => (v.phase === 'waiting' ? '' : `${v.rounds > 1 ? `Runde ${v.round} von ${v.rounds}` : ''}${v.phase === 'write' ? `${v.rounds > 1 ? ' · ' : ''}Buchstabe ${v.letter}` : ''}`),
         scores: v => (v.phase === 'waiting' ? null : v.totals),
         chip: (v, seat) => ({ note: v.phase === 'write' && v.filled[seat] ? '✓' : v.phase === 'review' && v.ready.includes(seat) ? '✓' : '' }),
         stage(v, ctx) {
@@ -91,7 +91,7 @@ export function mountSlf(root, session) {
             clearTimeout(local.timer);
             local.timer = setTimeout(() => flush(ctx), 300);
             // Stopp-Knopf freigeben, sobald alles ausgefüllt ist
-            const stop = root.querySelector('[data-act="stop"]');
+            const stop = ctx.root.querySelector('[data-act="stop"]');
             if (stop && ctx.v.stopper < 0) stop.disabled = !local.vals.every(x => x.trim());
         },
         blur: (target, ctx) => flush(ctx),
@@ -111,5 +111,5 @@ export function mountSlf(root, session) {
         },
     };
 
-    return mountGame(root, session, game);
+    return game;
 }

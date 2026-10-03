@@ -3,11 +3,15 @@
 //   solo  Alle spielen gleichzeitig für sich auf ihrem Gerät und melden am Ende nur ihre Punktzahl (Geschicklichkeit).
 //   quiz  Der Host stellt Fragen und wertet Antworten selbst (Wissen, Flaggen), die richtige Lösung bleibt beim Host.
 //   draw  Eine Person zeichnet einen Begriff, alle anderen raten ihn.
+//   sub   Gesellschaftsspiele (Lügenwürfel, Stadt-Land-Fluss, Undercover, Stufenquiz, Wortraten): laufen als eigene kleine
+//         Engine (subgames.js), ab 4 Personen teils in Teams.
 import { QUESTIONS, FLAGS, WORDS } from './data.js';
 import { checkGuess } from '../songquiz/answer.js';
+import { SUBGAMES, isSub, createSub, subScores } from './subgames.js';
 
 export const INTRO_MS = 6000;
 export const RESULT_MS = 9000;
+const SUB_INTRO_MS = 9000; // Gesellschaftsspiele brauchen mehr Zeit zum Lesen der Regeln (und der Teams)
 const GRACE_MS = 2000; // so lange nach Ablauf werden noch Ergebnisse angenommen
 
 const QUIZ = { count: 4, askMs: 10000, revealMs: 2500 };
@@ -27,6 +31,7 @@ export const MINIS = {
     flags: { title: 'Flaggen', kind: 'quiz', playMs: FLAG.count * (FLAG.askMs + FLAG.revealMs), rules: `${FLAG.count} Flaggen: Welches Land ist es? Schnell sein lohnt sich.` },
     draw: { title: 'Zeichnen & Raten', kind: 'draw', playMs: DRAW_MS, rules: 'Eine Person zeichnet einen Begriff, alle anderen raten ihn. Richtig raten bringt Punkte, dem Zeichner auch.' },
 };
+for (const [type, def] of Object.entries(SUBGAMES)) MINIS[type] = { title: def.title, kind: 'sub', playMs: def.capMs, rules: def.rules, teams: def.teams };
 export const MINI_TYPES = Object.keys(MINIS);
 
 function shuffle(list, rng) {
@@ -48,7 +53,13 @@ export function createMini({ type, id, rng, players, now, star }) {
         phase: 'intro', introEnd: now + INTRO_MS, playStart: null, playEnd: null, resultEnd: null,
         playMs: def.playMs, params: {}, secret: {}, subs: {}, scores: null, result: null,
     };
-    if (def.kind === 'solo') {
+    if (def.kind === 'sub') {
+        const sub = createSub(type, { rng, players, star });
+        // Die Engine ist nicht Teil des gespeicherten Zustands (unterbrochene Minispiele entfallen ohnehin)
+        Object.defineProperty(mini, 'engine', { value: sub.engine, enumerable: false });
+        mini.teams = sub.teams;
+        mini.introEnd = now + SUB_INTRO_MS;
+    } else if (def.kind === 'solo') {
         mini.params = { seed: Math.floor(rng() * 2 ** 31) };
     } else if (def.kind === 'quiz') {
         const cfg = type === 'flags' ? FLAG : QUIZ;
@@ -91,6 +102,7 @@ function startPlay(mini, now) {
     mini.playStart = now;
     mini.playEnd = now + mini.playMs;
     if (mini.q) mini.q.start = now;
+    mini.engine?.begin(now);
 }
 
 // Wertet das Minispiel aus und geht in die Ergebnisphase.
@@ -99,7 +111,9 @@ function finish(mini, now, players) {
     mini.resultEnd = now + RESULT_MS;
     const scores = {};
     players.forEach((p, i) => (scores[i] = 0));
-    if (mini.kind === 'solo') {
+    if (mini.kind === 'sub') {
+        subScores(mini.type, mini.engine, mini.teams).forEach((v, i) => (scores[i] = v));
+    } else if (mini.kind === 'solo') {
         for (const [seat, v] of Object.entries(mini.subs)) scores[seat] = v;
     } else if (mini.kind === 'quiz') {
         const ask = mini.params.askMs;
@@ -132,6 +146,14 @@ export function tickMini(mini, now, players) {
     }
     if (mini.phase !== 'play') return false;
 
+    if (mini.kind === 'sub') {
+        const changed = mini.engine.tick(now);
+        if (mini.engine.s.phase === 'over' || now >= mini.playEnd) {
+            finish(mini, now, players);
+            return true;
+        }
+        return changed;
+    }
     if (mini.kind === 'solo') {
         const all = seats.length > 0 && seats.every(s => mini.subs[s] !== undefined);
         if (all || now >= mini.playEnd + GRACE_MS) {
@@ -174,6 +196,11 @@ const isNum = n => Number.isFinite(n);
 
 export function miniAction(mini, seat, a, now, players) {
     if (mini.phase !== 'play') return err('Gerade läuft kein Minispiel.');
+    if (mini.kind === 'sub') {
+        const act = a.kind === 'sub' ? a.a : null;
+        if (!act || !SUBGAMES[mini.type].allowed.includes(act.t)) return err('Unbekannte Aktion.');
+        return mini.engine.apply(seat, act, now);
+    }
     if (mini.kind === 'solo') {
         if (a.kind !== 'score') return err('Unbekannte Aktion.');
         if (mini.subs[seat] !== undefined) return OK; // nur das erste Ergebnis zählt
@@ -234,9 +261,13 @@ export function miniView(mini, seat, now, players) {
     const v = {
         id: mini.id, type: mini.type, kind: mini.kind, title: mini.title, rules: mini.rules, star: mini.star, phase: mini.phase,
         msLeft: mini.phase === 'intro' ? left(mini.introEnd) : mini.phase === 'play' ? left(mini.playEnd) : mini.phase === 'result' ? left(mini.resultEnd) : 0,
-        playMs: mini.playMs, params: {}, submitted: Object.keys(mini.subs).map(Number), result: mini.result,
+        teamCapable: !!MINIS[mini.type].teams, playMs: mini.playMs, params: {}, submitted: Object.keys(mini.subs).map(Number), result: mini.result,
     };
-    if (mini.kind === 'solo') {
+    if (mini.kind === 'sub') {
+        v.teams = mini.teams ? { of: mini.teams.of, names: mini.teams.names } : null;
+        v.sub = mini.phase === 'play' ? mini.engine.view(seat, now) : null;
+        if (mini.teams && mini.scores) v.teamScores = [0, 1].map(t => mini.scores[mini.teams.of.indexOf(t)] ?? 0);
+    } else if (mini.kind === 'solo') {
         v.params = mini.params;
     } else if (mini.kind === 'quiz') {
         const q = mini.q;
@@ -265,13 +296,14 @@ export function miniView(mini, seat, now, players) {
 }
 
 // Belohnungen: 1. Platz 10 Münzen (oder ein Stern in Sternrunden), 2. 6, 3. 4, alle anderen 2, ohne Punkte 1.
-export function computeRewards(scores, seats, star) {
+// dense: für Teams, dort bekommt das bessere Team Platz 1 und das andere Platz 2 (nicht Platz 4 bei drei Gewinnern).
+export function computeRewards(scores, seats, star, dense = false) {
     const list = seats.map(s => ({ seat: s, score: scores[s] || 0 })).sort((a, b) => b.score - a.score || a.seat - b.seat);
     let rank = 0;
     let prev = null;
     return list.map((e, i) => {
         if (e.score !== prev) {
-            rank = i + 1;
+            rank = dense ? rank + 1 : i + 1;
             prev = e.score;
         }
         const scored = e.score > 0;

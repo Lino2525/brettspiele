@@ -1,7 +1,7 @@
 // Oberfläche von Wortraten: Hinweise erscheinen nach und nach, getippt wird der gesuchte Begriff.
-import { mountGame, esc, scoreOverHTML } from '../common/kit.js';
+import { esc, scoreOverHTML } from '../common/kit.js';
 
-export function mountWordGuess(root, session) {
+export function createWordGuessUI() {
     const slots = v => Array.from({ length: v.hintCount }, (_, i) => (i < v.hints.length ? `<span class="wg-hint on"><i>${i + 1}</i>${esc(v.hints[i])}</span>` : `<span class="wg-hint"><i>${i + 1}</i>?</span>`)).join('');
 
     function playHTML(v, ctx) {
@@ -42,5 +42,5 @@ export function mountWordGuess(root, session) {
         over: v => scoreOverHTML(v, v.totals),
     };
 
-    return mountGame(root, session, game);
+    return game;
 }

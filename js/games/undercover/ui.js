@@ -1,7 +1,7 @@
 // Oberfläche von Undercover / Spion: Wort ansehen, Hinweise tippen, abstimmen, Auflösung.
-import { mountGame, esc } from '../common/kit.js';
+import { esc } from '../common/kit.js';
 
-export function mountUndercover(root, session) {
+export function createUndercoverUI() {
     const wordBox = v => {
         if (v.isSpy) return '<div class="uc-word spy">🕵️ Du bist der <b>Spion</b> – du kennst das Wort nicht!</div>';
         return `<div class="uc-word">Dein Wort: <b>${esc(v.word)}</b></div>`;
@@ -88,5 +88,5 @@ export function mountUndercover(root, session) {
         return `<div class="uc-tally">${lines || '<span>Niemand hat gewählt.</span>'}</div>`;
     }
 
-    return mountGame(root, session, game);
+    return game;
 }

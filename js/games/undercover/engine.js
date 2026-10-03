@@ -7,11 +7,11 @@ import { PAIRS, SPY_WORDS } from './words.js';
 import { normalize, matchesAny } from '../songquiz/answer.js';
 
 export const MODES = { undercover: 'Undercover', spy: 'Spion' };
-export const REVEAL_MS = 60000;
-export const CLUE_MS = 45000;
-export const VOTE_MS = 90000;
+export const REVEAL_MS = 25000;
+export const CLUE_MS = 15000;
+export const VOTE_MS = 40000;
 export const RESULT_MS = 15000;
-export const GUESS_MS = 40000;
+export const GUESS_MS = 20000;
 export const FIRST_CLUE_ROUNDS = 2;
 const AFK_MS = 3000;
 
@@ -23,7 +23,7 @@ export class UndercoverGame extends RoomGame {
     initialState() {
         return {
             mode: 'undercover', imp: -1, word: '', word2: '', cluesLeft: 0, clueRound: 0, order: [], turnIdx: 0, clues: [],
-            votes: {}, elim: null, outcome: null, deadline: 0, turnStart: 0, ready: [], usedWords: [],
+            votes: {}, elim: null, outcome: null, deadline: 0, turnStart: 0, ready: [], usedWords: [], quick: false, // quick: nach der ersten Abstimmung ist das Spiel entschieden (Minispiel in Sternenjagd)
         };
     }
 
@@ -65,7 +65,7 @@ export class UndercoverGame extends RoomGame {
         s.votes = {};
         s.elim = null;
         s.outcome = null;
-        s.cluesLeft = FIRST_CLUE_ROUNDS;
+        s.cluesLeft = s.quick ? 1 : FIRST_CLUE_ROUNDS;
         s.clueRound = 0;
         s.ready = [];
         s.phase = 'reveal';
@@ -193,7 +193,7 @@ export class UndercoverGame extends RoomGame {
             } else {
                 this.#finish('civ', 'Der Undercover wurde enttarnt!');
             }
-        } else if (this.#aliveSeats().length <= 2) {
+        } else if (s.quick || this.#aliveSeats().length <= 2) {
             this.#finish('imp', s.mode === 'spy' ? 'Der Spion ist unentdeckt geblieben!' : 'Der Undercover ist unentdeckt geblieben!');
         } else {
             s.cluesLeft = 1;

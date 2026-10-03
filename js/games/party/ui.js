@@ -259,12 +259,13 @@ export function mountParty(root, session) {
             cur.phase = m.phase;
             cur.deadline = performance.now() + m.msLeft;
             if (m.phase === 'intro') {
-                body.innerHTML = `<div class="mintro"><h2>${esc(m.title)}</h2><p>${esc(m.rules)}</p>${m.star ? '<p class="mstar">Wer gewinnt, bekommt einen Stern!</p>' : ''}<p class="muted">Gleich geht’s los …</p></div>`;
+                body.innerHTML = `<div class="mintro"><h2>${esc(m.title)}</h2><p>${esc(m.rules)}</p>${teamIntroHTML(v)}${m.star ? '<p class="mstar">Wer gewinnt, bekommt einen Stern!</p>' : ''}<p class="muted">Gleich geht’s los …</p></div>`;
             } else if (m.phase === 'play') {
                 body.innerHTML = '';
                 const api = {
                     seat: v.seat,
                     remaining: () => cur.deadline - performance.now(),
+                    avatars: () => st.avatars,
                     submit: score => session.send({ t: 'mini', kind: 'score', score }),
                     send: payload => session.send({ t: 'mini', ...payload }),
                 };
@@ -273,6 +274,17 @@ export function mountParty(root, session) {
         }
         if (m.phase === 'play') cur.instance?.update(m);
         if (m.phase === 'result') body.innerHTML = resultHTML(v);
+    }
+
+    // Bei Teams: wer gehört wohin. In Sternrunden spielt jede Person für sich.
+    function teamIntroHTML(v) {
+        const m = v.mini;
+        if (m.teams) {
+            const cols = [0, 1].map(t => `<div class="cg-teamcol t${t}"><h3>${esc(m.teams.names[t])}</h3>${v.players.map((p, i) => (m.teams.of[i] === t ? `<div>${esc(p.name)}${i === v.seat ? ' (Du)' : ''}</div>` : '')).join('')}</div>`).join('');
+            return `<div class="cg-teamcols">${cols}</div><p class="muted">Ihr spielt in Teams: gewertet wird der Durchschnitt des Teams, alle im besseren Team bekommen die bessere Belohnung.</p>`;
+        }
+        if (m.teamCapable && m.star && v.players.length >= 4) return '<p class="muted">Sternrunde: Hier spielt jede Person für sich.</p>';
+        return '';
     }
 
     function resultHTML(v) {
@@ -284,7 +296,8 @@ export function mountParty(root, session) {
                 return `<tr class="${r.rank === 1 && r.score > 0 ? 'win' : ''}${r.seat === v.seat ? ' me' : ''}"><td>${r.rank}.</td><td>${esc(v.players[r.seat].name)}</td><td>${r.score}</td><td>${prize}</td></tr>`;
             })
             .join('');
-        return `<table class="ranking"><thead><tr><th></th><th></th><th>Punkte</th><th>Gewinn</th></tr></thead><tbody>${rows}</tbody></table>`;
+        const teams = m.teams && m.teamScores ? `<p class="center">${[0, 1].map(t => `<b style="color:${t ? '#64b5f6' : '#ef9a9a'}">${esc(m.teams.names[t])}: Ø ${m.teamScores[t]}</b>`).join(' · ')}</p>` : '';
+        return `${teams}<table class="ranking"><thead><tr><th></th><th></th><th>Punkte</th><th>Gewinn</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
 
     function updateTimers() {
@@ -292,7 +305,7 @@ export function mountParty(root, session) {
         if (!v) return;
         const elapsed = performance.now() - st.receivedAt;
         const t = el.mini.querySelector('.mtimer');
-        if (t && v.mini) t.textContent = v.mini.phase === 'result' ? '' : `${Math.max(0, Math.ceil((v.mini.msLeft - elapsed) / 1000))} s`;
+        if (t && v.mini) t.textContent = v.mini.phase === 'result' || (v.mini.kind === 'sub' && v.mini.phase === 'play') ? '' : `${Math.max(0, Math.ceil((v.mini.msLeft - elapsed) / 1000))} s`;
         if (v.phase === 'board' && v.turnPhase === 'roll') {
             const left = Math.max(0, Math.ceil((v.turnMsLeft - elapsed) / 1000));
             if (v.turnSeat === v.seat) ui.status.textContent = `Du bist dran! (${left} s)`;

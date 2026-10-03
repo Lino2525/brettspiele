@@ -1,10 +1,10 @@
 // Oberfläche von Lügenwürfel: eigene Würfel, aktuelles Gebot, Bietfeld und Aufdeckung am Rundenende.
-import { mountGame, esc, FACES } from '../common/kit.js';
+import { esc, FACES } from '../common/kit.js';
 
 const die = (value, cls = '') => `<span class="lw-die ${cls}">${FACES[value - 1]}</span>`;
 const faceName = n => ['', 'Einser', 'Zweier', 'Dreier', 'Vierer', 'Fünfer', 'Sechser'][n];
 
-export function mountLiars(root, session) {
+export function createLiarsUI() {
     // Eigene Auswahl im Bietfeld; bleibt zwischen den Aktualisierungen erhalten, bis sich das Gebot ändert.
     const sel = { key: '', qty: 1, face: 2 };
 
@@ -107,6 +107,5 @@ export function mountLiars(root, session) {
         return `<div class="lw-bid">${name(r.challenger)} sagt „Lüge!“ zu ${r.qty} × ${die(r.face)}</div><div class="lw-reveal">${rows}</div><p class="center">${verdict}</p>${done ? '' : '<p class="center"><button class="btn primary" type="button" data-act="next">Weiter</button></p>'}`;
     }
 
-    const ui = mountGame(root, session, game);
-    return ui;
+    return game;
 }

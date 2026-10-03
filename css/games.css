@@ -154,3 +154,9 @@
     .lw-die { font-size: 2.2rem; }
     .lw-hand .lw-die { font-size: 2.8rem; }
 }
+
+/* Als Minispiel in Sternenjagd eingebettet */
+.cg.embedded { max-width: none; min-height: 0; padding: 0; margin: 0; width: 100%; }
+.cg.embedded .cg-title, .cg.embedded .cg-score { display: none; }
+.cg.embedded .cg-stage { background: transparent; padding: 0; }
+.cg.embedded .cg-top { justify-content: space-between; }

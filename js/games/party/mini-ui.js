@@ -6,6 +6,13 @@
 //   api.send(payload)  Aktion an den Host (Quiz, Zeichnen)
 // Rückgabe: { update(mini), destroy() }
 
+import { mountGame } from '../common/kit.js';
+import { createLiarsUI } from '../liars/ui.js';
+import { createSlfUI } from '../slf/ui.js';
+import { createUndercoverUI } from '../undercover/ui.js';
+import { createLadderUI } from '../ladder/ui.js';
+import { createWordGuessUI } from '../wordguess/ui.js';
+
 const esc = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Zufallszahlen aus einem Startwert: alle Spieler bekommen dieselben Aufgaben
@@ -622,7 +629,21 @@ function draw(box, mini, api) {
     };
 }
 
-const CREATORS = { timing, hoops, reaction, tapping, memory, math, quiz, flags: quiz, draw };
+// Gesellschaftsspiele: die Oberfläche des eigenen Spiels, eingebettet; Aktionen gehen als { kind: 'sub', a } zum Host.
+function subGame(createUI) {
+    return (box, mini, api) => {
+        const pseudo = { send: a => api.send({ kind: 'sub', a }), onView: null, onNotice: null, onAvatars: null };
+        const inst = mountGame(box, pseudo, createUI(), { embedded: true });
+        pseudo.onAvatars(api.avatars());
+        if (mini.sub) pseudo.onView(mini.sub);
+        return { update: m => m.sub && pseudo.onView(m.sub), destroy: () => inst.destroy() };
+    };
+}
+
+const CREATORS = {
+    timing, hoops, reaction, tapping, memory, math, quiz, flags: quiz, draw,
+    liars: subGame(createLiarsUI), slf: subGame(createSlfUI), undercover: subGame(createUndercoverUI), ladder: subGame(createLadderUI), wordguess: subGame(createWordGuessUI),
+};
 
 export function createMiniGame(type, box, mini, api) {
     return CREATORS[type](box, mini, api);

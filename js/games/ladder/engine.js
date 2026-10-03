@@ -5,9 +5,9 @@ import { RoomGame, err, OK, shuffled, TEAM_NAMES } from '../common/room.js';
 import { CATEGORIES, MAX_LEVEL } from './questions.js';
 
 export const ROUND_OPTIONS = [6, 8, 10, 12];
-export const CHOOSE_MS = 20000;
-export const ANSWER_MS = 30000;
-export const REVEAL_MS = 14000;
+export const CHOOSE_MS = 12000;
+export const ANSWER_MS = 20000;
+export const REVEAL_MS = 7000;
 const DEFAULT_LEVEL = 1; // wer nicht wählt, bekommt die leichteste Stufe
 
 export { MAX_LEVEL };

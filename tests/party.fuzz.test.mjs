@@ -39,9 +39,23 @@ function checkInvariants(g, ctx) {
     }
 }
 
+const WORD = rng => ['Haus', 'Baum', 'Hund', 'xyz', ''][Math.floor(rng() * 5)];
+function randomSubAction(type, rng, n) {
+    const pick = list => list[Math.floor(rng() * list.length)];
+    const seat = () => Math.floor(rng() * n);
+    const answers = () => Array.from({ length: 8 }, () => WORD(rng));
+    switch (type) {
+        case 'liars': return pick([{ t: 'bid', qty: 1 + Math.floor(rng() * 8), face: 1 + Math.floor(rng() * 6) }, { t: 'challenge' }, { t: 'next' }]);
+        case 'slf': return pick([{ t: 'answers', list: answers() }, { t: 'stop', list: answers() }, { t: 'flag', p: seat(), c: Math.floor(rng() * 4) }, { t: 'ready' }, { t: 'start' }, { t: 'rematch' }]);
+        case 'undercover': return pick([{ t: 'ready' }, { t: 'clue', text: WORD(rng) }, { t: 'vote', target: seat() }, { t: 'guess', text: WORD(rng) }]);
+        case 'ladder': return pick([{ t: 'level', n: 1 + Math.floor(rng() * 10) }, { t: 'answer', c: Math.floor(rng() * 4) }, { t: 'ready' }]);
+        default: return pick([{ t: 'guess', text: WORD(rng) }, { t: 'ready' }, { t: 'rematch' }]);
+    }
+}
+
 function playOne(seed) {
     const rng = seeded(seed);
-    const n = 2 + Math.floor(rng() * 5);
+    const n = 3 + Math.floor(rng() * 4);
     const g = new PartyGame({ rng: seeded(seed * 3 + 1) });
     for (let i = 0; i < n; i++) g.join('t' + i, 'S' + i);
     assert.ok(!g.apply(0, { t: 'setRounds', n: 5 }).error);
@@ -62,7 +76,8 @@ function playOne(seed) {
             const m = s.mini;
             minisSeen.add(m.type);
             const seat = Math.floor(rng() * n);
-            if (m.kind === 'solo') g.apply(seat, { t: 'mini', kind: 'score', score: Math.floor(rng() * 4000) - 100 }, t);
+            if (m.kind === 'sub') g.apply(seat, { t: 'mini', kind: 'sub', a: randomSubAction(m.type, rng, n) }, t);
+            else if (m.kind === 'solo') g.apply(seat, { t: 'mini', kind: 'score', score: Math.floor(rng() * 4000) - 100 }, t);
             else if (m.kind === 'quiz') g.apply(seat, { t: 'mini', kind: 'answer', c: Math.floor(rng() * 4) }, t);
             else {
                 const choice = rng();

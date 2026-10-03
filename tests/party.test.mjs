@@ -237,14 +237,14 @@ test('Zug: nur wer dran ist würfelt, Figur bewegt sich, Wartezeit, dann der Nä
 });
 
 test('Wer zu lange wartet oder offline ist, wird automatisch gewürfelt', () => {
-    const g = newGame(2);
+    const g = newGame(3);
     g.apply(0, { t: 'start' }, 0);
     const seat = g.s.order[0];
     g.tick(24000);
     assert.equal(g.s.dice, null);
     assert.ok(g.tick(25001));
     assert.ok(g.s.dice && g.s.dice.seat === seat);
-    const h = newGame(2);
+    const h = newGame(3);
     h.apply(0, { t: 'start' }, 0);
     h.setConnected(h.s.order[0], false);
     assert.ok(h.tick(10));
@@ -252,7 +252,7 @@ test('Wer zu lange wartet oder offline ist, wird automatisch gewürfelt', () => 
 });
 
 test('Felder: blau +3, rot −3 (nie unter 0), Münzen verändern sich wie vorgesehen', () => {
-    const g = newGame(2);
+    const g = newGame(3);
     g.apply(0, { t: 'start' }, 0);
     const seat = g.s.order[0];
     const p = g.s.players[seat];
@@ -274,7 +274,7 @@ test('Felder: blau +3, rot −3 (nie unter 0), Münzen verändern sich wie vorge
 });
 
 test('Stern: kaufen im Vorbeigehen für 5 Münzen, danach liegt er woanders; ohne Münzen kein Kauf', () => {
-    const g = newGame(2);
+    const g = newGame(3);
     g.apply(0, { t: 'start' }, 0);
     const seat = g.s.order[0];
     const p = g.s.players[seat];
@@ -288,7 +288,7 @@ test('Stern: kaufen im Vorbeigehen für 5 Münzen, danach liegt er woanders; ohn
     assert.notEqual(g.s.star, 3, 'Stern wandert');
     assert.ok(g.s.star > 0);
     // arm: kein Kauf
-    const h = newGame(2);
+    const h = newGame(3);
     h.apply(0, { t: 'start' }, 0);
     const hs = h.s.order[0];
     const q = h.s.players[hs];
@@ -336,7 +336,7 @@ test('Nach allen Zügen startet ein Minispiel, danach Belohnung und nächste Run
 });
 
 test('Sternrunde: jede dritte Runde und die letzte', () => {
-    const g = newGame(2);
+    const g = newGame(3);
     g.s.rounds = 5;
     g.apply(0, { t: 'start' }, 0);
     const flags = [];
@@ -369,7 +369,7 @@ test('Komplettes Spiel: Wertung zählt Stern als 10 Münzen, Sieger, Revanche', 
 });
 
 test('Ansicht: kein Token, Lösung eines Quiz nicht sichtbar, Speichern/Wiederherstellen', () => {
-    const g = newGame(2);
+    const g = newGame(3);
     g.apply(0, { t: 'start' }, 0);
     assert.ok(!JSON.stringify(g.view(0, 0)).includes('"token"'));
     const copy = PartyGame.restore(g.serialize(), { rng: seeded(1) });
@@ -414,10 +414,11 @@ function autoplay(n, rounds, seed) {
 
 test('Minispiele: erst läuft jedes einmal durch, dann beginnt ein neuer Durchlauf (kein Spiel doppelt hintereinander)', () => {
     for (const seed of [1, 2, 3, 4, 5]) {
-        const { types } = autoplay(2, 15, seed);
-        assert.equal(types.length, 15);
-        assert.equal(new Set(types.slice(0, 9)).size, 9, `erster Durchlauf: ${types.slice(0, 9)}`);
-        assert.equal(new Set(types.slice(9)).size, 6, 'zweiter Durchlauf ohne Wiederholung');
+        const { types } = autoplay(3, 30, seed);
+        assert.equal(types.length, 30);
+        assert.equal(new Set(types.slice(0, 14)).size, 14, `erster Durchlauf: ${types.slice(0, 14)}`);
+        assert.equal(new Set(types.slice(14, 28)).size, 14, 'zweiter Durchlauf');
+        assert.equal(types.length - 28, new Set(types.slice(28)).size, 'dritter Durchlauf beginnt ohne Wiederholung');
         for (let i = 1; i < types.length; i++) assert.notEqual(types[i], types[i - 1], 'nie dasselbe Spiel zweimal hintereinander');
     }
 });
@@ -426,22 +427,148 @@ test('Zähler in der Ansicht: wie viele Minispiele im aktuellen Durchlauf schon 
     const g = new PartyGame({ rng: seeded(3) });
     g.join('a', 'A');
     g.join('b', 'B');
+    g.join('c', 'C');
     g.apply(0, { t: 'start' }, 0);
-    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 9 });
+    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 14 });
     let t = 0;
     for (let i = 0; i < 3000 && !g.s.mini; i++) {
         t += 700;
         if (g.s.phase === 'board' && g.s.turnPhase === 'roll') g.apply(g.s.order[g.s.turnIdx], { t: 'roll' }, t);
         g.tick(t);
     }
-    assert.deepEqual(g.view(0, t).miniCycle, { done: 1, total: 9 });
+    assert.deepEqual(g.view(0, t).miniCycle, { done: 1, total: 14 });
 });
 
-test('Reihenfolge: mit zwei Personen würfelt niemand direkt zweimal hintereinander (auch über das Minispiel hinweg)', () => {
-    for (const n of [2, 3, 4, 6]) {
+test('Reihenfolge: mit 3 Personen und mehr würfelt niemand direkt zweimal hintereinander (auch über das Minispiel hinweg)', () => {
+    for (const n of [3, 4, 6]) {
         const { rollers } = autoplay(n, 8, n);
         const seats = rollers.filter(r => r !== 'mini');
         for (let i = 1; i < seats.length; i++) assert.notEqual(seats[i], seats[i - 1], `${n} Personen: Wiederholung bei Wurf ${i}`);
         for (let i = 0; i < seats.length; i++) assert.equal(seats[i], i % n, 'immer dieselbe Reihenfolge');
     }
+});
+
+// ---------- Gesellschaftsspiele als Minispiele ----------
+
+import { SUBGAMES } from '../js/games/party/subgames.js';
+
+const SUB_TYPES = Object.keys(SUBGAMES);
+
+function subAction(type, rng, n) {
+    const pick = list => list[Math.floor(rng() * list.length)];
+    const word = () => ['Haus', 'Baum', 'Hund', 'xyz', ''][Math.floor(rng() * 5)];
+    const answers = () => Array.from({ length: 8 }, word);
+    switch (type) {
+        case 'liars': return pick([{ t: 'bid', qty: 1 + Math.floor(rng() * 8), face: 2 + Math.floor(rng() * 5) }, { t: 'challenge' }, { t: 'next' }]);
+        case 'slf': return pick([{ t: 'answers', list: answers() }, { t: 'stop', list: answers() }, { t: 'flag', p: Math.floor(rng() * n), c: Math.floor(rng() * 4) }, { t: 'ready' }]);
+        case 'undercover': return pick([{ t: 'ready' }, { t: 'clue', text: word() }, { t: 'vote', target: Math.floor(rng() * n) }, { t: 'guess', text: word() }]);
+        case 'ladder': return pick([{ t: 'level', n: 1 + Math.floor(rng() * 10) }, { t: 'answer', c: Math.floor(rng() * 4) }, { t: 'ready' }]);
+        default: return pick([{ t: 'guess', text: word() }, { t: 'ready' }]);
+    }
+}
+
+// Spielt ein einzelnes Gesellschafts-Minispiel mit zufälligen Eingaben bis zum Ergebnis.
+function playSub(type, n, star, seed) {
+    const rng = seeded(seed);
+    const players = Array.from({ length: n }, (_, i) => ({ name: 'S' + i, coins: 5, stars: 0, connected: true }));
+    const m = createMini({ type, id: 1, rng: seeded(seed + 100), players, now: 0, star });
+    assert.equal(m.kind, 'sub');
+    let t = 0;
+    for (let step = 0; step < 4000 && m.phase !== 'result'; step++) {
+        t += 300 + Math.floor(rng() * 4000);
+        if (rng() < 0.02) players[Math.floor(rng() * n)].connected = rng() < 0.5;
+        if (m.phase === 'play') {
+            const seat = Math.floor(rng() * n);
+            const r = miniAction(m, seat, { kind: 'sub', a: subAction(type, rng, n) }, t, players);
+            assert.ok(r.ok || r.error);
+        }
+        tickMini(m, t, players);
+        for (let s = 0; s < n; s++) JSON.stringify(miniView(m, s, t, players));
+    }
+    assert.equal(m.phase, 'result', `${type} mit ${n} Personen endete nicht`);
+    return m;
+}
+
+test('Gesellschaftsspiele als Minispiele: alle fünf laufen mit 3 bis 6 Personen immer bis zum Ergebnis', () => {
+    assert.deepEqual(SUB_TYPES.sort(), ['ladder', 'liars', 'slf', 'undercover', 'wordguess']);
+    for (const type of SUB_TYPES) {
+        assert.equal(MINIS[type].kind, 'sub');
+        assert.ok(MINI_TYPES.includes(type));
+        for (let n = 3; n <= 6; n++) {
+            for (let seed = 1; seed <= 6; seed++) {
+                const m = playSub(type, n, seed % 2 === 0, seed * 10 + n);
+                assert.equal(m.scores.length === undefined ? Object.keys(m.scores).length : m.scores.length, n);
+                for (const v of Object.values(m.scores)) assert.ok(Number.isInteger(v) && v >= 0, `${type}: Punktzahl ${v}`);
+                const rewards = computeRewards(m.scores, [...Array(n).keys()], m.star);
+                assert.equal(rewards.length, n);
+            }
+        }
+    }
+});
+
+test('Teams: nur bei geeigneten Spielen, ab 4 Personen, nicht in Sternrunden; Teammitglieder haben dieselbe Punktzahl', () => {
+    for (const type of SUB_TYPES) {
+        const can = SUBGAMES[type].teams;
+        for (const n of [3, 4, 5, 6]) {
+            const normal = playSub(type, n, false, 7 + n);
+            const starRound = playSub(type, n, true, 9 + n);
+            assert.equal(starRound.teams, null, 'Sternrunde: jede Person für sich');
+            if (!can || n < 4) {
+                assert.equal(normal.teams, null, `${type} mit ${n}: keine Teams`);
+                continue;
+            }
+            const of = normal.teams.of;
+            assert.equal(of.length, n);
+            assert.ok(of.filter(x => x === 0).length >= 2 && of.filter(x => x === 1).length >= 2, 'jedes Team mindestens 2');
+            for (let t = 0; t < 2; t++) {
+                const vals = of.map((x, i) => (x === t ? normal.scores[i] : null)).filter(x => x !== null);
+                assert.equal(new Set(vals).size, 1, `${type}: Team ${t} hat unterschiedliche Punkte`);
+            }
+            const v = miniView(normal, 0, 0, []);
+            assert.deepEqual(v.teams.of, of);
+            assert.equal(v.teamScores.length, 2);
+        }
+    }
+});
+
+test('Gesellschaftsspiel läuft nur mit erlaubten Aktionen; Start- und Neustart-Befehle von Mitspielern wirken nicht', () => {
+    const players = Array.from({ length: 4 }, (_, i) => ({ name: 'S' + i, coins: 5, stars: 0, connected: true }));
+    const m = createMini({ type: 'slf', id: 1, rng: seeded(5), players, now: 0, star: false });
+    tickMini(m, 9000, players);
+    assert.equal(m.phase, 'play');
+    for (const bad of [{ t: 'start' }, { t: 'rematch' }, { t: 'teamMode', on: false }, { t: 'setRounds', n: 4 }, { t: 'team', team: 1 }]) {
+        assert.ok(miniAction(m, 0, { kind: 'sub', a: bad }, 9100, players).error, JSON.stringify(bad));
+    }
+    assert.ok(miniAction(m, 0, { kind: 'score', score: 5 }, 9100, players).error);
+    assert.ok(!miniAction(m, 0, { kind: 'sub', a: { t: 'answers', list: ['A'] } }, 9100, players).error);
+});
+
+test('Ansicht der Gesellschaftsspiele: fremde Geheimnisse bleiben verdeckt', () => {
+    const players = Array.from({ length: 4 }, (_, i) => ({ name: 'S' + i, coins: 5, stars: 0, connected: true }));
+    // Lügenwürfel: fremde Würfel nicht sichtbar
+    const liars = createMini({ type: 'liars', id: 1, rng: seeded(1), players, now: 0, star: false });
+    tickMini(liars, 9000, players);
+    const lv = miniView(liars, 0, 9000, players).sub;
+    assert.equal(lv.hand.length, 3);
+    assert.ok(!JSON.stringify(lv).includes('"hands"'));
+    // Undercover: das Wort der Anderen steht nicht in der eigenen Ansicht
+    const uc = createMini({ type: 'undercover', id: 2, rng: seeded(2), players, now: 0, star: false });
+    tickMini(uc, 9000, players);
+    const eng = uc.engine;
+    const other = eng.s.imp === 0 ? eng.s.word : eng.s.word2;
+    if (eng.s.mode !== 'spy' || eng.s.imp !== 0) assert.ok(!JSON.stringify(miniView(uc, 0, 9000, players).sub).includes(`"${other}"`));
+    // Die Engine gehört nicht zum gespeicherten Zustand
+    assert.ok(!JSON.stringify(uc).includes('"hands"') && !JSON.stringify(liars).includes('"hands"'));
+    // Vor dem Start der Spielphase gibt es keine Unter-Ansicht
+    const early = createMini({ type: 'ladder', id: 3, rng: seeded(3), players, now: 0, star: false });
+    assert.equal(miniView(early, 0, 0, players).sub, null);
+});
+
+test('Belohnung bei Teams: das bessere Team bekommt Platz 1 (10), das andere Platz 2 (6)', () => {
+    const scores = { 0: 27, 1: 15, 2: 15, 3: 27, 4: 27 };
+    const r = computeRewards(scores, [0, 1, 2, 3, 4], false, true);
+    assert.deepEqual(r.filter(x => x.score === 27).map(x => [x.rank, x.coins]), [[1, 10], [1, 10], [1, 10]]);
+    assert.deepEqual(r.filter(x => x.score === 15).map(x => [x.rank, x.coins]), [[2, 6], [2, 6]]);
+    // ohne Teams bleibt es bei der normalen Platzierung
+    assert.deepEqual(computeRewards(scores, [0, 1, 2, 3, 4], false).filter(x => x.score === 15).map(x => x.rank), [4, 4]);
 });

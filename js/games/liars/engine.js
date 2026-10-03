@@ -5,9 +5,9 @@
 import { RoomGame, err, OK } from '../common/room.js';
 
 export const DICE_OPTIONS = [3, 4, 5];
-export const TURN_MS = 45000; // so lange darf man überlegen, danach entscheidet das Spiel
+export const TURN_MS = 25000; // so lange darf man überlegen, danach entscheidet das Spiel
 const AFK_MS = 3000; // wer nicht verbunden ist, wird nach dieser Zeit übersprungen
-export const REVEAL_MS = 14000;
+export const REVEAL_MS = 8000;
 
 export class LiarsGame extends RoomGame {
     static MIN = 3;
