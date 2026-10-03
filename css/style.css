@@ -90,6 +90,8 @@ input {
 input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 input.code { flex: 1; text-transform: uppercase; letter-spacing: .15em; }
 
+.resume-item { display: flex; gap: 8px; width: 100%; }
+.resume-item .btn:first-child { flex: 1; text-align: left; }
 .invite { background: #3a4a2f; border-radius: 8px; padding: 10px 12px; margin: 0 0 16px; }
 .msg { color: var(--accent); min-height: 1.4em; }
 .msg.shown { background: #3b3320; border: 1px solid var(--accent); border-radius: 8px; padding: 10px 12px; }

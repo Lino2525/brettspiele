@@ -212,12 +212,26 @@ for (const [id, game] of Object.entries(GAMES)) {
         try {
             const saved = JSON.parse(raw);
             if (game.resumable(saved.state)) {
+                const item = document.createElement('div');
+                item.className = 'resume-item';
                 const resume = document.createElement('button');
                 resume.className = 'btn';
                 resume.type = 'button';
                 resume.textContent = `${game.title} fortsetzen (Raum ${saved.room})`;
                 resume.addEventListener('click', () => hostGame(id, saved));
-                $('resumeList').appendChild(resume);
+                const remove = document.createElement('button');
+                remove.className = 'btn danger';
+                remove.type = 'button';
+                remove.textContent = 'Entfernen';
+                remove.title = 'Dieses unterbrochene Spiel löschen';
+                remove.addEventListener('click', () => {
+                    if (!confirm(`${game.title} (Raum ${saved.room}) wirklich löschen? Der Spielstand geht verloren.`)) return;
+                    store.remove(`bsp.host.${id}`);
+                    item.remove();
+                    if (!$('resumeList').children.length) $('resumeCard').hidden = true;
+                });
+                item.append(resume, remove);
+                $('resumeList').appendChild(item);
                 $('resumeCard').hidden = false;
             }
         } catch { /* kaputter Speicherstand wird ignoriert */ }
