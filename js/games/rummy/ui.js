@@ -4,8 +4,8 @@ import { tileInfo, analyzeSet, evaluateMove, rackPoints } from './rules.js';
 const TEMPLATE = `
 <div class="rummy">
   <div class="opp-bar">
-    <div class="opp"><span class="dot"></span><strong class="opp-name"></strong><span class="opp-count"></span></div>
-    <div class="info"><span class="pool"></span><span class="score"></span></div>
+    <div class="players"></div>
+    <div class="info"><span class="pool"></span></div>
   </div>
   <div class="table-wrap">
     <div class="banner" hidden></div>
@@ -29,6 +29,7 @@ const TEMPLATE = `
   <img class="turn-avatar big" alt="" hidden>
 </div>`;
 
+const esc = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const clone = sets => sets.map(s => [...s]);
 const sameSets = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -55,7 +56,7 @@ export function mountRummy(root, session) {
     root.innerHTML = TEMPLATE;
     const $ = sel => root.querySelector(sel);
     const el = {
-        dot: $('.dot'), oppName: $('.opp-name'), oppCount: $('.opp-count'), pool: $('.pool'), score: $('.score'),
+        players: $('.players'), pool: $('.pool'),
         banner: $('.banner'), table: $('.table'), turn: $('.turn-text'), hint: $('.hint'), rack: $('.rack'),
         avatarBig: $('.turn-avatar.big'), avatarSmall: $('.turn-avatar.small'),
         end: $('.end'), draw: $('.draw'), reset: $('.reset'),
@@ -114,13 +115,16 @@ export function mountRummy(root, session) {
     function render() {
         const v = st.view;
         const mine = myTurn();
-        const opp = v.players[1 - v.seat];
-
-        el.oppName.textContent = opp ? opp.name : 'Warte auf Mitspieler…';
-        el.oppCount.textContent = opp && v.phase !== 'waiting' ? `${opp.rackCount} Steine` : '';
-        el.dot.className = 'dot ' + (opp && opp.connected ? 'on' : 'off');
-        el.pool.textContent = v.phase === 'waiting' ? '' : `Vorrat: ${v.poolCount}`;
-        el.score.textContent = v.round > 0 ? `Runde ${v.round} · ${v.players[v.seat].name} ${fmt(v.scores[v.seat])} : ${fmt(v.scores[1 - v.seat])} ${opp ? opp.name : ''}` : '';
+        el.players.innerHTML = v.players
+            .map((p, i) => {
+                const onTurn = v.phase === 'playing' && v.turn === i;
+                return `<div class="pchip${onTurn ? ' on-turn' : ''}"><span class="dot ${p.connected ? 'on' : 'off'}"></span>` +
+                    `<strong>${esc(p.name)}</strong>${i === v.seat ? '<span class="me-tag">Du</span>' : ''}` +
+                    (v.phase !== 'waiting' ? `<span class="pc">${p.rackCount} Steine</span>` : '') +
+                    (v.round > 0 ? `<span class="ps">${fmt(v.scores[i])}</span>` : '') + '</div>';
+            })
+            .join('');
+        el.pool.textContent = v.phase === 'waiting' ? '' : `Runde ${v.round} · Vorrat: ${v.poolCount}`;
 
         el.table.innerHTML =
             st.tableD
@@ -136,7 +140,7 @@ export function mountRummy(root, session) {
 
         const showLive = !mine && v.phase === 'playing' && v.liveTable;
         el.banner.hidden = !showLive;
-        if (showLive) el.banner.textContent = `${opp.name} legt gerade…`;
+        if (showLive) el.banner.textContent = `${v.players[v.turn].name} legt gerade…`;
         el.table.classList.toggle('live', !!showLive);
 
         renderTurnAndHint(mine);
@@ -210,14 +214,24 @@ export function mountRummy(root, session) {
         const v = st.view;
         let html = '';
         if (v.phase === 'waiting') {
-            html = `<h2>Warte auf Mitspieler</h2><p>Schick den Einladungslink oder den Raumcode. Sobald beide da sind, geht es los.</p>`;
+            const list = v.players.map((p, i) => `<li><span class="dot ${p.connected ? 'on' : 'off'}"></span>${esc(p.name)}${i === v.seat ? ' (Du)' : ''}</li>`).join('');
+            const isHost = v.seat === v.hostSeat;
+            const enough = v.players.length >= v.minPlayers;
+            html = `<h2>Mitspieler</h2><ul class="plist">${list}</ul>
+                <p>Es können ${v.minPlayers} bis ${v.maxPlayers} Personen mitspielen. Schick den Einladungslink oder den Raumcode.</p>` +
+                (isHost
+                    ? `<button class="btn primary" data-act="start" type="button"${enough ? '' : ' disabled'}>Spiel starten</button>`
+                    : `<p>Warte, bis ${esc(v.players[v.hostSeat].name)} das Spiel startet.</p>`);
         } else if (v.phase === 'over') {
-            const other = v.players[1 - v.seat];
-            const title = v.winner === null ? 'Unentschieden' : v.winner === v.seat ? 'Du hast gewonnen!' : `${other.name} hat gewonnen`;
-            const left = v.otherRack ? `<p>Übrig bei ${other.name}: ${v.otherRack.length} Steine, ${rackPoints(v.otherRack)} Punkte.</p>` : '';
-            const mineLeft = v.rack.length ? `<p>Übrig bei dir: ${v.rack.length} Steine, ${rackPoints(v.rack)} Punkte.</p>` : '';
-            html = `<h2>${title}</h2><p>${v.overReason}</p>${mineLeft}${left}
-                <p>Gesamtstand: ${v.players[v.seat].name} ${fmt(v.scores[v.seat])} : ${fmt(v.scores[1 - v.seat])} ${other.name}</p>
+            const title = v.winner === null ? 'Unentschieden' : v.winner === v.seat ? 'Du hast gewonnen!' : `${esc(v.players[v.winner].name)} hat gewonnen`;
+            const rows = v.players
+                .map((p, i) => ({ p, i, left: v.racks[i], points: rackPoints(v.racks[i]) }))
+                .sort((x, y) => x.points - y.points)
+                .map(({ p, i, left, points }) =>
+                    `<tr class="${i === v.winner ? 'win' : ''}"><td>${esc(p.name)}${i === v.seat ? ' (Du)' : ''}</td><td>${left.length} Steine</td><td>${points} Punkte</td><td>${fmt(v.scores[i])}</td></tr>`)
+                .join('');
+            html = `<h2>${title}</h2><p>${esc(v.overReason)}</p>
+                <table class="ranking"><thead><tr><th></th><th>Übrig</th><th>Wert</th><th>Gesamt</th></tr></thead><tbody>${rows}</tbody></table>
                 <button class="btn primary" data-act="newRound" type="button">Neue Runde</button>`;
         }
         el.overlay.hidden = !html;
@@ -250,7 +264,9 @@ export function mountRummy(root, session) {
     root.querySelector('.sort-color').addEventListener('click', () => sortRack('color'));
     root.querySelector('.sort-num').addEventListener('click', () => sortRack('num'));
     el.overlayBox.addEventListener('click', e => {
-        if (e.target.dataset.act === 'newRound') session.send({ t: 'newRound' });
+        const act = e.target.dataset.act;
+        if (act === 'newRound') session.send({ t: 'newRound' });
+        if (act === 'start') session.send({ t: 'start' });
     });
 
     function sortRack(mode) {

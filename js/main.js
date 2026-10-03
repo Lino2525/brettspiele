@@ -181,7 +181,7 @@ async function joinGame(rawCode) {
         session.close();
         lobbyMsg(
             e.message === 'not-found' ? 'Diesen Raum gibt es nicht (oder er ist gerade nicht online).'
-            : e.message === 'full' ? 'In diesem Raum sind schon zwei Spieler.'
+            : e.message === 'full' ? 'Dieser Raum ist voll oder das Spiel hat schon begonnen.'
             : e.message === 'denied' ? 'Falsches oder fehlendes Passwort.'
             : e.message === 'timeout' || e.message === 'ice-failed'
                 ? 'Keine Verbindung zum Host möglich. Ist das Spiel dort noch offen? Mit Mobilfunk bitte einmal WLAN probieren (oder umgekehrt).'

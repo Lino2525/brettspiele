@@ -148,8 +148,22 @@ input.code { flex: 1; text-transform: uppercase; letter-spacing: .15em; }
     flex-wrap: wrap;
 }
 .opp-bar { justify-content: space-between; }
-.opp { display: flex; align-items: center; gap: 8px; }
-.opp-count, .info, .hint { color: var(--muted); font-size: .9rem; }
+.players { display: flex; gap: 8px; flex-wrap: wrap; }
+.pchip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: var(--panel);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    font-size: .9rem;
+}
+.pchip.on-turn { border-color: var(--accent); }
+.pchip .pc, .pchip .ps { color: var(--muted); }
+.pchip .ps { font-weight: 700; }
+.me-tag { font-size: .7rem; color: #1d1a10; background: var(--accent); border-radius: 6px; padding: 1px 5px; }
+.info, .hint { color: var(--muted); font-size: .9rem; }
 .info { display: flex; gap: 14px; flex-wrap: wrap; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: #777; }
 .dot.on { background: var(--ok); }
@@ -317,6 +331,13 @@ input.code { flex: 1; text-transform: uppercase; letter-spacing: .15em; }
     text-align: center;
 }
 .overlay-box h2 { margin-top: 0; }
+.plist { list-style: none; margin: 0 0 12px; padding: 0; text-align: left; display: inline-block; }
+.plist li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.ranking { width: 100%; border-collapse: collapse; margin: 0 0 16px; text-align: left; }
+.ranking th { color: var(--muted); font-weight: 500; font-size: .8rem; }
+.ranking th, .ranking td { padding: 4px 8px; }
+.ranking td:nth-child(n+2), .ranking th:nth-child(n+2) { text-align: right; }
+.ranking tr.win td { color: var(--accent); font-weight: 700; }
 .overlay-box p { color: var(--muted); }
 
 .toast {

@@ -21,6 +21,7 @@ export const normalizeRoomCode = text => String(text).toUpperCase().replace(/[^A
 const peerIdFor = code => PEER_PREFIX + code;
 
 export const MAX_AVATAR_CHARS = 150_000;
+const AVATAR_SLOTS = 4; // so viele Plätze gibt es höchstens in einem Raum
 
 // Avatare kommen von fremden Browsern: nur kleine Bild-Data-URLs durchlassen, alles andere verwerfen.
 export const cleanAvatar = data =>
@@ -30,7 +31,7 @@ export const cleanAvatar = data =>
 
 class Session {
     lastView = null;
-    lastAvatars = [null, null];
+    lastAvatars = Array(AVATAR_SLOTS).fill(null);
     onNotice = () => {};
     onStatus = () => {};
     #onView = null;
@@ -42,7 +43,7 @@ class Session {
     }
 
     emitAvatars(list) {
-        this.lastAvatars = [cleanAvatar(list?.[0]), cleanAvatar(list?.[1])];
+        this.lastAvatars = Array.from({ length: AVATAR_SLOTS }, (_, i) => cleanAvatar(list?.[i]));
         this.#onAvatars?.(this.lastAvatars);
     }
 
@@ -62,7 +63,7 @@ export class HostSession extends Session {
     #peer = null;
     #conns = new Map(); // seat -> DataConnection
     #seat = -1;
-    #avatars = [null, null]; // nur im Arbeitsspeicher, nie im gespeicherten Spielstand
+    #avatars = Array(AVATAR_SLOTS).fill(null); // nur im Arbeitsspeicher, nie im gespeicherten Spielstand
 
     constructor({ game, gameId, roomCode, token, name, password, avatar, onSave }) {
         super();

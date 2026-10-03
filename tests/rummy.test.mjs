@@ -98,63 +98,106 @@ function seeded(seed = 1) {
     };
 }
 
-function newGame() {
+// Lobby mit n Spielern, danach startet der Gastgeber (Platz 0) das Spiel.
+function newGame(n = 2, { start = true } = {}) {
     const g = new RummyGame({ rng: seeded(7) });
-    assert.equal(g.join('a', 'Anna'), 0);
+    const names = ['Anna', 'Boris', 'Cara', 'Dino'];
+    for (let i = 0; i < n; i++) assert.equal(g.join('t' + i, names[i]), i);
     assert.equal(g.s.phase, 'waiting');
-    assert.equal(g.join('b', 'Boris'), 1);
+    if (start) assert.ok(!g.apply(0, { t: 'start' }).error);
     return g;
 }
 
-test('Austeilen', () => {
-    const g = newGame();
+const others = (g, seat) => g.s.players.map((_, i) => i).filter(i => i !== seat);
+
+test('Lobby: Start nur durch den Gastgeber und erst ab 2 Spielern', () => {
+    const g = newGame(1, { start: false });
+    assert.ok(g.apply(0, { t: 'start' }).error, 'zu wenige');
+    g.join('t1', 'Boris');
+    assert.ok(g.apply(1, { t: 'start' }).error, 'nur Gastgeber');
+    assert.equal(g.s.phase, 'waiting');
+    assert.ok(!g.apply(0, { t: 'start' }).error);
     assert.equal(g.s.phase, 'playing');
-    assert.equal(g.s.players[0].rack.length, 14);
-    assert.equal(g.s.players[1].rack.length, 14);
-    assert.equal(g.s.pool.length, 106 - 28);
-    const all = [...g.s.pool, ...g.s.players[0].rack, ...g.s.players[1].rack];
-    assert.equal(new Set(all).size, 106);
-    assert.equal(g.join('c', 'Dritte'), -1, 'Raum voll');
-    assert.equal(g.join('a', 'Anna'), 0, 'Wiedereintritt per Token');
+    assert.ok(g.apply(0, { t: 'start' }).error, 'läuft schon');
 });
 
-test('Ansicht verrät den fremden Ständer nicht', () => {
-    const g = newGame();
+test('Austeilen für 2, 3 und 4 Spieler', () => {
+    for (const n of [2, 3, 4]) {
+        const g = newGame(n);
+        assert.equal(g.s.phase, 'playing');
+        for (const p of g.s.players) assert.equal(p.rack.length, 14);
+        assert.equal(g.s.pool.length, 106 - 14 * n);
+        const all = [...g.s.pool, ...g.s.players.flatMap(p => p.rack)];
+        assert.equal(new Set(all).size, 106, 'keine Doppelten, keine fehlenden');
+    }
+});
+
+test('Beitritt: maximal 4, nach dem Start nur noch bekannte Spieler', () => {
+    const g = newGame(4, { start: false });
+    assert.equal(g.join('t4', 'Fünfte'), -1, 'Raum voll');
+    assert.equal(g.join('t2', 'Cara'), 2, 'Wiedereintritt per Token');
+    const h = newGame(2, { start: false });
+    h.apply(0, { t: 'start' });
+    assert.equal(h.join('neu', 'Spät'), -1, 'Spiel läuft schon');
+    assert.equal(h.join('t1', 'Boris'), 1, 'bekannter Spieler darf zurück');
+});
+
+test('Namen werden eindeutig gemacht', () => {
+    const g = new RummyGame({ rng: seeded(1) });
+    g.join('a', 'Lino');
+    g.join('b', 'Lino');
+    g.join('c', 'Lino');
+    assert.deepEqual(g.s.players.map(p => p.name), ['Lino', 'Lino 2', 'Lino 3']);
+});
+
+test('Ansicht verrät fremde Ständer nicht', () => {
+    const g = newGame(3);
     const v = g.view(0);
     assert.deepEqual(v.rack, g.s.players[0].rack);
-    assert.equal(v.otherRack, null);
+    assert.equal(v.racks, null);
     assert.equal(v.players[1].rackCount, 14);
     assert.ok(!JSON.stringify(v).includes('token'));
+    assert.ok(!('otherRack' in v));
 });
 
-test('Ziehen und Zugrecht', () => {
-    const g = newGame();
-    const t = g.s.turn;
-    assert.ok(g.apply(1 - t, { t: 'draw' }).error, 'nicht am Zug');
-    assert.ok(!g.apply(t, { t: 'draw' }).error);
-    assert.equal(g.s.players[t].rack.length, 15);
-    assert.equal(g.s.turn, 1 - t);
+test('Reihum ziehen, Zugrecht', () => {
+    const g = newGame(3);
+    const first = g.s.turn;
+    assert.ok(g.apply((first + 1) % 3, { t: 'draw' }).error, 'nicht am Zug');
+    const order = [];
+    for (let i = 0; i < 6; i++) {
+        order.push(g.s.turn);
+        assert.ok(!g.apply(g.s.turn, { t: 'draw' }).error);
+    }
+    assert.deepEqual(order, [0, 1, 2, 3, 4, 5].map(i => (first + i) % 3));
+    assert.equal(g.s.players.every(p => p.rack.length === 16), true);
 });
 
-test('Zug mit erstem Auslegen und Sieg', () => {
-    const g = newGame();
+test('Sieg: Gewinner bekommt die Restpunkte aller anderen', () => {
+    const g = newGame(3);
     const t = g.s.turn;
     const run = [T(3, 10), T(3, 11), T(3, 12)];
     g.s.players[t].rack = [...run];
+    for (const o of others(g, t)) g.s.players[o].rack = g.s.players[o].rack.filter(id => !run.includes(id));
     g.s.pool = g.s.pool.filter(id => !run.includes(id));
-    g.s.players[1 - t].rack = g.s.players[1 - t].rack.filter(id => !run.includes(id));
+    const [o1, o2] = others(g, t);
+    const sum1 = rackPoints(g.s.players[o1].rack);
+    const sum2 = rackPoints(g.s.players[o2].rack);
     const res = g.apply(t, { t: 'move', table: [run], rack: [] });
     assert.ok(!res.error, res.error);
     assert.equal(g.s.phase, 'over');
     assert.equal(g.s.winner, t);
-    const loserSum = rackPoints(g.s.players[1 - t].rack);
-    assert.equal(g.s.scores[t], loserSum);
-    assert.equal(g.s.scores[1 - t], -loserSum);
-    assert.ok(g.view(1 - t).otherRack, 'am Ende wird aufgedeckt');
-    // neue Runde, anderer Spieler beginnt
+    assert.equal(g.s.scores[o1], -sum1);
+    assert.equal(g.s.scores[o2], -sum2);
+    assert.equal(g.s.scores[t], sum1 + sum2);
+    assert.equal(g.s.scores.reduce((a, b) => a + b, 0), 0, 'Nullsumme');
+    assert.equal(g.view(o1).racks.length, 3, 'am Ende wird aufgedeckt');
+    // neue Runde: der nächste Platz beginnt
+    const starter = g.s.starter;
     assert.ok(!g.apply(0, { t: 'newRound' }).error);
-    assert.equal(g.s.turn, 1 - t);
+    assert.equal(g.s.turn, (starter + 1) % 3);
     assert.equal(g.s.round, 2);
+    assert.equal(g.s.phase, 'playing');
 });
 
 test('Ungültige Züge werden abgelehnt und ändern nichts', () => {
@@ -170,35 +213,54 @@ test('Ungültige Züge werden abgelehnt und ändern nichts', () => {
     assert.equal(JSON.stringify(g.s), before);
 });
 
-test('Vorschau (Draft) wird nur dem Gegenüber gezeigt und beim Zugwechsel verworfen', () => {
-    const g = newGame();
+test('Vorschau (Draft) sehen alle anderen, nicht man selbst; beim Zugwechsel weg', () => {
+    const g = newGame(3);
     const t = g.s.turn;
     const mine = g.s.players[t].rack.slice(0, 2);
     g.apply(t, { t: 'draft', table: [mine] });
-    assert.deepEqual(g.view(1 - t).liveTable, [mine]);
+    for (const o of others(g, t)) assert.deepEqual(g.view(o).liveTable, [mine]);
     assert.equal(g.view(t).liveTable, null);
-    g.apply(t, { t: 'draft', table: [[g.s.players[1 - t].rack[0]]] }); // fremder Stein: ignoriert
-    assert.deepEqual(g.view(1 - t).liveTable, [mine]);
+    const o = others(g, t)[0];
+    g.apply(t, { t: 'draft', table: [[g.s.players[o].rack[0]]] }); // fremder Stein: ignoriert
+    assert.deepEqual(g.view(o).liveTable, [mine]);
     g.apply(t, { t: 'draw' });
-    assert.equal(g.view(1 - t).liveTable, null);
+    assert.equal(g.view(o).liveTable, null);
 });
 
-test('Leerer Vorrat: Aussetzen, zweimal in Folge beendet die Runde', () => {
-    const g = newGame();
+test('Leerer Vorrat: erst wenn alle nacheinander aussetzen, endet die Runde', () => {
+    const g = newGame(3);
     g.s.pool = [];
     g.s.players[0].rack = [T(0, 1)];
     g.s.players[1].rack = [T(0, 2), T(0, 3)];
+    g.s.players[2].rack = [T(0, 4), T(0, 5), T(0, 6)];
     g.apply(g.s.turn, { t: 'draw' });
-    assert.equal(g.s.phase, 'playing');
+    g.apply(g.s.turn, { t: 'draw' });
+    assert.equal(g.s.phase, 'playing', 'nach zweimal noch nicht zu Ende');
     g.apply(g.s.turn, { t: 'draw' });
     assert.equal(g.s.phase, 'over');
-    assert.equal(g.s.winner, 0, 'weniger Punkte gewinnt');
+    assert.equal(g.s.winner, 0, 'wenigste Punkte gewinnt');
+    assert.equal(g.s.scores[1], -(5 - 1));
+    assert.equal(g.s.scores[2], -(15 - 1));
+    assert.equal(g.s.scores[0], 4 + 14);
+});
+
+test('Gleichstand an der Spitze: unentschieden, keine Punkte', () => {
+    const g = newGame(2);
+    g.s.pool = [];
+    g.s.players[0].rack = [T(0, 4)];
+    g.s.players[1].rack = [T(1, 4)];
+    g.apply(g.s.turn, { t: 'draw' });
+    g.apply(g.s.turn, { t: 'draw' });
+    assert.equal(g.s.phase, 'over');
+    assert.equal(g.s.winner, null);
+    assert.deepEqual(g.s.scores, [0, 0]);
 });
 
 test('Speichern und Wiederherstellen', () => {
-    const g = newGame();
+    const g = newGame(3);
     const copy = RummyGame.restore(g.serialize(), { rng: seeded(1) });
-    assert.deepEqual(copy.view(0).rack, g.view(0).rack);
+    assert.deepEqual(copy.view(1).rack, g.view(1).rack);
     assert.equal(copy.s.players[0].connected, false);
-    assert.equal(copy.join('a', 'x'), 0);
+    assert.equal(copy.join('t0', 'x'), 0);
+    assert.equal(copy.s.scores.length, 3);
 });
