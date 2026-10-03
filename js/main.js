@@ -3,10 +3,13 @@ import { HostSession, ClientSession, makeRoomCode, normalizeRoomCode, ROOM_CODE_
 import { fileToAvatar } from './core/avatar.js';
 import { RummyGame } from './games/rummy/engine.js';
 import { mountRummy } from './games/rummy/ui.js';
+import { MonopolyGame } from './games/monopoly/engine.js';
+import { mountMonopoly } from './games/monopoly/ui.js';
 
 // Neue Spiele werden hier eingetragen: Engine (Host), Oberfläche (alle).
 const GAMES = {
-    rummy: { title: 'Mini Rummy', Engine: RummyGame, mount: mountRummy },
+    rummy: { title: 'Mini Rummy', Engine: RummyGame, mount: mountRummy, resumable: state => state.phase !== 'waiting' },
+    monopoly: { title: 'Monopoly', Engine: MonopolyGame, mount: mountMonopoly, resumable: state => state.phase === 'playing' },
 };
 
 const $ = id => document.getElementById(id);
@@ -208,10 +211,14 @@ for (const [id, game] of Object.entries(GAMES)) {
     if (raw) {
         try {
             const saved = JSON.parse(raw);
-            if (saved.state.phase !== 'waiting') {
+            if (game.resumable(saved.state)) {
+                const resume = document.createElement('button');
+                resume.className = 'btn';
+                resume.type = 'button';
+                resume.textContent = `${game.title} fortsetzen (Raum ${saved.room})`;
+                resume.addEventListener('click', () => hostGame(id, saved));
+                $('resumeList').appendChild(resume);
                 $('resumeCard').hidden = false;
-                $('resumeBtn').textContent = `${game.title} fortsetzen (Raum ${saved.room})`;
-                $('resumeBtn').addEventListener('click', () => hostGame(id, saved));
             }
         } catch { /* kaputter Speicherstand wird ignoriert */ }
     }

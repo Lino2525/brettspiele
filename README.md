@@ -36,8 +36,18 @@ Neben dem Namen kann man ein Bild auswählen. Es wird im Browser auf höchstens 
 Raum geschickt. Es liegt nie auf einem Server und nie im Projekt. Angezeigt wird immer das Bild der Person am Zug.
 Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist öffentlich.
 
+## Spiele
+
+- **Mini Rummy** (2-4 Personen): Rummikub-Regeln, Wertung wie im Original.
+- **Monopoly** (2-4 Personen): deutsche Straßennamen, alle Regeln: Würfeln (Pasch, dreimal Pasch), Kaufen und
+  Versteigern, Miete mit Farbgruppen, Häusern und Hotels (gleichmäßig bauen, begrenzter Vorrat), Bahnhöfe und Werke,
+  Steuern, Gefängnis (Geld, Freikarte, Pasch, dritter Versuch), Ereignis- und Gemeinschaftskarten, Hypotheken,
+  Handel (Geld, Grundstücke, Freikarten), Schulden und Bankrott. Alle sehen Würfel, Figuren und Karten live.
+  Bauen, Hypotheken und Verkäufe sind nur im eigenen Zug möglich (oder bei eigenen Schulden).
+
 ## Aufbau
 
 - `js/core/session.js`: Verbindung (Host hält den Spielstand, Gast schickt Aktionen)
 - `js/games/<spiel>/rules.js`, `engine.js`, `ui.js`: Regeln, Spielablauf, Oberfläche
+- `js/games/monopoly/`: `board.js` (Plan, Karten, Regelfunktionen), `engine.js` (Ablauf), `board-view.js`, `trade-ui.js`, `ui.js`
 - `js/main.js`: Lobby, hier werden neue Spiele in `GAMES` eingetragen
