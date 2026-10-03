@@ -199,7 +199,6 @@ async function joinGame(rawCode) {
 // ---------- Start ----------
 
 document.querySelectorAll('.music-slot').forEach(slot => music.mount(slot));
-music.init();
 
 $('name').value = store.get('bsp.name') || '';
 $('password').value = store.get('bsp.password') || '';

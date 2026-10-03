@@ -47,12 +47,10 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
 
 ## Musik
 
-Beim Spielstart läuft Hintergrundmusik (in Endlosschleife, bei jedem lokal und nicht synchron). Oben gibt es
-Stummschalter, Lautstärkeregler und ♪ zum Auswählen einer eigenen Audiodatei.
-
-- Lokal (`node serve.js`) wird automatisch die Datei aus `Music/` benutzt (Name in `js/core/music.js`).
-- Der Ordner `Music/` steht in der `.gitignore` und wird **nicht** nach GitHub hochgeladen (Urheberrecht, Dateigröße).
-  Im Internet wählt jeder die Datei einmal selbst über ♪ aus. Sie bleibt im Browser gespeichert und wird nie hochgeladen.
+Beim Spielstart läuft ruhige Klaviermusik in Endlosschleife (d-Moll, getragen, leicht dramatisch, mit leisem Wind).
+Sie wird **live im Browser erzeugt** (`js/core/piano.js`, Web Audio): keine Audiodatei, nichts zu hosten, komplett
+eigenkomponiert. Jeder hört sie lokal (nicht synchron). Oben gibt es Stummschalter und Lautstärkeregler, die
+Einstellung wird gemerkt. Tempo, Akkorde, Klangfarbe und Pegel lassen sich oben in `piano.js` anpassen.
 
 ## Aufbau
 
