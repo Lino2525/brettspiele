@@ -10,7 +10,7 @@ import { mountMonopoly } from './games/monopoly/ui.js';
 // Neue Spiele werden hier eingetragen: Engine (Host), Oberfläche (alle).
 const GAMES = {
     rummy: { title: 'Mini Rummy', Engine: RummyGame, mount: mountRummy, resumable: state => state.phase !== 'waiting' },
-    monopoly: { title: 'Monopoly', Engine: MonopolyGame, mount: mountMonopoly, resumable: state => state.phase === 'playing' },
+    monopoly: { title: 'Immobilienspiel', Engine: MonopolyGame, mount: mountMonopoly, resumable: state => state.phase === 'playing' },
 };
 
 const $ = id => document.getElementById(id);

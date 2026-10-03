@@ -39,7 +39,7 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
 ## Spiele
 
 - **Mini Rummy** (2-4 Personen): Rummikub-Regeln, Wertung wie im Original.
-- **Monopoly** (2-4 Personen): deutsche Straßennamen, alle Regeln: Würfeln (Pasch, dreimal Pasch), Kaufen und
+- **Immobilienspiel** (2-4 Personen, Handelsspiel nach klassischem Vorbild; intern "monopoly"): deutsche Straßennamen, alle Regeln: Würfeln (Pasch, dreimal Pasch), Kaufen und
   Versteigern, Miete mit Farbgruppen, Häusern und Hotels (gleichmäßig bauen, begrenzter Vorrat), Bahnhöfe und Werke,
   Steuern, Gefängnis (Geld, Freikarte, Pasch, dritter Versuch), Ereignis- und Gemeinschaftskarten, Hypotheken,
   Handel (Geld, Grundstücke, Freikarten), Schulden und Bankrott. Alle sehen Würfel, Figuren und Karten live.

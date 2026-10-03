@@ -16,7 +16,7 @@ const TEMPLATE = `
     <div class="board-wrap">
       <div class="board-slot"></div>
       <div class="controls">
-        <div class="logo">MONOPOLY</div>
+        <div class="logo">IMMOBILIEN</div>
         <div class="dice" aria-label="Würfel"><span class="die">⚀</span><span class="die">⚀</span></div>
         <div class="ctl-body"></div>
       </div>
@@ -359,7 +359,7 @@ export function mountMonopoly(root, session) {
         if (v.phase === 'waiting') {
             const list = v.players.map((p, i) => `<li><span class="dot ${p.connected ? 'on' : 'off'}"></span>${esc(p.name)}${i === v.seat ? ' (Du)' : ''}</li>`).join('');
             const isHost = v.seat === v.hostSeat;
-            html = `<h2>Monopoly</h2><ul class="plist">${list}</ul>
+            html = `<h2>Immobilienspiel</h2><ul class="plist">${list}</ul>
                 <p>Es können ${v.minPlayers} bis ${v.maxPlayers} Personen mitspielen. Schick den Einladungslink oder den Raumcode.</p>` +
                 (isHost
                     ? `<button class="btn primary" data-act="start" type="button"${v.players.length >= v.minPlayers ? '' : ' disabled'}>Spiel starten</button>`
