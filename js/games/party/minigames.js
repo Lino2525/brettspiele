@@ -31,8 +31,10 @@ export const MINIS = {
     flags: { title: 'Flaggen', kind: 'quiz', playMs: FLAG.count * (FLAG.askMs + FLAG.revealMs), rules: `${FLAG.count} Flaggen: Welches Land ist es? Schnell sein lohnt sich.` },
     draw: { title: 'Zeichnen & Raten', kind: 'draw', playMs: DRAW_MS, rules: 'Eine Person zeichnet einen Begriff, alle anderen raten ihn. Richtig raten bringt Punkte, dem Zeichner auch.' },
 };
-for (const [type, def] of Object.entries(SUBGAMES)) MINIS[type] = { title: def.title, kind: 'sub', playMs: def.capMs, rules: def.rules, teams: def.teams };
+for (const [type, def] of Object.entries(SUBGAMES)) MINIS[type] = { title: def.title, kind: 'sub', playMs: def.capMs, rules: def.rules, teams: def.teams, minPlayers: def.minPlayers };
 export const MINI_TYPES = Object.keys(MINIS);
+// Minispiele, die mit dieser Personenzahl spielbar sind (Undercover braucht mindestens 3)
+export const availableMinis = n => MINI_TYPES.filter(t => (MINIS[t].minPlayers ?? 2) <= n);
 
 function shuffle(list, rng) {
     const a = [...list];

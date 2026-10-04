@@ -41,6 +41,7 @@ export const SUBGAMES = {
         title: 'Undercover',
         Engine: UndercoverGame,
         teams: false,
+        minPlayers: 3, // mit zwei Personen gäbe es nichts zu raten
         capMs: 190000,
         rules: 'Alle bekommen ein geheimes Wort – eine Person ein anderes oder gar keins. Gebt reihum einen getippten Hinweis, ohne das Wort zu verraten, und wählt dann, wer abweicht. Wer auf der richtigen Seite steht, gewinnt.',
         allowed: ['ready', 'clue', 'vote', 'guess'],

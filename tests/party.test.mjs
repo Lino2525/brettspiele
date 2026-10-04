@@ -572,3 +572,39 @@ test('Belohnung bei Teams: das bessere Team bekommt Platz 1 (10), das andere Pla
     // ohne Teams bleibt es bei der normalen Platzierung
     assert.deepEqual(computeRewards(scores, [0, 1, 2, 3, 4], false).filter(x => x.score === 15).map(x => x.rank), [4, 4]);
 });
+
+// ---------- Zu zweit ----------
+
+test('Zu zweit: Sternenjagd startet mit 2 Personen, Undercover kommt nie vor, die anderen 13 Minispiele laufen im Kreis', () => {
+    const g = new PartyGame({ rng: seeded(4) });
+    g.join('a', 'A');
+    assert.ok(g.apply(0, { t: 'start' }).error, 'allein geht nicht');
+    g.join('b', 'B');
+    assert.ok(!g.apply(0, { t: 'start' }, 0).error);
+    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 13 });
+    for (const seed of [1, 2, 3]) {
+        const { types } = autoplay(2, 27, seed);
+        assert.ok(!types.includes('undercover'));
+        assert.equal(new Set(types.slice(0, 13)).size, 13);
+        assert.equal(new Set(types.slice(13, 26)).size, 13);
+        for (let i = 1; i < types.length; i++) assert.notEqual(types[i], types[i - 1]);
+    }
+});
+
+test('Zu zweit: alle Gesellschafts-Minispiele außer Undercover laufen mit 2 Personen bis zum Ergebnis, ohne Teams', () => {
+    assert.equal(MINIS.undercover.minPlayers, 3);
+    for (const type of SUB_TYPES.filter(t => t !== 'undercover')) {
+        for (const seed of [1, 2, 3, 4]) {
+            const m = playSub(type, 2, seed % 2 === 0, seed);
+            assert.equal(m.teams, null);
+            for (const v of Object.values(m.scores)) assert.ok(Number.isInteger(v) && v >= 0);
+        }
+    }
+});
+
+test('Mit 3 Personen ist Undercover wieder dabei (14 Minispiele)', () => {
+    const g = new PartyGame({ rng: seeded(4) });
+    for (const n of ['a', 'b', 'c']) g.join(n, n);
+    g.apply(0, { t: 'start' }, 0);
+    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 14 });
+});

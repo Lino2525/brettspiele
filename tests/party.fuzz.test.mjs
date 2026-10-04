@@ -55,7 +55,7 @@ function randomSubAction(type, rng, n) {
 
 function playOne(seed) {
     const rng = seeded(seed);
-    const n = 3 + Math.floor(rng() * 4);
+    const n = 2 + Math.floor(rng() * 5);
     const g = new PartyGame({ rng: seeded(seed * 3 + 1) });
     for (let i = 0; i < n; i++) g.join('t' + i, 'S' + i);
     assert.ok(!g.apply(0, { t: 'setRounds', n: 5 }).error);

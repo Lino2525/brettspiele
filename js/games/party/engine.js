@@ -1,11 +1,11 @@
-// Spielablauf von Sternenjagd (3 bis 6 Spieler), ein Partyspiel mit Spielfeld und Minispielen.
+// Spielablauf von Sternenjagd (2 bis 6 Spieler), ein Partyspiel mit Spielfeld und Minispielen.
 // Läuft nur beim Host. Jede Runde: alle würfeln nacheinander und ziehen über den Rundkurs, danach spielen
 // alle ein Minispiel. Ein Stern zählt am Ende 10 Münzen; wer nach der letzten Runde am meisten hat, gewinnt.
 // tick() wird vom Host regelmäßig aufgerufen und steuert alle Zeiten (Würfel-Wartezeit, Minispiele, Ergebnisse).
 import { RING, SPACE_TYPES, COIN_GAIN, COIN_LOSS } from './board.js';
-import { MINI_TYPES, createMini, tickMini, miniAction, miniView, computeRewards } from './minigames.js';
+import { availableMinis, createMini, tickMini, miniAction, miniView, computeRewards } from './minigames.js';
 
-export const MIN_PLAYERS = 3;
+export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 6;
 export const ROUND_OPTIONS = [5, 8, 10, 12, 15];
 export const STAR_PRICE = 5; // so viele Münzen kostet ein Stern auf dem Spielfeld
@@ -331,7 +331,7 @@ export class PartyGame {
         const s = this.s;
         // Zähler: erst kommen alle Minispiele einmal dran (in zufälliger Reihenfolge), dann beginnt ein neuer Durchlauf
         if (!s.miniBag?.length) {
-            let bag = [...MINI_TYPES];
+            let bag = availableMinis(s.players.length);
             for (let i = bag.length - 1; i > 0; i--) {
                 const j = Math.floor(this.rng() * (i + 1));
                 [bag[i], bag[j]] = [bag[j], bag[i]];
@@ -439,7 +439,7 @@ export class PartyGame {
             starPos: s.star,
             dice: s.dice,
             players: s.players.map(p => ({ name: p.name, connected: p.connected, coins: p.coins, stars: p.stars, pos: p.pos })),
-            miniCycle: { done: s.miniCounter === 0 ? 0 : MINI_TYPES.length - (s.miniBag?.length ?? 0), total: MINI_TYPES.length },
+            miniCycle: { done: s.miniCounter === 0 ? 0 : availableMinis(s.players.length).length - (s.miniBag?.length ?? 0), total: availableMinis(s.players.length).length },
             mini: s.mini ? miniView(s.mini, seat, now, s.players) : null,
             events: s.events,
             eventSeq: s.eventSeq,
