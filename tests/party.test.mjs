@@ -416,8 +416,8 @@ test('Minispiele: erst läuft jedes einmal durch, dann beginnt ein neuer Durchla
     for (const seed of [1, 2, 3, 4, 5]) {
         const { types } = autoplay(3, 30, seed);
         assert.equal(types.length, 30);
-        assert.equal(new Set(types.slice(0, 14)).size, 14, `erster Durchlauf: ${types.slice(0, 14)}`);
-        assert.equal(new Set(types.slice(14, 28)).size, 14, 'zweiter Durchlauf');
+        assert.equal(new Set(types.slice(0, 13)).size, 13, `erster Durchlauf: ${types.slice(0, 13)}`);
+        assert.equal(new Set(types.slice(13, 26)).size, 13, 'zweiter Durchlauf');
         assert.equal(types.length - 28, new Set(types.slice(28)).size, 'dritter Durchlauf beginnt ohne Wiederholung');
         for (let i = 1; i < types.length; i++) assert.notEqual(types[i], types[i - 1], 'nie dasselbe Spiel zweimal hintereinander');
     }
@@ -429,14 +429,14 @@ test('Zähler in der Ansicht: wie viele Minispiele im aktuellen Durchlauf schon 
     g.join('b', 'B');
     g.join('c', 'C');
     g.apply(0, { t: 'start' }, 0);
-    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 14 });
+    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 13 });
     let t = 0;
     for (let i = 0; i < 3000 && !g.s.mini; i++) {
         t += 700;
         if (g.s.phase === 'board' && g.s.turnPhase === 'roll') g.apply(g.s.order[g.s.turnIdx], { t: 'roll' }, t);
         g.tick(t);
     }
-    assert.deepEqual(g.view(0, t).miniCycle, { done: 1, total: 14 });
+    assert.deepEqual(g.view(0, t).miniCycle, { done: 1, total: 13 });
 });
 
 test('Reihenfolge: mit 3 Personen und mehr würfelt niemand direkt zweimal hintereinander (auch über das Minispiel hinweg)', () => {
@@ -459,7 +459,6 @@ function subAction(type, rng, n) {
     const word = () => ['Haus', 'Baum', 'Hund', 'xyz', ''][Math.floor(rng() * 5)];
     const answers = () => Array.from({ length: 8 }, word);
     switch (type) {
-        case 'liars': return pick([{ t: 'bid', qty: 1 + Math.floor(rng() * 8), face: 2 + Math.floor(rng() * 5) }, { t: 'challenge' }, { t: 'next' }]);
         case 'slf': return pick([{ t: 'answers', list: answers() }, { t: 'stop', list: answers() }, { t: 'flag', p: Math.floor(rng() * n), c: Math.floor(rng() * 4) }, { t: 'ready' }]);
         case 'undercover': return pick([{ t: 'ready' }, { t: 'clue', text: word() }, { t: 'vote', target: Math.floor(rng() * n) }, { t: 'guess', text: word() }]);
         case 'ladder': return pick([{ t: 'level', n: 1 + Math.floor(rng() * 10) }, { t: 'answer', c: Math.floor(rng() * 4) }, { t: 'ready' }]);
@@ -490,7 +489,7 @@ function playSub(type, n, star, seed) {
 }
 
 test('Gesellschaftsspiele als Minispiele: alle fünf laufen mit 3 bis 6 Personen immer bis zum Ergebnis', () => {
-    assert.deepEqual(SUB_TYPES.sort(), ['ladder', 'liars', 'slf', 'undercover', 'wordguess']);
+    assert.deepEqual(SUB_TYPES.sort(), ['ladder', 'slf', 'undercover', 'wordguess']);
     for (const type of SUB_TYPES) {
         assert.equal(MINIS[type].kind, 'sub');
         assert.ok(MINI_TYPES.includes(type));
@@ -545,12 +544,6 @@ test('Gesellschaftsspiel läuft nur mit erlaubten Aktionen; Start- und Neustart-
 
 test('Ansicht der Gesellschaftsspiele: fremde Geheimnisse bleiben verdeckt', () => {
     const players = Array.from({ length: 4 }, (_, i) => ({ name: 'S' + i, coins: 5, stars: 0, connected: true }));
-    // Lügenwürfel: fremde Würfel nicht sichtbar
-    const liars = createMini({ type: 'liars', id: 1, rng: seeded(1), players, now: 0, star: false });
-    tickMini(liars, 9000, players);
-    const lv = miniView(liars, 0, 9000, players).sub;
-    assert.equal(lv.hand.length, 3);
-    assert.ok(!JSON.stringify(lv).includes('"hands"'));
     // Undercover: das Wort der Anderen steht nicht in der eigenen Ansicht
     const uc = createMini({ type: 'undercover', id: 2, rng: seeded(2), players, now: 0, star: false });
     tickMini(uc, 9000, players);
@@ -558,7 +551,7 @@ test('Ansicht der Gesellschaftsspiele: fremde Geheimnisse bleiben verdeckt', () 
     const other = eng.s.imp === 0 ? eng.s.word : eng.s.word2;
     if (eng.s.mode !== 'spy' || eng.s.imp !== 0) assert.ok(!JSON.stringify(miniView(uc, 0, 9000, players).sub).includes(`"${other}"`));
     // Die Engine gehört nicht zum gespeicherten Zustand
-    assert.ok(!JSON.stringify(uc).includes('"hands"') && !JSON.stringify(liars).includes('"hands"'));
+    assert.ok(!JSON.stringify(uc).includes('"hands"'));
     // Vor dem Start der Spielphase gibt es keine Unter-Ansicht
     const early = createMini({ type: 'ladder', id: 3, rng: seeded(3), players, now: 0, star: false });
     assert.equal(miniView(early, 0, 0, players).sub, null);
@@ -575,18 +568,18 @@ test('Belohnung bei Teams: das bessere Team bekommt Platz 1 (10), das andere Pla
 
 // ---------- Zu zweit ----------
 
-test('Zu zweit: Sternenjagd startet mit 2 Personen, Undercover kommt nie vor, die anderen 13 Minispiele laufen im Kreis', () => {
+test('Zu zweit: Sternenjagd startet mit 2 Personen, Undercover kommt nie vor, die anderen 12 Minispiele laufen im Kreis', () => {
     const g = new PartyGame({ rng: seeded(4) });
     g.join('a', 'A');
     assert.ok(g.apply(0, { t: 'start' }).error, 'allein geht nicht');
     g.join('b', 'B');
     assert.ok(!g.apply(0, { t: 'start' }, 0).error);
-    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 13 });
+    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 12 });
     for (const seed of [1, 2, 3]) {
         const { types } = autoplay(2, 27, seed);
         assert.ok(!types.includes('undercover'));
-        assert.equal(new Set(types.slice(0, 13)).size, 13);
-        assert.equal(new Set(types.slice(13, 26)).size, 13);
+        assert.equal(new Set(types.slice(0, 12)).size, 12);
+        assert.equal(new Set(types.slice(12, 24)).size, 12);
         for (let i = 1; i < types.length; i++) assert.notEqual(types[i], types[i - 1]);
     }
 });
@@ -602,9 +595,9 @@ test('Zu zweit: alle Gesellschafts-Minispiele außer Undercover laufen mit 2 Per
     }
 });
 
-test('Mit 3 Personen ist Undercover wieder dabei (14 Minispiele)', () => {
+test('Mit 3 Personen ist Undercover wieder dabei (13 Minispiele)', () => {
     const g = new PartyGame({ rng: seeded(4) });
     for (const n of ['a', 'b', 'c']) g.join(n, n);
     g.apply(0, { t: 'start' }, 0);
-    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 14 });
+    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 13 });
 });

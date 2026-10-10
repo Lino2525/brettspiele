@@ -3,7 +3,7 @@
 //   solo  Alle spielen gleichzeitig für sich auf ihrem Gerät und melden am Ende nur ihre Punktzahl (Geschicklichkeit).
 //   quiz  Der Host stellt Fragen und wertet Antworten selbst (Wissen, Flaggen), die richtige Lösung bleibt beim Host.
 //   draw  Eine Person zeichnet einen Begriff, alle anderen raten ihn.
-//   sub   Gesellschaftsspiele (Lügenwürfel, Stadt-Land-Fluss, Undercover, Stufenquiz, Wortraten): laufen als eigene kleine
+//   sub   Gesellschaftsspiele (Stadt-Land-Fluss, Undercover, Stufenquiz, Wortraten): laufen als eigene kleine
 //         Engine (subgames.js), ab 4 Personen teils in Teams.
 import { QUESTIONS, FLAGS, WORDS } from './data.js';
 import { checkGuess } from '../songquiz/answer.js';

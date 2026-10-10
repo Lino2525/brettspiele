@@ -7,7 +7,6 @@
 // Rückgabe: { update(mini), destroy() }
 
 import { mountGame } from '../common/kit.js';
-import { createLiarsUI } from '../liars/ui.js';
 import { createSlfUI } from '../slf/ui.js';
 import { createUndercoverUI } from '../undercover/ui.js';
 import { createLadderUI } from '../ladder/ui.js';
@@ -642,7 +641,7 @@ function subGame(createUI) {
 
 const CREATORS = {
     timing, hoops, reaction, tapping, memory, math, quiz, flags: quiz, draw,
-    liars: subGame(createLiarsUI), slf: subGame(createSlfUI), undercover: subGame(createUndercoverUI), ladder: subGame(createLadderUI), wordguess: subGame(createWordGuessUI),
+    slf: subGame(createSlfUI), undercover: subGame(createUndercoverUI), ladder: subGame(createLadderUI), wordguess: subGame(createWordGuessUI),
 };
 
 export function createMiniGame(type, box, mini, api) {
