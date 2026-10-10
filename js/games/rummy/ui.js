@@ -118,7 +118,7 @@ export function mountRummy(root, session) {
         el.players.innerHTML = v.players
             .map((p, i) => {
                 const onTurn = v.phase === 'playing' && v.turn === i;
-                return `<div class="pchip${onTurn ? ' on-turn' : ''}"><span class="dot ${p.connected ? 'on' : 'off'}"></span>` +
+                return `<div class="pchip${onTurn ? ' on-turn' : ''}" style="--pc:var(--p${i})"><span class="dot ${p.connected ? 'on' : 'off'}"></span>` +
                     `<strong>${esc(p.name)}</strong>${i === v.seat ? '<span class="me-tag">Du</span>' : ''}` +
                     (v.phase !== 'waiting' ? `<span class="pc">${p.rackCount} Steine</span>` : '') +
                     (v.round > 0 ? `<span class="ps">${fmt(v.scores[i])}</span>` : '') + '</div>';
