@@ -35,7 +35,7 @@ function checkInvariants(g, ctx) {
     for (let seat = 0; seat < s.players.length; seat++) {
         const json = JSON.stringify(g.view(seat, 0));
         if (json.includes('"token"')) fail('Token in der Ansicht');
-        if (s.mini && s.mini.kind === 'quiz' && s.mini.phase === 'play' && s.mini.q.phase === 'ask' && json.includes('"secret"')) fail('Geheimnis in der Ansicht');
+        if (s.mini && (s.mini.kind === 'quiz' || s.mini.kind === 'estimate') && s.mini.phase === 'play' && s.mini.q.phase === 'ask' && json.includes('"secret"')) fail('Geheimnis in der Ansicht');
     }
 }
 
@@ -45,7 +45,6 @@ function randomSubAction(type, rng, n) {
     const seat = () => Math.floor(rng() * n);
     const answers = () => Array.from({ length: 8 }, () => WORD(rng));
     switch (type) {
-        case 'liars': return pick([{ t: 'bid', qty: 1 + Math.floor(rng() * 8), face: 1 + Math.floor(rng() * 6) }, { t: 'challenge' }, { t: 'next' }]);
         case 'slf': return pick([{ t: 'answers', list: answers() }, { t: 'stop', list: answers() }, { t: 'flag', p: seat(), c: Math.floor(rng() * 4) }, { t: 'ready' }, { t: 'start' }, { t: 'rematch' }]);
         case 'undercover': return pick([{ t: 'ready' }, { t: 'clue', text: WORD(rng) }, { t: 'vote', target: seat() }, { t: 'guess', text: WORD(rng) }]);
         case 'ladder': return pick([{ t: 'level', n: 1 + Math.floor(rng() * 10) }, { t: 'answer', c: Math.floor(rng() * 4) }, { t: 'ready' }]);
@@ -79,6 +78,7 @@ function playOne(seed) {
             if (m.kind === 'sub') g.apply(seat, { t: 'mini', kind: 'sub', a: randomSubAction(m.type, rng, n) }, t);
             else if (m.kind === 'solo') g.apply(seat, { t: 'mini', kind: 'score', score: Math.floor(rng() * 4000) - 100 }, t);
             else if (m.kind === 'quiz') g.apply(seat, { t: 'mini', kind: 'answer', c: Math.floor(rng() * 4) }, t);
+            else if (m.kind === 'estimate') g.apply(seat, { t: 'mini', kind: 'answer', v: Math.floor(rng() * 5000) - 100 }, t);
             else {
                 const choice = rng();
                 if (choice < 0.4) g.apply(seat, { t: 'mini', kind: 'guess', text: ['Haus', 'Baum', 'xyz', m.secret.word][Math.floor(rng() * 4)] }, t);

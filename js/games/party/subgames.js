@@ -2,7 +2,6 @@
 // Jedes Minispiel dieser Art lässt eine eigene kleine Spiel-Engine laufen (aus js/games/<spiel>/engine.js), mit den
 // Sternenjagd-Spielern als Mitspielern und kurzen Zeiten. Aus dem Ergebnis wird je Person eine Punktzahl für die Belohnung.
 import { shuffled, MIN_TEAM_PLAYERS, TEAM_NAMES } from '../common/room.js';
-import { LiarsGame } from '../liars/engine.js';
 import { SlfGame } from '../slf/engine.js';
 import { UndercoverGame } from '../undercover/engine.js';
 import { LadderGame } from '../ladder/engine.js';
@@ -11,19 +10,6 @@ import { WordGuessGame } from '../wordguess/engine.js';
 const SLF_CATEGORIES = ['Stadt', 'Land', 'Fluss', 'Name', 'Tier', 'Beruf', 'Essen & Trinken', 'Gegenstand'];
 
 export const SUBGAMES = {
-    liars: {
-        title: 'Lügenwürfel',
-        Engine: LiarsGame,
-        teams: false,
-        capMs: 120000,
-        rules: 'Jede Person hat 3 geheime Würfel. Reihum bieten, wie viele Würfel eines Wertes am Tisch liegen (Einser sind Joker), oder „Lüge!“ sagen. Wer falsch liegt, verliert einen Würfel. Wer am Ende die meisten Würfel hat, gewinnt.',
-        allowed: ['bid', 'challenge', 'next'],
-        setup(eng) {
-            eng.s.diceStart = 3;
-            eng.s.wild = true;
-        },
-        scores: eng => eng.s.players.map(p => p.dice * 10),
-    },
     slf: {
         title: 'Stadt-Land-Fluss',
         Engine: SlfGame,

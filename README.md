@@ -55,24 +55,22 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
 
 - **Sternenjagd** (2-6 Personen, Partyspiel mit Spielfeld und Minispielen): Rundkurs mit 28 Feldern (blau +3, rot −3,
   grün = Glücksfeld mit Zufallsereignis), Stern auf dem Brett (kauft man im Vorbeigehen für 5 Münzen, er wandert danach).
-  Die Reihenfolge der Würfe bleibt immer gleich. Nach jeder Runde (alle haben gewürfelt) spielen alle ein Minispiel; erst kommen alle 9 einmal dran (zufällige Reihenfolge, oben steht „Minispiel 3 von 9“), dann beginnt ein neuer Durchlauf: Volltreffer (richtiger Moment), Korbwurf, Blitzreaktion,
-  Tipp-Marathon, Merkreihe, Kopfrechnen, Wissen (Allgemeinwissen), Flaggen (Flaggenbilder von flagcdn.com) und
-  Zeichnen & Raten. Belohnung: 1. Platz 10 Münzen, 2. 6, 3. 4, sonst 2; in Sternrunden (jede dritte und die letzte)
+  Die Reihenfolge der Würfe bleibt immer gleich. Nach jeder Runde (alle haben gewürfelt) spielen alle ein Minispiel; erst kommen alle einmal dran (zufällige Reihenfolge, oben steht „Minispiel 3 von 20“), dann beginnt ein neuer Durchlauf: Volltreffer (richtiger Moment), Korbwurf, Blitzreaktion,
+  Tipp-Marathon, Merkreihe, Kopfrechnen, Farbe oder Wort (Stroop), Stoppuhr, Maulwurf, Ausreißer (Farbton finden), Zahlenjagd (1 bis 25),
+  Sortierblitz (links/rechts nach wechselnder Regel), Wissen (Allgemeinwissen), Flaggen (Flaggenbilder von flagcdn.com),
+  Schätzfrage (wer der Zahl am nächsten liegt, gewinnt; Fragen in `data.js`) und Zeichnen & Raten. Belohnung: 1. Platz 10 Münzen, 2. 6, 3. 4, sonst 2; in Sternrunden (jede dritte und die letzte)
   gewinnt der Erste einen Stern. Am Ende zählt ein Stern 10 Münzen. Rundenzahl (5-15) wählt der Host in der Lobby.
   Inhalte (Fragen, Flaggen, Begriffe) stehen in `js/games/party/data.js`. Eigenständiges Design, keine geschützten Figuren.
 
 ### Gesellschaftsspiele für 3 bis 6 Personen
 
-**Diese fünf Spiele sind keine eigenen Spiele mehr, sondern Minispiele in Sternenjagd** (js/games/party/subgames.js; Sternenjagd läuft mit 2 bis 6 Personen; es gibt 14 Minispiele pro Durchlauf, zu zweit 13, weil Undercover mindestens 3 Personen braucht). In Teams (ab 4 Personen, nicht in Sternrunden) wird der Teamdurchschnitt gewertet, das bessere Team bekommt Platz 1. Die gemeinsame Grundlage (Mitspieler, Teams, Warteraum,
+**Diese vier Spiele sind keine eigenen Spiele mehr, sondern Minispiele in Sternenjagd** (js/games/party/subgames.js; Sternenjagd läuft mit 2 bis 6 Personen; es gibt zusammen 20 Minispiele pro Durchlauf, zu zweit 19, weil Undercover mindestens 3 Personen braucht). In Teams (ab 4 Personen, nicht in Sternrunden) wird der Teamdurchschnitt gewertet, das bessere Team bekommt Platz 1. Die gemeinsame Grundlage (Mitspieler, Teams, Warteraum,
 Ergebnisfenster) liegt in `js/games/common/` (`room.js` für den Host, `kit.js` für die Oberfläche), jedes Spiel
 besteht nur noch aus Regeln (`engine.js`), Inhalten und Spielfläche (`ui.js`). Styles: `css/games.css`.
 Teams (zwei Teams, Rot und Blau) gibt es ab 4 Personen bei Stadt-Land-Fluss, Stufenquiz und Wortraten: Der Host
 schaltet sie im Warteraum ein und kann neu mischen, jede Person kann das Team selbst wechseln; das Team gewinnt
 oder verliert gemeinsam (Teamsumme).
 
-- **Lügenwürfel** (Bluffspiel): Alle würfeln geheim (3, 4 oder 5 Würfel pro Person). Reihum bietet man, wie viele Würfel
-  eines Wertes insgesamt am Tisch liegen, und überbietet das letzte Gebot oder sagt „Lüge!“. Wer falsch liegt, verliert
-  einen Würfel. Einser sind wahlweise Joker. Wer zuletzt noch Würfel hat, gewinnt. Wer zu lange braucht, zweifelt automatisch an.
 - **Stadt-Land-Fluss**: Ausgelosten Buchstaben, 3 bis 8 wählbare Kategorien (Standard Stadt, Land, Fluss, Name, Tier,
   Beruf). Wer fertig ist, ruft „Stopp“, die anderen haben noch 12 Sekunden. Punkte: 20 für eine Antwort, die nur man selbst
   hat, 10 für eine einzigartige, 5 für gleiche Antworten. In der Auswertung kann die Gruppe Antworten mit 👎 anzweifeln

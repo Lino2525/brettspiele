@@ -372,6 +372,7 @@ export function mountParty(root, session) {
                     seat: v.seat,
                     remaining: () => cur.deadline - performance.now(),
                     avatars: () => st.avatars,
+                    names: () => st.view.players.map(p => p.name),
                     submit: score => session.send({ t: 'mini', kind: 'score', score }),
                     send: payload => session.send({ t: 'mini', ...payload }),
                 };
