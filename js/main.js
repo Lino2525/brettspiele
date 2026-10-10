@@ -258,7 +258,7 @@ for (const [id, game] of Object.entries(GAMES)) {
     btn.type = 'button';
     btn.title = `${game.title} starten`;
     const [min, max] = game.players;
-    btn.innerHTML = `<span class="num">${String(Object.keys(GAMES).indexOf(id) + 1).padStart(2, '0')}</span><span class="gname"></span><span class="gmeta">${min === max ? min : `${min}–${max}`} PLAYERS</span>`;
+    btn.innerHTML = `<span class="num">${String(Object.keys(GAMES).indexOf(id) + 1).padStart(2, '0')}</span><span class="gtxt"><span class="gname"></span><span class="gmeta">${min === max ? min : `${min}–${max}`} PLAYERS</span></span>`;
     btn.querySelector('.gname').textContent = game.title;
     btn.addEventListener('click', () => hostGame(id));
     $('gameList').appendChild(btn);

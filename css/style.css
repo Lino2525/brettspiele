@@ -278,8 +278,9 @@ input.code {
     background: var(--rc);
     color: #08080d;
 }
-.game-row .gname { flex: 1; min-width: 0; padding: 14px 14px; font-size: 1.05rem; }
-.game-row .gmeta { align-self: center; white-space: nowrap; padding-right: 14px; font-family: var(--mono); font-size: .78rem; font-weight: 400; color: var(--muted); letter-spacing: .1em; }
+.game-row .gtxt { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 2px 12px; padding: 12px 14px; }
+.game-row .gname { font-size: 1.05rem; overflow-wrap: anywhere; }
+.game-row .gmeta { white-space: nowrap; font-family: var(--mono); font-size: .78rem; font-weight: 400; color: var(--muted); letter-spacing: .1em; }
 .game-row:hover:not(:disabled) { --fill: color-mix(in srgb, var(--rc) 14%, transparent); box-shadow: 0 0 18px color-mix(in srgb, var(--rc) 55%, transparent), inset 0 0 14px color-mix(in srgb, var(--rc) 22%, transparent); }
 #gameList .game-row:nth-child(4n + 1) { --rc: var(--yellow); }
 #gameList .game-row:nth-child(4n + 2) { --rc: var(--cyan); }

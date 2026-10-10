@@ -103,3 +103,17 @@ Einstellung wird gemerkt. Tempo, Akkorde, Klangfarbe und Pegel lassen sich oben 
 - `js/games/<spiel>/rules.js`, `engine.js`, `ui.js`: Regeln, Spielablauf, Oberfläche
 - `js/games/monopoly/`: `board.js` (Plan, Karten, Regelfunktionen), `engine.js` (Ablauf), `board-view.js`, `trade-ui.js`, `ui.js`
 - `js/main.js`: Lobby, hier werden neue Spiele in `GAMES` eingetragen
+
+## Design „Neon Grid 2077“
+
+Das Aussehen steckt komplett in `css/*.css` (Tokens in `:root` von `css/style.css`), im Gerüst `index.html` und in den
+Render-Teilen der `ui.js`-Dateien. Spiellogik, Engines und Netzwerk sind davon unberührt.
+
+- Farben: gelb (Aktion), cyan (Info/Münzen), pink (Gefahr), grün (OK/Ereignis), violett; Spielerfarben `--p0` bis `--p5`
+- Schriften: Chakra Petch (Text) und Share Tech Mono (Labels, Status) über Google Fonts, mit Systemschrift als Rückfall
+- Formen: abgeschrägte Ecke oben rechts per `clip-path`, 1px-Neon-Kontur plus Glow. Jedes Element setzt nur `--bc`
+  (Kontur) und `--fill` (Fläche); die Schräge zeichnet ein Hintergrundverlauf, der `clip-path` lässt Platz für den Glow
+- Hintergrund: Raster, Scanlines (`body::after`) und Neon-Regen (`.rain` in `index.html`)
+- Sternenjagd: Figuren liegen auf einer eigenen Ebene und gleiten per CSS-Transition; vor jedem Minispiel läuft die
+  Slot-Walze (`runReel` in `js/games/party/ui.js`), deren Ziel das vom Host gewählte Minispiel ist
+- `prefers-reduced-motion: reduce` schaltet Regen, Glitch, Scanline-Bewegung, Pulse, Effekte und die Walze ab

@@ -1,8 +1,9 @@
 // Gemeinsame Oberfläche der Spiele für 3 bis 6 Personen: Kopfzeile, Punktetafel, Warteraum mit Teams,
 // Ergebnisfenster, Zeitanzeige und Eingaben. Ein Spiel liefert nur noch den Inhalt der Spielfläche.
 export const esc = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-export const PLAYER_COLORS = ['#e53935', '#1e88e5', '#2e9e4f', '#f9a825', '#8e44ad', '#ef6c00'];
-export const TEAM_COLORS = ['#e53935', '#1e88e5'];
+// Neon-Grid: gelb, cyan, pink, violett; ab dem 5. Platz orange und grün. Teams: pink gegen cyan.
+export const PLAYER_COLORS = ['#fcee0a', '#05d9e8', '#ff2a6d', '#b967ff', '#ff9a00', '#39ff14'];
+export const TEAM_COLORS = ['#ff2a6d', '#05d9e8'];
 export const FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
 // Setzt HTML nur bei Änderung und rettet dabei Eingabefelder (data-keep="…"): Wert, Fokus und Cursor bleiben erhalten.
@@ -107,7 +108,7 @@ export function mountGame(root, session, game, opts = {}) {
         v.players.forEach((p, seat) => {
             const info = game.chip?.(v, seat) || {};
             const cls = ['cg-chip', seat === v.seat ? 'me' : '', p.connected ? '' : 'off', info.cls || '', v.teamMode ? `team${p.team}` : ''].filter(Boolean).join(' ');
-            html += `<div class="${cls}">${avatarHTML(seat, 26)}<span class="cg-name">${esc(p.name)}</span>${info.note ? `<span class="cg-note">${info.note}</span>` : ''}${scores ? `<b class="cg-pts">${scores[seat]}</b>` : ''}</div>`;
+            html += `<div class="${cls}" style="--pc:${ctx.color(seat)}">${avatarHTML(seat, 26)}<span class="cg-name">${esc(p.name)}</span>${info.note ? `<span class="cg-note">${info.note}</span>` : ''}${scores ? `<b class="cg-pts">${scores[seat]}</b>` : ''}</div>`;
         });
         if (v.teamMode && scores) {
             const sums = [0, 1].map(t => v.players.reduce((n, p, i) => n + (p.team === t ? scores[i] : 0), 0));
