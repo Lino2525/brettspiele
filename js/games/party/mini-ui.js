@@ -3,7 +3,8 @@
 //   api.seat           eigener Platz
 //   api.remaining()    verbleibende Millisekunden bis zum Ende der Spielphase
 //   api.submit(score)  Ergebnis melden (bei Geschicklichkeitsspielen, nur einmal)
-//   api.send(payload)  Aktion an den Host (Quiz, Zeichnen)
+//   api.send(payload)  Aktion an den Host (Quiz, Zeichnen, Schätzfrage)
+//   api.names()        Namen aller Plätze (für die Auflösung der Schätzfrage)
 // Rückgabe: { update(mini), destroy() }
 
 import { mountGame } from '../common/kit.js';
@@ -628,6 +629,403 @@ function draw(box, mini, api) {
     };
 }
 
+// ---------- Farbe oder Wort (Stroop) ----------
+
+const NEON = [
+    { name: 'PINK', color: '#ff2a6d' },
+    { name: 'CYAN', color: '#05d9e8' },
+    { name: 'GELB', color: '#fcee0a' },
+    { name: 'GRÜN', color: '#39ff14' },
+];
+
+// Spieldauer: meist 20 Sekunden, bei spätem Einstieg entsprechend weniger
+const duration = (api, ms = 20000) => Math.min(ms, Math.max(1000, api.remaining() - 400));
+
+function stroop(box, mini, api) {
+    return solo(box, api, ctl => {
+        const rng = mulberry32(mini.params.seed);
+        box.innerHTML = `<div class="st-info">Punkte: 0</div><div class="st-word"></div>
+            <div class="st-btns">${NEON.map((c, i) => `<button type="button" class="btn st-btn" data-i="${i}">${c.name}</button>`).join('')}</div><div class="st-fb"></div>`;
+        const info = box.querySelector('.st-info');
+        const wordEl = box.querySelector('.st-word');
+        const fb = box.querySelector('.st-fb');
+        let score = 0;
+        let cur = null;
+        const next = () => {
+            const word = Math.floor(rng() * 4);
+            const ink = rng() < 0.25 ? word : (word + 1 + Math.floor(rng() * 3)) % 4;
+            cur = { word, ink };
+            wordEl.textContent = NEON[word].name;
+            wordEl.style.color = NEON[ink].color;
+            wordEl.style.textShadow = `0 0 16px ${NEON[ink].color}`;
+        };
+        next();
+        box.querySelectorAll('.st-btn').forEach(b => b.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            if (ctl.done) return;
+            if (Number(b.dataset.i) === cur.ink) {
+                score += 100;
+                fb.textContent = 'Richtig! +100';
+                fb.className = 'st-fb ok';
+            } else {
+                score = Math.max(0, score - 50);
+                fb.textContent = 'Falsch! −50';
+                fb.className = 'st-fb bad';
+            }
+            info.textContent = `Punkte: ${score}`;
+            next();
+        }));
+        ctl.later(() => ctl.finish(score), duration(api));
+        ctl.onTimeout = () => ctl.finish(score);
+    });
+}
+
+// ---------- Stoppuhr ----------
+
+function stopwatch(box, mini, api) {
+    return solo(box, api, ctl => {
+        const rng = mulberry32(mini.params.seed);
+        const targets = [3, 5, 7].map(base => base + Math.floor(rng() * 5) * 0.5);
+        const fmt = ms => (ms / 1000).toFixed(2).replace('.', ',');
+        box.innerHTML = `<div class="sw-info"></div><div class="sw-target"></div><div class="sw-time">0,00</div>
+            <button class="btn primary big sw-btn" type="button">Stopp!</button><div class="sw-res"></div>`;
+        const info = box.querySelector('.sw-info');
+        const target = box.querySelector('.sw-target');
+        const timeEl = box.querySelector('.sw-time');
+        const btn = box.querySelector('.sw-btn');
+        const res = box.querySelector('.sw-res');
+        let idx = 0;
+        let total = 0;
+        let t0 = 0;
+        let running = false;
+        const HIDE_AT = 1500;
+        const begin = () => {
+            const goal = targets[idx] * 1000;
+            info.textContent = `Versuch ${idx + 1} von 3 · ${total} Punkte`;
+            target.textContent = `Ziel: ${fmt(goal)} s`;
+            res.textContent = '';
+            res.className = 'sw-res';
+            timeEl.classList.remove('hidden');
+            t0 = performance.now();
+            running = true;
+        };
+        const stop = auto => {
+            if (!running || ctl.done) return;
+            running = false;
+            const goal = targets[idx] * 1000;
+            const ms = performance.now() - t0;
+            const diff = Math.abs(ms - goal);
+            const pts = auto ? 0 : Math.max(0, Math.round(300 * (1 - diff / 1000)));
+            total += pts;
+            timeEl.classList.remove('hidden');
+            timeEl.textContent = fmt(auto ? goal + 2000 : ms);
+            res.textContent = auto ? 'Zu spät! 0 Punkte' : `${diff < 50 ? 'Volltreffer! ' : ''}Abweichung ${fmt(diff)} s · +${pts}`;
+            res.className = `sw-res ${pts >= 200 ? 'ok' : pts > 0 ? '' : 'bad'}`;
+            idx++;
+            info.textContent = `Versuch ${Math.min(idx + 1, 3)} von 3 · ${total} Punkte`;
+            if (idx >= 3) ctl.finish(total);
+            else ctl.later(begin, 1700);
+        };
+        btn.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            stop(false);
+        });
+        ctl.frame(now => {
+            if (!running) return;
+            const ms = now - t0;
+            if (ms >= targets[idx] * 1000 + 2000) return stop(true);
+            if (ms >= HIDE_AT) {
+                timeEl.classList.add('hidden');
+                timeEl.textContent = '? ? ?';
+            } else timeEl.textContent = fmt(ms);
+        });
+        ctl.later(begin, 800);
+        ctl.onTimeout = () => ctl.finish(total);
+    });
+}
+
+// ---------- Maulwurf ----------
+
+function mole(box, mini, api) {
+    return solo(box, api, ctl => {
+        const rng = mulberry32(mini.params.seed);
+        box.innerHTML = `<div class="mo-info">Punkte: 0</div><div class="mo-grid">${Array.from({ length: 9 }, (_, i) => `<button type="button" class="mo-hole" data-i="${i}"></button>`).join('')}</div><div class="mo-hint">Gelb tippen, Pink meiden!</div>`;
+        const info = box.querySelector('.mo-info');
+        const holes = [...box.querySelectorAll('.mo-hole')];
+        const active = new Map(); // Loch -> { kind, id }
+        let score = 0;
+        let n = 0;
+        let uid = 0;
+        const clear = (i, id) => {
+            const a = active.get(i);
+            if (a && a.id === id) {
+                active.delete(i);
+                holes[i].className = 'mo-hole';
+            }
+        };
+        const spawn = () => {
+            if (ctl.done) return;
+            const free = holes.map((h, i) => i).filter(i => !active.has(i));
+            if (free.length) {
+                const i = free[Math.floor(rng() * free.length)];
+                const kind = rng() < 0.22 ? 'bomb' : 'target';
+                const id = ++uid;
+                active.set(i, { kind, id });
+                holes[i].className = `mo-hole ${kind}`;
+                ctl.later(() => clear(i, id), Math.max(650, 1150 - n * 20));
+            }
+            n++;
+            ctl.later(spawn, Math.max(430, 820 - n * 15));
+        };
+        holes.forEach((h, i) => h.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            const a = active.get(i);
+            if (!a || ctl.done) return;
+            active.delete(i);
+            if (a.kind === 'target') {
+                score += 100;
+                h.className = 'mo-hole hit';
+            } else {
+                score = Math.max(0, score - 150);
+                h.className = 'mo-hole boom';
+            }
+            info.textContent = `Punkte: ${score}`;
+            const id = a.id;
+            ctl.later(() => {
+                if (!active.has(i)) h.className = 'mo-hole';
+                void id;
+            }, 260);
+        }));
+        ctl.later(spawn, 600);
+        ctl.later(() => ctl.finish(score), duration(api));
+        ctl.onTimeout = () => ctl.finish(score);
+    });
+}
+
+// ---------- Ausreißer ----------
+
+function oddone(box, mini, api) {
+    return solo(box, api, ctl => {
+        const rng = mulberry32(mini.params.seed);
+        box.innerHTML = '<div class="od-info">Punkte: 0</div><div class="od-grid"></div><div class="od-fb"></div>';
+        const info = box.querySelector('.od-info');
+        const grid = box.querySelector('.od-grid');
+        const fb = box.querySelector('.od-fb');
+        let score = 0;
+        let level = 0;
+        let odd = 0;
+        const puzzle = () => {
+            const size = Math.min(6, 3 + Math.floor(level / 2));
+            const delta = Math.max(5, 30 - level * 2.6);
+            const hue = Math.floor(rng() * 360);
+            odd = Math.floor(rng() * size * size);
+            const dir = rng() < 0.5 ? -1 : 1;
+            grid.style.setProperty('--n', size);
+            grid.innerHTML = Array.from({ length: size * size }, (_, i) => `<button type="button" class="od-tile" data-i="${i}" style="background:hsl(${i === odd ? hue + dir * delta : hue} 85% 55%)"></button>`).join('');
+        };
+        puzzle();
+        grid.addEventListener('pointerdown', e => {
+            const t = e.target.closest('.od-tile');
+            if (!t || ctl.done) return;
+            e.preventDefault();
+            if (Number(t.dataset.i) === odd) {
+                score += 100;
+                level++;
+                fb.textContent = 'Treffer! +100';
+                fb.className = 'od-fb ok';
+            } else {
+                score = Math.max(0, score - 50);
+                fb.textContent = 'Daneben! −50';
+                fb.className = 'od-fb bad';
+            }
+            info.textContent = `Punkte: ${score} · Stufe ${level + 1}`;
+            puzzle();
+        });
+        ctl.later(() => ctl.finish(score), duration(api));
+        ctl.onTimeout = () => ctl.finish(score);
+    });
+}
+
+// ---------- Zahlenjagd ----------
+
+function numberhunt(box, mini, api) {
+    return solo(box, api, ctl => {
+        const rng = mulberry32(mini.params.seed);
+        const order = Array.from({ length: 25 }, (_, i) => i + 1);
+        for (let i = order.length - 1; i > 0; i--) {
+            const j = Math.floor(rng() * (i + 1));
+            [order[i], order[j]] = [order[j], order[i]];
+        }
+        box.innerHTML = `<div class="nh-info"></div><div class="nh-grid">${order.map(n => `<button type="button" class="nh-tile" data-n="${n}">${n}</button>`).join('')}</div>`;
+        const info = box.querySelector('.nh-info');
+        const t0 = performance.now();
+        let next = 1;
+        const score = () => (next - 1) * 20 + (next > 25 ? Math.max(0, 700 - Math.round((performance.now() - t0) / 40)) : 0);
+        const tick = () => {
+            info.textContent = next > 25 ? 'Geschafft!' : `Suche die ${next} · ${((performance.now() - t0) / 1000).toFixed(1).replace('.', ',')} s`;
+        };
+        tick();
+        ctl.frame(tick);
+        box.querySelector('.nh-grid').addEventListener('pointerdown', e => {
+            const t = e.target.closest('.nh-tile');
+            if (!t || ctl.done) return;
+            e.preventDefault();
+            if (Number(t.dataset.n) === next) {
+                t.classList.add('done');
+                next++;
+                if (next > 25) {
+                    tick();
+                    ctl.finish(score());
+                }
+            } else {
+                t.classList.remove('bad');
+                void t.offsetWidth;
+                t.classList.add('bad');
+            }
+        });
+        ctl.later(() => ctl.finish(score()), duration(api, 30000));
+        ctl.onTimeout = () => ctl.finish(score());
+    });
+}
+
+// ---------- Sortierblitz ----------
+
+const SB_ANIMALS = ['Katze', 'Hund', 'Fuchs', 'Adler', 'Löwe', 'Hase', 'Pferd', 'Delfin', 'Krokodil', 'Igel', 'Giraffe', 'Wolf'];
+const SB_PLANTS = ['Rose', 'Eiche', 'Tulpe', 'Farn', 'Birke', 'Kaktus', 'Tanne', 'Klee', 'Sonnenblume', 'Bambus', 'Efeu', 'Moos'];
+const SB_RULES = [
+    { left: 'GERADE', right: 'UNGERADE', make: rng => { const n = 10 + Math.floor(rng() * 90); return { text: String(n), side: n % 2 === 0 ? 'left' : 'right' }; } },
+    { left: 'KLEINER ALS 50', right: 'GRÖSSER ALS 50', make: rng => { let n = 1 + Math.floor(rng() * 99); if (n === 50) n = 49; return { text: String(n), side: n < 50 ? 'left' : 'right' }; } },
+    { left: 'TIER', right: 'PFLANZE', make: rng => { const animal = rng() < 0.5; const list = animal ? SB_ANIMALS : SB_PLANTS; return { text: list[Math.floor(rng() * list.length)], side: animal ? 'left' : 'right' }; } },
+    { left: 'KURZ (bis 5 Buchstaben)', right: 'LANG (ab 6)', make: rng => { const list = [...SB_ANIMALS, ...SB_PLANTS]; const w = list[Math.floor(rng() * list.length)]; return { text: w, side: w.length <= 5 ? 'left' : 'right' }; } },
+];
+
+function sortblitz(box, mini, api) {
+    return solo(box, api, ctl => {
+        const rng = mulberry32(mini.params.seed);
+        box.innerHTML = `<div class="sb-info">Punkte: 0</div><div class="sb-rule"></div><div class="sb-card"></div>
+            <div class="sb-btns"><button type="button" class="btn sb-btn" data-side="left"></button><button type="button" class="btn sb-btn" data-side="right"></button></div><div class="sb-hint">Tipp: Pfeiltasten ← →</div>`;
+        const info = box.querySelector('.sb-info');
+        const ruleEl = box.querySelector('.sb-rule');
+        const card = box.querySelector('.sb-card');
+        const btns = { left: box.querySelector('[data-side=left]'), right: box.querySelector('[data-side=right]') };
+        let score = 0;
+        let count = 0;
+        let rule = -1;
+        let cur = null;
+        const next = () => {
+            if (count % 6 === 0) {
+                // Regelwechsel (nie dieselbe Regel zweimal hintereinander)
+                let r = Math.floor(rng() * SB_RULES.length);
+                if (r === rule) r = (r + 1) % SB_RULES.length;
+                rule = r;
+                btns.left.textContent = SB_RULES[r].left;
+                btns.right.textContent = SB_RULES[r].right;
+                ruleEl.textContent = count === 0 ? 'Sortiere!' : 'Neue Regel!';
+                ruleEl.classList.remove('flash');
+                void ruleEl.offsetWidth;
+                ruleEl.classList.add('flash');
+            }
+            cur = SB_RULES[rule].make(rng);
+            card.textContent = cur.text;
+            card.className = 'sb-card';
+            count++;
+        };
+        next();
+        const choose = side => {
+            if (ctl.done) return;
+            const ok = side === cur.side;
+            score = ok ? score + 100 : Math.max(0, score - 50);
+            info.textContent = `Punkte: ${score}`;
+            card.className = `sb-card ${ok ? 'ok' : 'bad'}`;
+            next();
+        };
+        for (const side of ['left', 'right']) btns[side].addEventListener('pointerdown', e => {
+            e.preventDefault();
+            choose(side);
+        });
+        const key = e => {
+            if (e.key === 'ArrowLeft') choose('left');
+            else if (e.key === 'ArrowRight') choose('right');
+        };
+        document.addEventListener('keydown', key);
+        ctl.later(() => ctl.finish(score), duration(api));
+        ctl.onTimeout = () => ctl.finish(score);
+        return { destroy: () => document.removeEventListener('keydown', key) };
+    });
+}
+
+// ---------- Schätzfrage (Fragen und Zahl kommen vom Host) ----------
+
+// "1.500" und "74.500" sind Tausenderpunkte, "3.7" und "3,7" Kommazahlen
+function parseNumber(text) {
+    let t = text.trim().replace(/\s/g, '');
+    if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, '');
+    return Number(t.replace(',', '.'));
+}
+
+function estimate(box, mini, api) {
+    box.innerHTML = '<div class="qz-head"></div><div class="qz-bar"><i></i></div><div class="qz-q"></div><div class="es-body"></div><div class="qz-note"></div>';
+    const head = box.querySelector('.qz-head');
+    const bar = box.querySelector('.qz-bar i');
+    const qEl = box.querySelector('.qz-q');
+    const body = box.querySelector('.es-body');
+    const note = box.querySelector('.qz-note');
+    const fmt = n => Number(n).toLocaleString('de-DE', { maximumFractionDigits: 2 });
+    const names = () => (api.names ? api.names() : []);
+    let shownKey = '';
+    let received = performance.now();
+    let last = null;
+    const tick = setInterval(() => {
+        if (!last || last.itemPhase !== 'ask') return;
+        const left = Math.max(0, last.itemMsLeft - (performance.now() - received));
+        bar.style.width = `${(left / last.askMs) * 100}%`;
+    }, 100);
+    const render = p => {
+        received = performance.now();
+        last = p;
+        const key = `${p.i}|${p.itemPhase}|${p.mine}`;
+        head.textContent = `Frage ${p.i + 1} von ${p.total}`;
+        if (p.itemPhase !== 'ask') bar.style.width = '0%';
+        if (key === shownKey) return;
+        shownKey = key;
+        qEl.textContent = p.item.q;
+        const unit = p.item.unit ? ` ${esc(p.item.unit)}` : '';
+        if (p.itemPhase === 'ask') {
+            if (p.mine === null) {
+                body.innerHTML = `<form class="es-form"><input class="es-input" type="text" inputmode="decimal" autocomplete="off" placeholder="Deine Schätzung" aria-label="Deine Schätzung"><span class="es-unit">${esc(p.item.unit || '')}</span><button class="btn primary" type="submit">Tippen</button></form>`;
+                const form = body.querySelector('form');
+                const input = body.querySelector('input');
+                form.addEventListener('submit', e => {
+                    e.preventDefault();
+                    const v = parseNumber(input.value);
+                    if (input.value.trim() === '' || !Number.isFinite(v)) {
+                        input.classList.add('bad');
+                        return;
+                    }
+                    input.disabled = true;
+                    form.querySelector('button').disabled = true;
+                    api.send({ kind: 'answer', v });
+                });
+                input.focus();
+                note.textContent = '';
+            } else {
+                body.innerHTML = `<div class="es-mine">Deine Schätzung: <b>${fmt(p.mine)}${unit}</b></div>`;
+                note.textContent = 'Abgeschickt. Warte auf die anderen …';
+            }
+        } else {
+            const rows = Object.entries(p.picks || {})
+                .map(([seat, v]) => ({ seat: Number(seat), v, gain: p.gains?.[seat] ?? 0, err: Math.abs(v - p.truth) }))
+                .sort((a, b) => a.err - b.err)
+                .map(r => `<div class="es-row${r.seat === api.seat ? ' me' : ''}"><span>${esc(names()[r.seat] ?? '?')}</span><span>${fmt(r.v)}${unit}</span><b>+${r.gain}</b></div>`)
+                .join('');
+            body.innerHTML = `<div class="es-truth">Richtig: <b>${fmt(p.truth)}${unit}</b></div><div class="es-rows">${rows || '<div class="es-row"><span>Niemand hat geschätzt.</span></div>'}</div>`;
+            note.textContent = '';
+        }
+    };
+    render(mini.params);
+    return { update: m => render(m.params), destroy: () => clearInterval(tick) };
+}
+
 // Gesellschaftsspiele: die Oberfläche des eigenen Spiels, eingebettet; Aktionen gehen als { kind: 'sub', a } zum Host.
 function subGame(createUI) {
     return (box, mini, api) => {
@@ -641,6 +1039,7 @@ function subGame(createUI) {
 
 const CREATORS = {
     timing, hoops, reaction, tapping, memory, math, quiz, flags: quiz, draw,
+    stroop, stopwatch, mole, oddone, numberhunt, sortblitz, estimate,
     slf: subGame(createSlfUI), undercover: subGame(createUndercoverUI), ladder: subGame(createLadderUI), wordguess: subGame(createWordGuessUI),
 };
 

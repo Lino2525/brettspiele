@@ -1,11 +1,12 @@
 // Minispiele von Sternenjagd, Seite des Hosts: Aufbau, Zeitablauf, Antworten, Punkte, Belohnungen.
 // Es gibt drei Arten:
 //   solo  Alle spielen gleichzeitig für sich auf ihrem Gerät und melden am Ende nur ihre Punktzahl (Geschicklichkeit).
+//   estimate  Schätzfragen: Der Host kennt die Zahl, wer am nächsten liegt, bekommt die meisten Punkte.
 //   quiz  Der Host stellt Fragen und wertet Antworten selbst (Wissen, Flaggen), die richtige Lösung bleibt beim Host.
 //   draw  Eine Person zeichnet einen Begriff, alle anderen raten ihn.
 //   sub   Gesellschaftsspiele (Stadt-Land-Fluss, Undercover, Stufenquiz, Wortraten): laufen als eigene kleine
 //         Engine (subgames.js), ab 4 Personen teils in Teams.
-import { QUESTIONS, FLAGS, WORDS } from './data.js';
+import { QUESTIONS, FLAGS, WORDS, ESTIMATES } from './data.js';
 import { checkGuess } from '../songquiz/answer.js';
 import { SUBGAMES, isSub, createSub, subScores } from './subgames.js';
 
@@ -16,6 +17,7 @@ const GRACE_MS = 2000; // so lange nach Ablauf werden noch Ergebnisse angenommen
 
 const QUIZ = { count: 4, askMs: 10000, revealMs: 2500 };
 const FLAG = { count: 5, askMs: 8000, revealMs: 2000 };
+const EST = { count: 4, askMs: 15000, revealMs: 4500 };
 const DRAW_MS = 60000;
 const MAX_STROKE_NUMBERS = 600; // Zahlen pro Strich (x und y zählen einzeln)
 const MAX_DRAW_NUMBERS = 9000; // insgesamt pro Zeichnung
@@ -29,6 +31,13 @@ export const MINIS = {
     math: { title: 'Kopfrechnen', kind: 'solo', playMs: 24000, max: 3000, rules: 'Löse in 20 Sekunden so viele Rechenaufgaben wie möglich. Falsche Antworten kosten Punkte.' },
     quiz: { title: 'Wissen', kind: 'quiz', playMs: QUIZ.count * (QUIZ.askMs + QUIZ.revealMs), rules: `${QUIZ.count} Fragen, je 10 Sekunden. Wer richtig und schnell antwortet, bekommt die meisten Punkte.` },
     flags: { title: 'Flaggen', kind: 'quiz', playMs: FLAG.count * (FLAG.askMs + FLAG.revealMs), rules: `${FLAG.count} Flaggen: Welches Land ist es? Schnell sein lohnt sich.` },
+    stroop: { title: 'Farbe oder Wort', kind: 'solo', playMs: 24000, max: 3000, rules: 'Ein Farbwort erscheint in einer anderen Farbe. Tippe die Farbe, in der es geschrieben ist, nicht das Wort! 20 Sekunden, Fehler kosten Punkte.' },
+    stopwatch: { title: 'Stoppuhr', kind: 'solo', playMs: 36000, max: 900, rules: 'Die Uhr zählt hoch und wird dann unsichtbar. Stoppe sie so genau wie möglich bei der Zielzeit. Drei Versuche.' },
+    mole: { title: 'Maulwurf', kind: 'solo', playMs: 24000, max: 3000, rules: 'Tippe die gelben Ziele, sobald sie auftauchen. Die pinken Bomben lässt du in Ruhe! 20 Sekunden.' },
+    oddone: { title: 'Ausreißer', kind: 'solo', playMs: 24000, max: 3000, rules: 'Ein Feld hat einen minimal anderen Farbton. Finde und tippe es, die Unterschiede werden immer kleiner. 20 Sekunden.' },
+    numberhunt: { title: 'Zahlenjagd', kind: 'solo', playMs: 36000, max: 1200, rules: 'Tippe die Zahlen von 1 bis 25 in der richtigen Reihenfolge, so schnell du kannst. Wer fertig ist, bekommt Zeitbonus.' },
+    sortblitz: { title: 'Sortierblitz', kind: 'solo', playMs: 24000, max: 3000, rules: 'Links oder rechts? Sortiere die Karten nach der Regel, die oben steht. Die Regel wechselt alle paar Karten. 20 Sekunden.' },
+    estimate: { title: 'Schätzfrage', kind: 'estimate', playMs: EST.count * (EST.askMs + EST.revealMs), rules: `${EST.count} Schätzfragen: Tippe eine Zahl. Wer am nächsten liegt, bekommt die meisten Punkte.` },
     draw: { title: 'Zeichnen & Raten', kind: 'draw', playMs: DRAW_MS, rules: 'Eine Person zeichnet einen Begriff, alle anderen raten ihn. Richtig raten bringt Punkte, dem Zeichner auch.' },
 };
 for (const [type, def] of Object.entries(SUBGAMES)) MINIS[type] = { title: def.title, kind: 'sub', playMs: def.capMs, rules: def.rules, teams: def.teams, minPlayers: def.minPlayers };
@@ -84,6 +93,11 @@ export function createMini({ type, id, rng, players, now, star }) {
         mini.params = { items, askMs: cfg.askMs, revealMs: cfg.revealMs };
         mini.secret = { correct };
         mini.q = { i: 0, phase: 'ask', start: null, revealStart: null, answers: items.map(() => ({})) };
+    } else if (def.kind === 'estimate') {
+        const picked = sample(ESTIMATES, EST.count, rng);
+        mini.params = { items: picked.map(([q, , unit]) => ({ q, unit })), askMs: EST.askMs, revealMs: EST.revealMs };
+        mini.secret = { truth: picked.map(([, a]) => a), tol: picked.map(([, a, , tol]) => tol ?? Math.abs(a) * 0.6) };
+        mini.q = { i: 0, phase: 'ask', start: null, revealStart: null, answers: picked.map(() => ({})) };
     } else {
         // Wer am wenigsten Punkte hat, darf zeichnen (Aufholhilfe); bei Gleichstand entscheidet der Zufall
         const all = players.map((p, i) => ({ i, v: p.coins + p.stars * 10, c: p.connected }));
@@ -107,6 +121,19 @@ function startPlay(mini, now) {
     mini.engine?.begin(now);
 }
 
+// Schätzfrage: bis zur Toleranz fällt die Punktzahl linear von 200 auf 0, wer am nächsten liegt (und punktet), bekommt 50 dazu.
+// answers: { Platz: { v: Zahl } }  ->  { Platz: Punkte }
+export function estimatePoints(truth, tol, answers) {
+    const errs = Object.entries(answers).map(([seat, a]) => [seat, Math.abs(a.v - truth)]);
+    const best = Math.min(...errs.map(e => e[1]));
+    const out = {};
+    for (const [seat, err] of errs) {
+        const pts = Math.round(200 * Math.max(0, 1 - err / tol));
+        out[seat] = pts > 0 && err === best ? pts + 50 : pts;
+    }
+    return out;
+}
+
 // Wertet das Minispiel aus und geht in die Ergebnisphase.
 function finish(mini, now, players) {
     mini.phase = 'result';
@@ -117,6 +144,11 @@ function finish(mini, now, players) {
         subScores(mini.type, mini.engine, mini.teams).forEach((v, i) => (scores[i] = v));
     } else if (mini.kind === 'solo') {
         for (const [seat, v] of Object.entries(mini.subs)) scores[seat] = v;
+    } else if (mini.kind === 'estimate') {
+        mini.params.items.forEach((item, idx) => {
+            const pts = estimatePoints(mini.secret.truth[idx], mini.secret.tol[idx], mini.q.answers[idx]);
+            for (const [seat, p] of Object.entries(pts)) scores[seat] += p;
+        });
     } else if (mini.kind === 'quiz') {
         const ask = mini.params.askMs;
         mini.params.items.forEach((item, idx) => {
@@ -162,7 +194,7 @@ export function tickMini(mini, now, players) {
             finish(mini, now, players);
             return true;
         }
-    } else if (mini.kind === 'quiz') {
+    } else if (mini.kind === 'quiz' || mini.kind === 'estimate') {
         const q = mini.q;
         if (q.phase === 'ask') {
             const all = seats.length > 0 && seats.every(s => q.answers[q.i][s]);
@@ -208,6 +240,16 @@ export function miniAction(mini, seat, a, now, players) {
         if (mini.subs[seat] !== undefined) return OK; // nur das erste Ergebnis zählt
         const max = MINIS[mini.type].max;
         mini.subs[seat] = Math.min(max, Math.max(0, Math.floor(isNum(a.score) ? a.score : 0)));
+        return OK;
+    }
+    if (mini.kind === 'estimate') {
+        if (a.kind !== 'answer') return err('Unbekannte Aktion.');
+        const q = mini.q;
+        if (q.phase !== 'ask') return err('Die Zeit für diese Frage ist vorbei.');
+        if (q.answers[q.i][seat]) return OK;
+        const v = Number(a.v);
+        if (a.v === '' || a.v === null || !isNum(v) || Math.abs(v) > 1e12) return err('Gib eine Zahl ein.');
+        q.answers[q.i][seat] = { v, ms: Math.min(mini.params.askMs, now - q.start) };
         return OK;
     }
     if (mini.kind === 'quiz') {
@@ -271,6 +313,19 @@ export function miniView(mini, seat, now, players) {
         if (mini.teams && mini.scores) v.teamScores = [0, 1].map(t => mini.scores[mini.teams.of.indexOf(t)] ?? 0);
     } else if (mini.kind === 'solo') {
         v.params = mini.params;
+    } else if (mini.kind === 'estimate') {
+        const q = mini.q;
+        const answered = Object.keys(q.answers[q.i]).map(Number);
+        const reveal = mini.phase === 'result' || q.phase === 'reveal';
+        v.params = {
+            total: mini.params.items.length, i: q.i, item: mini.params.items[q.i], itemPhase: q.phase,
+            itemMsLeft: q.phase === 'ask' && q.start ? left(q.start + mini.params.askMs) : 0,
+            askMs: mini.params.askMs, answered,
+            mine: q.answers[q.i][seat]?.v ?? null,
+            truth: reveal ? mini.secret.truth[q.i] : null,
+            picks: reveal ? Object.fromEntries(Object.entries(q.answers[q.i]).map(([s, a]) => [s, a.v])) : null,
+            gains: reveal ? estimatePoints(mini.secret.truth[q.i], mini.secret.tol[q.i], q.answers[q.i]) : null,
+        };
     } else if (mini.kind === 'quiz') {
         const q = mini.q;
         const item = mini.params.items[q.i];

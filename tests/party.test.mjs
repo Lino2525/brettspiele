@@ -414,11 +414,12 @@ function autoplay(n, rounds, seed) {
 
 test('Minispiele: erst läuft jedes einmal durch, dann beginnt ein neuer Durchlauf (kein Spiel doppelt hintereinander)', () => {
     for (const seed of [1, 2, 3, 4, 5]) {
-        const { types } = autoplay(3, 30, seed);
-        assert.equal(types.length, 30);
-        assert.equal(new Set(types.slice(0, 13)).size, 13, `erster Durchlauf: ${types.slice(0, 13)}`);
-        assert.equal(new Set(types.slice(13, 26)).size, 13, 'zweiter Durchlauf');
-        assert.equal(types.length - 28, new Set(types.slice(28)).size, 'dritter Durchlauf beginnt ohne Wiederholung');
+        const { types } = autoplay(3, 45, seed);
+        const all = MINI_TYPES.length;
+        assert.equal(types.length, 45);
+        assert.equal(new Set(types.slice(0, all)).size, all, `erster Durchlauf: ${types.slice(0, all)}`);
+        assert.equal(new Set(types.slice(all, 2 * all)).size, all, 'zweiter Durchlauf');
+        assert.equal(types.length - 2 * all, new Set(types.slice(2 * all)).size, 'dritter Durchlauf beginnt ohne Wiederholung');
         for (let i = 1; i < types.length; i++) assert.notEqual(types[i], types[i - 1], 'nie dasselbe Spiel zweimal hintereinander');
     }
 });
@@ -429,14 +430,14 @@ test('Zähler in der Ansicht: wie viele Minispiele im aktuellen Durchlauf schon 
     g.join('b', 'B');
     g.join('c', 'C');
     g.apply(0, { t: 'start' }, 0);
-    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 13 });
+    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: MINI_TYPES.length });
     let t = 0;
     for (let i = 0; i < 3000 && !g.s.mini; i++) {
         t += 700;
         if (g.s.phase === 'board' && g.s.turnPhase === 'roll') g.apply(g.s.order[g.s.turnIdx], { t: 'roll' }, t);
         g.tick(t);
     }
-    assert.deepEqual(g.view(0, t).miniCycle, { done: 1, total: 13 });
+    assert.deepEqual(g.view(0, t).miniCycle, { done: 1, total: MINI_TYPES.length });
 });
 
 test('Reihenfolge: mit 3 Personen und mehr würfelt niemand direkt zweimal hintereinander (auch über das Minispiel hinweg)', () => {
@@ -568,18 +569,19 @@ test('Belohnung bei Teams: das bessere Team bekommt Platz 1 (10), das andere Pla
 
 // ---------- Zu zweit ----------
 
-test('Zu zweit: Sternenjagd startet mit 2 Personen, Undercover kommt nie vor, die anderen 12 Minispiele laufen im Kreis', () => {
+test('Zu zweit: Sternenjagd startet mit 2 Personen, Undercover kommt nie vor, alle anderen Minispiele laufen im Kreis', () => {
     const g = new PartyGame({ rng: seeded(4) });
     g.join('a', 'A');
     assert.ok(g.apply(0, { t: 'start' }).error, 'allein geht nicht');
     g.join('b', 'B');
     assert.ok(!g.apply(0, { t: 'start' }, 0).error);
-    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 12 });
+    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: MINI_TYPES.length - 1 });
     for (const seed of [1, 2, 3]) {
-        const { types } = autoplay(2, 27, seed);
+        const { types } = autoplay(2, 45, seed);
+        const all = MINI_TYPES.length - 1;
         assert.ok(!types.includes('undercover'));
-        assert.equal(new Set(types.slice(0, 12)).size, 12);
-        assert.equal(new Set(types.slice(12, 24)).size, 12);
+        assert.equal(new Set(types.slice(0, all)).size, all);
+        assert.equal(new Set(types.slice(all, 2 * all)).size, all);
         for (let i = 1; i < types.length; i++) assert.notEqual(types[i], types[i - 1]);
     }
 });
@@ -595,9 +597,55 @@ test('Zu zweit: alle Gesellschafts-Minispiele außer Undercover laufen mit 2 Per
     }
 });
 
-test('Mit 3 Personen ist Undercover wieder dabei (13 Minispiele)', () => {
+test('Mit 3 Personen ist Undercover wieder dabei', () => {
     const g = new PartyGame({ rng: seeded(4) });
     for (const n of ['a', 'b', 'c']) g.join(n, n);
     g.apply(0, { t: 'start' }, 0);
-    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: 13 });
+    assert.deepEqual(g.view(0, 0).miniCycle, { done: 0, total: MINI_TYPES.length });
+});
+
+// ---------- Schätzfragen ----------
+
+import { estimatePoints } from '../js/games/party/minigames.js';
+
+test('Schätzfrage: Punkte fallen mit dem Abstand, wer am nächsten liegt, bekommt 50 dazu', () => {
+    assert.deepEqual(estimatePoints(100, 50, { 0: { v: 100 }, 1: { v: 125 }, 2: { v: 150 }, 3: { v: 300 } }), { 0: 250, 1: 100, 2: 0, 3: 0 });
+    assert.deepEqual(estimatePoints(100, 50, { 0: { v: 90 }, 1: { v: 110 } }), { 0: 210, 1: 210 }, 'Gleichstand: beide bekommen den Bonus');
+    assert.deepEqual(estimatePoints(100, 50, { 0: { v: 900 } }), { 0: 0 }, 'ohne Punkte kein Bonus');
+});
+
+test('Schätzfrage: Ablauf, nur die erste gültige Antwort zählt, Wahrheit erst im Reveal sichtbar', () => {
+    const players = people(3);
+    const m = createMini({ type: 'estimate', id: 1, rng: seeded(7), players, now: 0, star: false });
+    assert.equal(m.kind, 'estimate');
+    assert.ok(miniAction(m, 0, { kind: 'answer', v: 5 }, 100, players).error, 'vor dem Start nichts annehmen');
+    tickMini(m, INTRO_MS, players);
+    const t0 = INTRO_MS;
+    assert.equal(miniView(m, 0, t0, players).params.truth, null);
+    const truth = m.secret.truth[0];
+    assert.ok(miniAction(m, 0, { kind: 'answer', v: 'abc' }, t0 + 100, players).error);
+    assert.ok(miniAction(m, 0, { kind: 'answer', v: '' }, t0 + 100, players).error);
+    assert.ok(miniAction(m, 0, { kind: 'answer', v: 1e15 }, t0 + 100, players).error);
+    assert.ok(!miniAction(m, 0, { kind: 'answer', v: truth }, t0 + 1000, players).error);
+    assert.ok(!miniAction(m, 0, { kind: 'answer', v: 0 }, t0 + 1500, players).error, 'zweite Antwort wird ignoriert');
+    assert.ok(!miniAction(m, 1, { kind: 'answer', v: String(truth * 2) }, t0 + 2000, players).error);
+    assert.ok(!miniAction(m, 2, { kind: 'answer', v: truth + 1 }, t0 + 2000, players).error);
+    assert.equal(m.q.answers[0][0].v, truth);
+    // alle haben geantwortet: sofort Reveal, jetzt ist die Zahl sichtbar
+    assert.ok(tickMini(m, t0 + 2100, players));
+    assert.equal(m.q.phase, 'reveal');
+    const rv = miniView(m, 0, t0 + 2100, players).params;
+    assert.equal(rv.truth, truth);
+    assert.ok(rv.gains[0] >= 200);
+    assert.ok(miniAction(m, 0, { kind: 'answer', v: 1 }, t0 + 2200, players).error, 'im Reveal keine Antworten');
+    // alle Fragen durchspielen (nur Platz 0 antwortet jedes Mal), Ergebnisphase
+    let t = t0 + 2100;
+    for (let i = 0; i < 40 && m.phase === 'play'; i++) {
+        t += 5000;
+        tickMini(m, t, players);
+        if (m.phase === 'play' && m.q.phase === 'ask') miniAction(m, 0, { kind: 'answer', v: m.secret.truth[m.q.i] }, t + 10, players);
+    }
+    assert.equal(m.phase, 'result');
+    assert.ok(m.scores[0] > m.scores[1] && m.scores[1] >= 0 && m.scores[2] >= 0);
+    assert.ok(Object.values(m.scores).every(Number.isInteger));
 });
