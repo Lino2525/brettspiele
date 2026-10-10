@@ -33,7 +33,12 @@ function checkInvariants(g, ctx) {
         if (s.choice.options.some(o => !opts.includes(o)) || s.choice.options.length < 2) fail('Abzweigung mit ungültigen Möglichkeiten');
         if (!s.move || s.move.left < 1) fail('Abzweigung ohne verbleibende Schritte');
     }
-    if (s.phase === 'board' && ['duel', 'teleport'].includes(s.turnPhase) && !s.choice) fail('Entscheidung ohne Auswahl');
+    if (s.phase === 'board' && ['duel', 'teleport', 'buy'].includes(s.turnPhase) && !s.choice) fail('Entscheidung ohne Auswahl');
+    if (s.turnPhase === 'buy' && s.players[s.choice.seat].coins < STAR_PRICE) fail('Kauf-Frage ohne genug Münzen');
+    for (const t of s.traps) if (!STAR_SPOTS.includes(t.pos) || !s.players[t.owner]) fail(`Falle ungültig: ${JSON.stringify(t)}`);
+    if (new Set(s.traps.map(t => t.pos)).size !== s.traps.length) fail('zwei Fallen auf einem Feld');
+    if (new Set(s.traps.map(t => t.owner)).size !== s.traps.length) fail('mehr als eine Falle pro Person');
+    for (const p of s.players) if (p.maxCoins < p.coins) fail('Münzmagnet-Statistik zu niedrig');
     if (s.phase === 'mini' && s.mini?.duel && (s.mini.duel[0] === s.mini.duel[1] || !s.inDuel)) fail('Duell ungültig');
     if (!['waiting', 'board', 'mini', 'over'].includes(s.phase)) fail(`Phase ungültig: ${s.phase}`);
     if (s.phase === 'board') {
@@ -80,13 +85,15 @@ function playOne(seed) {
             const seat = Math.floor(rng() * n);
             g.setConnected(seat, rng() < 0.5);
         }
-        if (s.phase === 'board' && s.turnPhase === 'roll' && rng() < 0.6) g.apply(s.order[s.turnIdx], { t: 'roll' }, t);
+        if (s.phase === 'board' && s.turnPhase === 'roll' && rng() < 0.15) g.apply(rng() < 0.8 ? s.order[s.turnIdx] : Math.floor(rng() * n), { t: 'trap' }, t);
+        if (s.phase === 'board' && s.turnPhase === 'roll' && rng() < 0.6) g.apply(s.order[s.turnIdx], { t: 'roll', die: rng() < 0.5 ? 'safe' : 'normal' }, t);
         if (s.phase === 'board' && s.choice && rng() < 0.6) {
             const c = s.choice;
             const seat = rng() < 0.9 ? c.seat : Math.floor(rng() * n);
             const pick = c.options.length ? c.options[Math.floor(rng() * c.options.length)] : Math.floor(rng() * 70);
             if (s.turnPhase === 'choose') g.apply(seat, { t: 'choose', to: rng() < 0.9 ? pick : Math.floor(rng() * 70) }, t);
-            else if (s.turnPhase === 'duel') g.apply(seat, { t: 'duel', target: rng() < 0.9 ? pick : Math.floor(rng() * 7) }, t);
+            else if (s.turnPhase === 'duel') g.apply(seat, { t: 'duel', target: rng() < 0.9 ? pick : Math.floor(rng() * 7), stake: rng() < 0.5 ? 'coins' : 'star' }, t);
+            else if (s.turnPhase === 'buy') g.apply(seat, { t: 'buy', go: rng() < 0.7 }, t);
             else g.apply(seat, { t: 'teleport', go: rng() < 0.6 }, t);
         }
         if (s.phase === 'mini' && s.mini && s.mini.phase === 'play') {

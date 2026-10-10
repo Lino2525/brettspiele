@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { QUESTIONS, FLAGS, WORDS } from '../js/games/party/data.js';
 import { NODES, NEXT, SEGMENTS, START, SPACE_TYPES, STAR_SPOTS, nextOptions, distances } from '../js/games/party/board.js';
 import { MINIS, MINI_TYPES, createMini, tickMini, miniAction, miniView, computeRewards, INTRO_MS, RESULT_MS } from '../js/games/party/minigames.js';
-import { PartyGame, MAX_PLAYERS, STAR_PRICE, CHOICE_MS, SHIELD_ROUNDS, DUEL_COINS } from '../js/games/party/engine.js';
+import { PartyGame, MAX_PLAYERS, STAR_PRICE, CHOICE_MS, SHIELD_ROUNDS, DUEL_COINS, TRAP_COST, SAFE_DIE, BONUSES } from '../js/games/party/engine.js';
 
 function seeded(seed = 1) {
     let x = seed;
@@ -237,7 +237,7 @@ test('Felder: blau +3, rot −3 (nie unter 0)', () => {
     assert.equal(p.coins, 0, 'nicht unter 0');
 });
 
-test('Stern: kaufen im Vorbeigehen für 5 Münzen, danach liegt er mindestens 5 Felder weiter; ohne Münzen kein Kauf', () => {
+test('Stern: im Vorbeigehen wird gefragt; kaufen für 5 Münzen, danach liegt er mindestens 5 Felder weiter; ohne Münzen keine Frage', () => {
     const g = newGame(3);
     g.apply(0, { t: 'start' }, 0);
     const seat = g.s.order[0];
@@ -247,7 +247,11 @@ test('Stern: kaufen im Vorbeigehen für 5 Münzen, danach liegt er mindestens 5 
     const starAt = g.s.star;
     p.coins = 6;
     rollFrom(g, seat, lane.pos, lane.prev, 2);
-    assert.equal(p.pos, lane.path[1]);
+    assert.equal(g.s.turnPhase, 'buy', 'am Stern wird angehalten');
+    assert.equal(p.pos, lane.path[0]);
+    assert.ok(g.apply((seat + 1) % 3, { t: 'buy', go: true }, 10).error, 'nur wer zieht');
+    assert.ok(!g.apply(seat, { t: 'buy', go: true }, 10).error);
+    assert.equal(p.pos, lane.path[1], 'danach geht es weiter');
     assert.equal(p.stars, 1);
     assert.ok(p.coins <= 6 - STAR_PRICE + 3, 'bezahlt');
     assert.notEqual(g.s.star, starAt, 'Stern wandert');
@@ -340,7 +344,7 @@ test('Duell: Gegner wählen (nicht sich selbst), nur die beiden spielen, Sieg br
     g.tick(10300);
     assert.equal(m.phase, 'result');
     assert.deepEqual([g.s.players[seat].stars, g.s.players[other].stars], [1, 1]);
-    assert.deepEqual(m.outcome, { winner: seat, loser: other, stars: 1, coins: 0, shielded: false });
+    assert.deepEqual(m.outcome, { winner: seat, loser: other, stars: 1, coins: 0, shielded: false, stake: 'star' });
     // danach geht es auf dem Brett mit der nächsten Person weiter
     const turnBefore = g.s.turnIdx;
     g.tick(10300 + 10000);
@@ -956,4 +960,171 @@ test('Schätzfrage: Ablauf, nur die erste gültige Antwort zählt, Wahrheit erst
     assert.equal(m.phase, 'result');
     assert.ok(m.scores[0] > m.scores[1] && m.scores[1] >= 0 && m.scores[2] >= 0);
     assert.ok(Object.values(m.scores).every(Number.isInteger));
+});
+
+// ---------- Strategie: Würfelwahl, Kauf-Frage, Fallen, Duell-Einsatz, Bonus-Sterne ----------
+
+test('Würfel: sicherer Würfel bringt immer 2 bis 4, der normale 1 bis 6, ohne Wahl normal', () => {
+    for (const [r, safe, expected] of [[0, true, 2], [0.5, true, 3], [0.999, true, 4], [0, false, 1], [0.999, false, 6]]) {
+        const g = newGame(3);
+        g.apply(0, { t: 'start' }, 0);
+        const seat = g.s.order[0];
+        g.s.star = at(16, 0);
+        g.rng = () => r;
+        assert.ok(!g.apply(seat, { t: 'roll', die: safe ? 'safe' : 'normal' }, 0).error);
+        assert.equal(g.s.dice.value, expected);
+        assert.equal(g.s.dice.safe, safe);
+        assert.ok(g.s.dice.value >= (safe ? SAFE_DIE[0] : 1) && g.s.dice.value <= (safe ? SAFE_DIE[1] : 6));
+    }
+    const h = newGame(3);
+    h.apply(0, { t: 'start' }, 0);
+    h.tick(25001);
+    assert.equal(h.s.dice.safe, false, 'automatisch: normaler Würfel');
+});
+
+test('Stern: liegen lassen geht weiter ohne Kauf, bei Zeitablauf wird gekauft, pro Zug nur eine Frage', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    const p = g.s.players[seat];
+    const lane = forced(2, 'blue');
+    g.s.star = lane.path[0];
+    p.coins = 9;
+    rollFrom(g, seat, lane.pos, lane.prev, 2);
+    assert.ok(!g.apply(seat, { t: 'buy', go: false }, 10).error);
+    assert.equal(p.stars, 0);
+    assert.equal(g.s.star, lane.path[0], 'Stern bleibt liegen');
+    assert.equal(p.pos, lane.path[1]);
+    assert.ok(g.apply(seat, { t: 'buy', go: true }, 20).error, 'keine zweite Antwort');
+    // Zeitablauf: kaufen
+    const h = newGame(3);
+    h.apply(0, { t: 'start' }, 0);
+    const hs = h.s.order[0];
+    h.s.star = lane.path[0];
+    h.s.players[hs].coins = 9;
+    rollFrom(h, hs, lane.pos, lane.prev, 2);
+    assert.equal(h.s.turnPhase, 'buy');
+    assert.ok(h.tick(380 + CHOICE_MS + 10));
+    assert.equal(h.s.players[hs].stars, 1);
+});
+
+test('Falle: nur vor dem eigenen Wurf, kostet 5, nur auf normalen Feldern, eine pro Person, wer hineintappt zahlt bis zu 5', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    const other = g.s.order[1];
+    const p = g.s.players[seat];
+    g.s.star = at(16, 0);
+    assert.ok(g.apply(seat, { t: 'trap' }, 0).error, 'nicht auf dem Startfeld');
+    const lane = forced(1, 'blue');
+    const spot = lane.path[0];
+    p.pos = spot;
+    p.coins = 4;
+    assert.ok(g.apply(seat, { t: 'trap' }, 0).error, 'zu wenig Münzen');
+    p.coins = 12;
+    assert.ok(g.apply(other, { t: 'trap' }, 0).error, 'nur wer dran ist');
+    assert.ok(!g.apply(seat, { t: 'trap' }, 0).error);
+    assert.equal(p.coins, 12 - TRAP_COST);
+    assert.deepEqual(g.s.traps, [{ pos: spot, owner: seat }]);
+    assert.equal(g.s.turnPhase, 'roll', 'danach wird noch gewürfelt');
+    assert.deepEqual(g.view(other, 0).traps, [{ pos: spot, owner: seat }]);
+    // eine neue Falle ersetzt die alte
+    const lane2 = forced(1, 'red');
+    p.pos = lane2.path[0];
+    assert.ok(!g.apply(seat, { t: 'trap' }, 0).error);
+    assert.deepEqual(g.s.traps, [{ pos: lane2.path[0], owner: seat }]);
+    // jemand anderes tappt hinein: zahlt bis zu 5, Falle weg, Feldeffekt gilt trotzdem (rot −3)
+    const q = g.s.players[other];
+    q.coins = 6;
+    const ownerCoins = p.coins;
+    rollFrom(g, other, lane2.pos, lane2.prev, 1, 100);
+    assert.equal(q.pos, lane2.path[0]);
+    assert.equal(q.coins, 0, '6 − 5 Falle − 1 (rot, nicht unter 0)');
+    assert.equal(p.coins, ownerCoins + TRAP_COST);
+    assert.deepEqual(g.s.traps, []);
+    assert.ok(g.s.events.some(e => e.type === 'trapHit' && e.owner === seat && e.amount === TRAP_COST));
+    // auf der eigenen Falle passiert nichts
+    const h = newGame(3);
+    h.apply(0, { t: 'start' }, 0);
+    const hs = h.s.order[0];
+    h.s.star = at(16, 0);
+    h.s.traps = [{ pos: lane.path[0], owner: hs }];
+    const before = h.s.players[hs].coins;
+    rollFrom(h, hs, lane.pos, lane.prev, 1);
+    assert.equal(h.s.players[hs].coins, before + 3);
+    assert.equal(h.s.traps.length, 1);
+});
+
+test('Duell-Einsatz Münzen: auch wenn der Gegner Sterne hat, gibt es nur Münzen; Siege werden gezählt', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    const other = (seat + 1) % 3;
+    Object.assign(g.s.players[other], { stars: 2, coins: 15 });
+    rollFrom(g, seat, at(31, 5), at(28, 5), 1);
+    assert.ok(!g.apply(seat, { t: 'duel', target: other, stake: 'coins' }, 10).error);
+    assert.equal(g.s.mini.stake, 'coins');
+    assert.equal(g.view(other, 10).mini.stake, 'coins');
+    const m = finishDuel(g, { [seat]: 90, [other]: 10 });
+    assert.equal(g.s.players[other].stars, 2);
+    assert.equal(g.s.players[other].coins, 15 - DUEL_COINS);
+    assert.equal(m.outcome.stake, 'coins');
+    assert.equal(g.s.players[seat].duelWins, 1);
+    // unbekannter Einsatz zählt als Stern
+    const h = newGame(3);
+    h.apply(0, { t: 'start' }, 0);
+    const hs = h.s.order[0];
+    rollFrom(h, hs, at(31, 5), at(28, 5), 1);
+    h.apply(hs, { t: 'duel', target: (hs + 1) % 3, stake: 'quatsch' }, 10);
+    assert.equal(h.s.mini.stake, 'star');
+});
+
+test('Bonus-Sterne: am Ende je Wertung ein Stern für die Besten (Gleichstand: alle), mit 0 niemand', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'setRounds', n: 5 });
+    g.apply(0, { t: 'start' }, 0);
+    assert.equal(BONUSES.length, 3);
+    let t = 0;
+    for (let i = 0; i < 6000 && g.s.round < 5; i++) {
+        t += 700;
+        g.tick(t);
+    }
+    // Statistik kurz vor Schluss festlegen
+    const [a, b, c] = g.s.players;
+    Object.assign(a, { miniWins: 3, duelWins: 0, maxCoins: 40 });
+    Object.assign(b, { miniWins: 3, duelWins: 0, maxCoins: 12 });
+    Object.assign(c, { miniWins: 1, duelWins: 0, maxCoins: 12 });
+    const stars = g.s.players.map(p => p.stars);
+    // Rundenminispiel ohne neue Siege beenden
+    for (let i = 0; i < 6000 && g.s.phase !== 'over'; i++) {
+        t += 700;
+        if (g.s.phase === 'mini' && g.s.mini?.phase === 'play') g.s.mini.subs = {};
+        g.tick(t);
+        for (const p of g.s.players) p.miniWins = Math.min(p.miniWins, [3, 3, 1][g.s.players.indexOf(p)]);
+    }
+    assert.equal(g.s.phase, 'over');
+    const bonus = Object.fromEntries(g.s.bonus.map(x => [x.key, x.seats]));
+    assert.deepEqual(bonus.miniWins, [0, 1], 'Gleichstand: beide');
+    assert.deepEqual(bonus.duelWins, [], 'mit 0 bekommt niemand etwas');
+    assert.ok(bonus.maxCoins.includes(0));
+    assert.ok(a.stars >= stars[0] + 2);
+    assert.ok(b.stars >= stars[1] + 1);
+    assert.ok(g.view(0, t).bonus.length === 3);
+    // Revanche setzt die Statistik zurück
+    g.apply(0, { t: 'rematch' }, t);
+    assert.deepEqual(g.s.players.map(p => [p.miniWins, p.duelWins]), [[0, 0], [0, 0], [0, 0]]);
+    assert.equal(g.s.bonus, null);
+});
+
+test('Münzmagnet zählt den Höchststand, auch wenn später Münzen ausgegeben werden', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    const p = g.s.players[seat];
+    p.coins = 30;
+    g.tick(1);
+    assert.equal(p.maxCoins, 30);
+    p.coins = 2;
+    g.tick(2);
+    assert.equal(p.maxCoins, 30);
 });

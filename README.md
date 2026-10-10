@@ -60,8 +60,14 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
   niemand einen Stern abnehmen), auf der lila Linie 4× Duell und 1× Teleport. Duell: Gegner wählen, beide spielen ein
   Geschicklichkeits-Minispiel, die anderen schauen mit Live-Zwischenstand zu; wer gewinnt, bekommt 1 Stern vom anderen
   (mit Schild oder ohne Stern bis zu 10 Münzen), bei Gleichstand passiert nichts. Teleport: auf Wunsch direkt zum Stern
-  (und kaufen, wenn die Münzen reichen). Stern auf dem Brett: kauft man im Vorbeigehen für 5 Münzen, er wandert danach
-  mindestens 5 Felder weiter. Auf schmalen Handys im Hochformat wird das Brett gedreht angezeigt.
+  (und kaufen, wenn die Münzen reichen). Stern auf dem Brett: Wer vorbeikommt und genug Münzen hat, wird gefragt, ob er
+  ihn für 5 Münzen kauft; er wandert danach mindestens 5 Felder weiter. Auf schmalen Handys im Hochformat wird das Brett
+  gedreht angezeigt.
+  Strategie: Vor jedem Wurf wählt man den normalen Würfel (1–6) oder den sicheren (2–4) und kann für 5 Münzen eine Falle
+  auf das eigene Feld legen (eine pro Person; wer dort landet, zahlt bis zu 5 an die Person, danach ist die Falle weg).
+  Beim Duell wählt man den Einsatz: ein Stern oder bis zu 10 Münzen. Am Ende gibt es Bonus-Sterne für die meisten
+  Minispiel-Siege (Minispiel-Profi), die meisten gewonnenen Duelle (Duell-Champion) und den höchsten Münzstand
+  (Münzmagnet); bei Gleichstand bekommen alle Besten einen. Unter dem Brett steht, wer gerade vorn liegt.
   Die Reihenfolge der Würfe bleibt immer gleich. Nach jeder Runde (alle haben gewürfelt) spielen alle ein Minispiel; erst kommen alle einmal dran (zufällige Reihenfolge, oben steht „Minispiel 3 von 20“), dann beginnt ein neuer Durchlauf: Volltreffer (richtiger Moment), Korbwurf, Blitzreaktion,
   Tipp-Marathon, Merkreihe, Kopfrechnen, Farbe oder Wort (Stroop), Stoppuhr, Maulwurf, Ausreißer (Farbton finden), Zahlenjagd (1 bis 25),
   Sortierblitz (links/rechts nach wechselnder Regel), Wissen (Allgemeinwissen), Flaggen (Flaggenbilder von flagcdn.com),

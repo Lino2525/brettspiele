@@ -316,7 +316,7 @@ export function miniView(mini, seat, now, players) {
         id: mini.id, type: mini.type, kind: mini.kind, title: mini.title, rules: mini.rules, star: mini.star, phase: mini.phase,
         msLeft: mini.phase === 'intro' ? left(mini.introEnd) : mini.phase === 'play' ? left(mini.playEnd) : mini.phase === 'result' ? left(mini.resultEnd) : 0,
         teamCapable: !!MINIS[mini.type].teams, playMs: mini.playMs, params: {}, submitted: Object.keys(mini.subs).map(Number), result: mini.result,
-        duel: mini.duel ?? null, live: mini.duel ? mini.live : null, outcome: mini.outcome ?? null,
+        duel: mini.duel ?? null, stake: mini.stake ?? null, live: mini.duel ? mini.live : null, outcome: mini.outcome ?? null,
     };
     if (mini.kind === 'sub') {
         v.teams = mini.teams ? { of: mini.teams.of, names: mini.teams.names } : null;

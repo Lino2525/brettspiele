@@ -1,6 +1,6 @@
 // Oberfläche von Sternenjagd: Spielbrett (Wegenetz) mit Würfel und Figuren, Punktetafel, Entscheidungen und Minispiele.
 // Alle sehen Würfel, Bewegung und Ereignisse live, die Animationen laufen lokal ab.
-import { NODES, SEGMENTS, BOARD_W, BOARD_H, COIN_GAIN, COIN_LOSS } from './board.js';
+import { NODES, SEGMENTS, BOARD_W, BOARD_H, STAR_SPOTS, COIN_GAIN, COIN_LOSS } from './board.js';
 import { createMiniGame } from './mini-ui.js';
 import { MINIS, MINI_TYPES, DUEL_TYPES } from './minigames.js';
 
@@ -31,7 +31,8 @@ const TEMPLATE = `
     <div class="pmain"><div class="pstatus"></div><div class="pact"></div></div>
     <div class="pfeed"></div>
   </div>
-  <div class="plegend">${['blue', 'red', 'luck', 'shield', 'duel', 'teleport'].map(t => `<span><i class="lg t-${t}">${SPACE_LABEL[t]}</i>${SPACE_NAME[t]}</span>`).join('')}<span><i class="lg oneway">➜</i>Einbahnstraße</span></div>
+  <div class="plegend">${['blue', 'red', 'luck', 'shield', 'duel', 'teleport'].map(t => `<span><i class="lg t-${t}">${SPACE_LABEL[t]}</i>${SPACE_NAME[t]}</span>`).join('')}<span><i class="lg oneway">➜</i>Einbahnstraße</span><span><i class="lg trap">✖</i>Falle</span></div>
+  <div class="pbonus" hidden></div>
   <div class="overlay" hidden><div class="overlay-box"></div></div>
   <div class="toast" hidden></div>
 </div>`;
@@ -41,12 +42,12 @@ export function mountParty(root, session) {
     const $ = sel => root.querySelector(sel);
     const el = {
         round: $('.pround'), hint: $('.phint'), score: $('.pscore'), boardWrap: $('.pboard-wrap'), board: $('.pboard'), lines: $('.plines'),
-        mini: $('.pmini'), overlay: $('.overlay'), overlayBox: $('.overlay-box'), toast: $('.toast'), control: $('.pcontrol'), legend: $('.plegend'),
+        mini: $('.pmini'), overlay: $('.overlay'), overlayBox: $('.overlay-box'), toast: $('.toast'), control: $('.pcontrol'), legend: $('.plegend'), bonus: $('.pbonus'),
     };
 
     const st = {
         view: null, avatars: [], displayPos: [], lastEvent: 0, receivedAt: 0, mini: null, dicePlaying: false, shownDice: null,
-        movingSeat: null, laidOut: false, prevScore: [], gainAt: [], pending: 0, portrait: false, statusBase: '',
+        movingSeat: null, laidOut: false, prevScore: [], gainAt: [], pending: 0, portrait: false, statusBase: '', stake: 'star',
     };
     let toastTimer = null;
     let dead = false;
@@ -75,6 +76,7 @@ export function mountParty(root, session) {
         return c;
     });
     const tokEls = [];
+    const trapEls = [];
     const starEl = document.createElement('span');
     starEl.className = 'pst';
     starEl.textContent = '★';
@@ -205,8 +207,9 @@ export function mountParty(root, session) {
         switch (e.type) {
             case 'dice': {
                 ui.dice.classList.add('rolling');
+                ui.dice.classList.toggle('safe', !!e.safe);
                 for (let i = 0; i < 7; i++) {
-                    ui.dice.textContent = String(1 + Math.floor(Math.random() * 6));
+                    ui.dice.textContent = String(e.safe ? 2 + Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 6));
                     await sleep(80);
                 }
                 setDice(e.value);
@@ -238,8 +241,18 @@ export function mountParty(root, session) {
                 fx(e.pos, '🛡 SCHILD', 'evt');
                 await sleep(600);
                 break;
+            case 'trap':
+                feed(`${name(e.seat)} legt eine Falle`, 'neg');
+                fx(e.pos, '✖ FALLE', 'neg');
+                await sleep(400);
+                break;
+            case 'trapHit':
+                feed(`${name(e.seat)} tappt in die Falle von ${name(e.owner)}: −${e.amount} ¢`, 'neg');
+                fx(e.pos, `✖ −${e.amount} ¢`, 'neg');
+                await sleep(700);
+                break;
             case 'duel':
-                feed(`Duell: ${name(e.a)} gegen ${name(e.b)}!`, 'neg');
+                feed(`Duell um ${e.stake === 'coins' ? 'Münzen' : 'einen Stern'}: ${name(e.a)} gegen ${name(e.b)}!`, 'neg');
                 await sleep(300);
                 break;
             case 'star':
@@ -281,6 +294,8 @@ export function mountParty(root, session) {
         el.boardWrap.hidden = !!playing;
         el.control.hidden = !!playing;
         el.legend.hidden = !!playing || v.phase === 'waiting';
+        el.bonus.hidden = !!playing || v.phase === 'waiting';
+        renderBonus();
         el.mini.hidden = !playing;
         if (wasHidden && !playing) st.laidOut = false;
         renderTop();
@@ -330,6 +345,27 @@ export function mountParty(root, session) {
         const v = st.view;
         if (!v) return;
         cells.forEach((c, i) => c.classList.toggle('has-star', v.starPos === i));
+        // Fallen: kleines Kreuz in der Farbe der Person, die sie gelegt hat
+        const traps = v.phase === 'waiting' ? [] : v.traps || [];
+        traps.forEach((t, k) => {
+            let m = trapEls[k];
+            if (!m) {
+                m = document.createElement('span');
+                m.className = 'ptrap';
+                m.textContent = '✖';
+                el.board.appendChild(m);
+                trapEls[k] = m;
+            }
+            const c = cellCenter(t.pos);
+            m.hidden = !c;
+            if (c) {
+                m.style.left = `${c.x}px`;
+                m.style.top = `${c.y}px`;
+                m.style.setProperty('--pc', PLAYER_COLORS[t.owner]);
+                m.title = `Falle von ${name(t.owner)}`;
+            }
+        });
+        for (let k = traps.length; k < trapEls.length; k++) trapEls[k].hidden = true;
         const star = v.phase === 'waiting' ? null : cellCenter(v.starPos);
         starEl.hidden = !star;
         if (star) {
@@ -394,6 +430,19 @@ export function mountParty(root, session) {
     resizer?.observe(el.board);
     layoutBoard();
 
+    // Bonus-Rennen: wer gerade bei den Bonus-Sternen vorn liegt
+    function renderBonus() {
+        const v = st.view;
+        if (!v || v.phase === 'waiting' || !v.bonuses) return;
+        el.bonus.innerHTML = '<b>Bonus-Sterne am Ende:</b> ' + v.bonuses
+            .map(b => {
+                const best = Math.max(0, ...v.players.map(p => p[b.key] ?? 0));
+                const who = best > 0 ? v.players.map((p, i) => i).filter(i => (v.players[i][b.key] ?? 0) === best) : [];
+                return `<span>${esc(b.title)}: ${who.length ? `${who.map(i => `<i style="color:${PLAYER_COLORS[i]}">${esc(v.players[i].name)}</i>`).join(', ')} (${best})` : '–'}</span>`;
+            })
+            .join('');
+    }
+
     function setStatus(text) {
         st.statusBase = text;
         ui.status.textContent = text;
@@ -432,9 +481,29 @@ export function mountParty(root, session) {
             return;
         }
         switch (v.turnPhase) {
-            case 'roll':
+            case 'roll': {
                 setStatus(mine ? 'Du bist dran!' : `${cur} ist dran`);
-                ui.act.innerHTML = mine ? '<button class="btn primary big" type="button" data-act="roll">Würfeln</button>' : '<span class="muted">Warte auf den Wurf …</span>';
+                if (!mine) {
+                    ui.act.innerHTML = '<span class="muted">Warte auf den Wurf …</span>';
+                    break;
+                }
+                const [lo, hi] = v.safeDie;
+                const canTrap = STAR_SPOTS.includes(me.pos) && me.coins >= v.trapCost && !v.traps.some(t => t.pos === me.pos);
+                const hasTrap = v.traps.some(t => t.owner === v.seat);
+                ui.act.innerHTML = `<button class="btn primary big" type="button" data-act="roll" data-die="normal">Würfeln 1–6</button>
+                    <button class="btn big" type="button" data-act="roll" data-die="safe">Sicher ${lo}–${hi}</button>
+                    <button class="btn danger" type="button" data-act="trap"${canTrap ? '' : ' disabled'} title="Wer hier landet, zahlt dir bis zu ${v.trapCost} Münzen">Falle hier (${v.trapCost} ¢)</button>
+                    ${hasTrap ? '<p class="pnote">Eine neue Falle ersetzt deine alte.</p>' : ''}`;
+                break;
+            }
+            case 'buy':
+                if (mine) {
+                    setStatus(`Der Stern! Kaufen für ${v.starPrice} Münzen? (du hast ${me.coins})`);
+                    ui.act.innerHTML = '<button class="btn primary" type="button" data-act="buy" data-go="1">Stern kaufen</button><button class="btn" type="button" data-act="buy" data-go="0">Liegen lassen</button><p class="pnote">Wer spart, hat mehr Münzen für Fallen und Duelle. Nach dem Kauf wandert der Stern weiter.</p>';
+                } else {
+                    setStatus(`${cur} steht am Stern und überlegt …`);
+                    ui.act.innerHTML = '';
+                }
                 break;
             case 'choose': {
                 const from = v.players[seat].pos;
@@ -458,13 +527,14 @@ export function mountParty(root, session) {
             }
             case 'duel':
                 if (mine) {
-                    setStatus('Duell! Gegen wen trittst du an?');
-                    ui.act.innerHTML = v.choice.options
+                    setStatus('Duell! Worum und gegen wen?');
+                    const stake = (k, label) => `<button class="btn small stake${st.stake === k ? ' on' : ''}" type="button" data-act="stake" data-stake="${k}">${label}</button>`;
+                    ui.act.innerHTML = `<div class="pstake">Einsatz: ${stake('star', 'Ein Stern')}${stake('coins', 'Bis zu 10 Münzen')}</div>` + v.choice.options
                         .map(i => {
                             const p = v.players[i];
-                            return `<button class="btn duel-pick" type="button" data-act="duel" data-target="${i}" style="--pc:${PLAYER_COLORS[i]}">${esc(p.name)} <small>★${p.stars} ¢${p.coins}${p.shield > 0 ? ' 🛡' : ''}</small></button>`;
+                            return `<button class="btn duel-pick" type="button" data-act="duel" data-target="${i}" data-stake="${st.stake}" style="--pc:${PLAYER_COLORS[i]}">${esc(p.name)} <small>★${p.stars} ¢${p.coins}${p.shield > 0 ? ' 🛡' : ''}</small></button>`;
                         })
-                        .join('') + '<p class="pnote">Sieg: 1 Stern vom Gegner (bei Schild oder ohne Stern bis zu 10 Münzen). Niederlage: dasselbe andersherum.</p>';
+                        .join('') + `<p class="pnote">${st.stake === 'star' ? 'Sieg: 1 Stern vom Gegner (bei Schild oder ohne Stern bis zu 10 Münzen).' : 'Sieg: bis zu 10 Münzen vom Gegner, Sterne bleiben, wo sie sind.'} Niederlage: dasselbe andersherum.</p>`;
                 } else {
                     setStatus(`${cur} sucht sich einen Gegner für ein Duell …`);
                     ui.act.innerHTML = '';
@@ -564,7 +634,7 @@ export function mountParty(root, session) {
     function introHTML(cur, v, m) {
         const secs = Math.max(0.5, (cur.deadline - performance.now()) / 1000);
         const title = esc(m.title);
-        const vs = m.duel ? `<div class="pduel-vs">${duelSide(v, m.duel[0])}<b>VS</b>${duelSide(v, m.duel[1])}</div>${m.duel.includes(v.seat) ? '' : '<p class="muted">Du schaust zu.</p>'}` : '';
+        const vs = m.duel ? `<div class="pduel-vs">${duelSide(v, m.duel[0])}<b>VS</b>${duelSide(v, m.duel[1])}</div><p class="pduel-stake">Es geht um ${m.stake === 'coins' ? 'bis zu 10 Münzen' : 'einen Stern'}.</p>${m.duel.includes(v.seat) ? '' : '<p class="muted">Du schaust zu.</p>'}` : '';
         return `<div class="mintro"><i class="scanbar"></i>${vs}<h2 class="glitch" data-text="${title}">${title}</h2><p>${esc(m.rules)}</p>${teamIntroHTML(v)}${m.star ? '<p class="mstar">Wer gewinnt, bekommt einen Stern!</p>' : ''}<p class="muted">Gleich geht’s los …</p><div class="mprog"><i style="--ms:${secs.toFixed(2)}s"></i></div></div>`;
     }
 
@@ -649,7 +719,7 @@ export function mountParty(root, session) {
             const o = m.outcome || {};
             duelText = o.winner == null
                 ? '<p class="pduel-res">Unentschieden: Niemand bekommt etwas.</p>'
-                : `<p class="pduel-res"><b>${esc(name(o.winner))}</b> gewinnt das Duell${o.stars ? ` und schnappt sich einen Stern von ${esc(name(o.loser))}!` : o.coins ? ` und bekommt ${o.coins} Münzen von ${esc(name(o.loser))}.` : `, aber bei ${esc(name(o.loser))} ist nichts zu holen.`}${o.shielded ? ' Das Schild hat den Stern geschützt.' : ''}</p>`;
+                : `<p class="pduel-res"><b>${esc(name(o.winner))}</b> gewinnt das Duell${o.stars ? ` und schnappt sich einen Stern von ${esc(name(o.loser))}!` : o.coins ? ` und bekommt ${o.coins} Münzen von ${esc(name(o.loser))}.` : `, aber bei ${esc(name(o.loser))} ist nichts zu holen.`}${o.shielded ? ' Das Schild hat den Stern geschützt.' : ''}${o.stake === 'coins' ? ' (Es ging nur um Münzen.)' : ''}</p>`;
         }
         const rows = m.result
             .map((r, i) => {
@@ -689,7 +759,7 @@ export function mountParty(root, session) {
                 .join('');
             html = `<h2>Sternenjagd</h2><ul class="plist">${list}</ul>
                 <p>Es können ${v.minPlayers} bis ${v.maxPlayers} Personen mitspielen. Würfelt über das Spielfeld, entscheidet an Abzweigungen selbst, wohin es geht, sammelt Münzen und Sterne und gewinnt die Minispiele! Ein Stern zählt am Ende 10 Münzen.</p>
-                <ul class="prules"><li><b>Einbahnstraßen</b> (Pfeile) darf man nur in Pfeilrichtung laufen.</li><li><b>🛡 Schild:</b> 3 Runden lang kann dir niemand einen Stern abnehmen.</li><li><b>VS Duell:</b> Wähle einen Gegner. Wer das Minispiel gewinnt, bekommt 1 Stern vom anderen (sonst bis zu 10 Münzen).</li><li><b>TP Teleport:</b> Spring direkt zum Stern.</li></ul>
+                <ul class="prules"><li><b>Einbahnstraßen</b> (Pfeile) darf man nur in Pfeilrichtung laufen.</li><li><b>🛡 Schild:</b> 3 Runden lang kann dir niemand einen Stern abnehmen.</li><li><b>VS Duell:</b> Wähle einen Gegner. Wer das Minispiel gewinnt, bekommt 1 Stern vom anderen (sonst bis zu 10 Münzen).</li><li><b>TP Teleport:</b> Spring direkt zum Stern.</li><li><b>Würfel:</b> normal 1–6 oder sicher 2–4, du entscheidest vor jedem Wurf.</li><li><b>Stern:</b> Am Stern wirst du gefragt, ob du ihn für ${v.starPrice} Münzen kaufst.</li><li><b>✖ Falle:</b> Vor dem Wurf für ${v.trapCost} Münzen auf dein Feld legen. Wer dort landet, zahlt dir bis zu ${v.trapCost}.</li><li><b>Bonus-Sterne am Ende:</b> ${v.bonuses.map(b => `${esc(b.title)} (${esc(b.what)})`).join(', ')}.</li></ul>
                 <p class="muted">Rundenzahl:</p><div class="row center">${rounds}</div>` +
                 (isHost
                     ? `<p><button class="btn primary" type="button" data-act="start"${v.players.length >= v.minPlayers ? '' : ' disabled'}>Spiel starten</button></p>`
@@ -699,7 +769,10 @@ export function mountParty(root, session) {
                 .map((r, k) => `<tr style="--i:${k}" class="${k === 0 ? 'win' : ''}${r.seat === v.seat ? ' me' : ''}"><td>${k + 1}.</td><td>${esc(v.players[r.seat].name)}</td><td>★${r.stars}</td><td>¢${r.coins}</td><td><b>${r.total}</b></td></tr>`)
                 .join('');
             const title = v.ranking[0].seat === v.seat ? 'Du hast gewonnen!' : `${esc(v.players[v.ranking[0].seat].name)} hat gewonnen`;
-            html = `<h2 class="glitch" data-text="${title}">${title}</h2><p>Ein Stern zählt 10 Münzen.</p>
+            const bonus = (v.bonus || [])
+                .map(b => `<li><b>${esc(b.title)}</b> (${esc(b.what)}${b.value ? `: ${b.value}` : ''}): ${b.seats.length ? b.seats.map(i => esc(v.players[i].name)).join(', ') + ' <span class="prize star">+★</span>' : 'niemand'}</li>`)
+                .join('');
+            html = `<h2 class="glitch" data-text="${title}">${title}</h2>${bonus ? `<ul class="pbonus-list">${bonus}</ul>` : ''}<p>Ein Stern zählt 10 Münzen (Bonus-Sterne schon mitgezählt).</p>
                 <table class="ranking"><thead><tr><th></th><th></th><th>Sterne</th><th>Münzen</th><th>Gesamt</th></tr></thead><tbody>${rows}</tbody></table>
                 <button class="btn primary" type="button" data-act="rematch">Noch einmal spielen</button>`;
         }
@@ -732,8 +805,18 @@ export function mountParty(root, session) {
         const t = e.target.closest('[data-act]');
         if (!t || !st.view) return;
         switch (t.dataset.act) {
-            case 'roll': case 'start': case 'rematch':
+            case 'roll':
+                session.send({ t: 'roll', die: t.dataset.die === 'safe' ? 'safe' : 'normal' });
+                break;
+            case 'start': case 'rematch': case 'trap':
                 session.send({ t: t.dataset.act });
+                break;
+            case 'buy':
+                session.send({ t: 'buy', go: t.dataset.go === '1' });
+                break;
+            case 'stake':
+                st.stake = t.dataset.stake === 'coins' ? 'coins' : 'star';
+                renderBoard();
                 break;
             case 'setRounds':
                 session.send({ t: 'setRounds', n: Number(t.dataset.n) });
@@ -742,7 +825,7 @@ export function mountParty(root, session) {
                 session.send({ t: 'choose', to: Number(t.dataset.to) });
                 break;
             case 'duel':
-                session.send({ t: 'duel', target: Number(t.dataset.target) });
+                session.send({ t: 'duel', target: Number(t.dataset.target), stake: t.dataset.stake });
                 break;
             case 'teleport':
                 session.send({ t: 'teleport', go: t.dataset.go === '1' });

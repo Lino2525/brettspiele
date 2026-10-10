@@ -2,7 +2,9 @@
 // Läuft nur beim Host. Jede Runde: alle würfeln nacheinander und ziehen über das Wegenetz (an Abzweigungen
 // entscheidet die Person selbst), danach spielen alle ein Minispiel. Besondere Felder: Schild (3 Runden kein
 // Sternenklau), Duell (Minispiel gegen eine Person nach Wahl, der Sieg bringt 1 Stern oder bis zu 10 Münzen)
-// und Teleport (direkt zum Stern). Ein Stern zählt am Ende 10 Münzen; wer nach der letzten Runde am meisten hat, gewinnt.
+// und Teleport (direkt zum Stern). Vor dem Wurf: normaler (1–6) oder sicherer Würfel (2–4), Fallen legen (5 Münzen).
+// Den Stern kauft man nur, wenn man will. Am Ende gibt es Bonus-Sterne (Minispiele, Duelle, Münzen).
+// Ein Stern zählt am Ende 10 Münzen; wer nach der letzten Runde am meisten hat, gewinnt.
 // tick() wird vom Host regelmäßig aufgerufen und steuert alle Zeiten (Würfel-Wartezeit, Minispiele, Ergebnisse).
 import { SPACE_TYPES, START, STAR_SPOTS, nextOptions, distances, COIN_GAIN, COIN_LOSS } from './board.js';
 import { availableMinis, createMini, tickMini, miniAction, miniView, computeRewards, DUEL_TYPES } from './minigames.js';
@@ -20,6 +22,14 @@ const EFFECT_MS = 2300; // Zeit nach dem Zug für Feldereignis und Anzeige
 export const CHOICE_MS = 15000; // Bedenkzeit an Abzweigungen, beim Duell und beim Teleport
 export const SHIELD_ROUNDS = 3; // so viele Runden schützt das Schild vor Sternenklau
 export const DUEL_COINS = 10; // so viele Münzen gibt es im Duell, wenn kein Stern zu holen ist
+export const TRAP_COST = 5; // eine Falle kostet so viel, wer hineintappt, zahlt bis zu so viel an die Person, die sie gelegt hat
+export const SAFE_DIE = [2, 4]; // der sichere Würfel
+// Bonus-Sterne am Ende (bei Gleichstand bekommen alle Besten einen)
+export const BONUSES = [
+    { key: 'miniWins', title: 'Minispiel-Profi', what: 'die meisten Minispiel-Siege' },
+    { key: 'duelWins', title: 'Duell-Champion', what: 'die meisten gewonnenen Duelle' },
+    { key: 'maxCoins', title: 'Münzmagnet', what: 'die meisten Münzen auf einmal' },
+];
 const LOG_LIMIT = 40;
 const EVENT_LIMIT = 30;
 
@@ -35,13 +45,15 @@ export class PartyGame {
         this.rng = rng;
         this.s = {
             phase: 'waiting', // waiting | board | mini | over
-            players: [], // { name, token, connected, coins, stars, pos, prev, shield }
+            players: [], // { name, token, connected, coins, stars, pos, prev, shield, miniWins, duelWins, maxCoins }
+            traps: [], // { pos, owner }
+            bonus: null, // Bonus-Sterne der Endwertung
             rounds: 10,
             round: 0,
             order: [], // Zugreihenfolge dieser Runde
             turnIdx: 0,
-            turnPhase: 'roll', // roll | choose (Abzweigung) | duel (Gegner wählen) | teleport (ja/nein) | moving
-            move: null, // { seat, left, anim, bought } während eines Zugs
+            turnPhase: 'roll', // roll | choose (Abzweigung) | buy (Stern kaufen?) | duel (Gegner wählen) | teleport (ja/nein) | moving
+            move: null, // { seat, left, anim, starAsked } während eines Zugs
             choice: null, // { seat, options } solange eine Entscheidung offen ist
             inDuel: false,
             turnDeadline: 0,
@@ -68,7 +80,11 @@ export class PartyGame {
         for (const p of game.s.players) {
             p.prev ??= null;
             p.shield ??= 0;
+            p.miniWins ??= 0;
+            p.duelWins ??= 0;
+            p.maxCoins ??= p.coins;
         }
+        game.s.traps ??= [];
         if (!STAR_SPOTS.includes(game.s.star)) game.s.star = game.#newStarPos(-1);
         return game;
     }
@@ -92,7 +108,7 @@ export class PartyGame {
         const base = String(name ?? '').trim().slice(0, 20) || 'Spieler';
         let clean = base;
         for (let n = 2; s.players.some(p => p.name === clean); n++) clean = `${base} ${n}`;
-        s.players.push({ name: clean, token, connected: true, coins: START_COINS, stars: 0, pos: START, prev: null, shield: 0 });
+        s.players.push({ name: clean, token, connected: true, ...{ coins: START_COINS, stars: 0, pos: START, prev: null, shield: 0, miniWins: 0, duelWins: 0, maxCoins: START_COINS } });
         s.moveNo++;
         return s.players.length - 1;
     }
@@ -111,16 +127,26 @@ export class PartyGame {
         switch (a?.t) {
             case 'start': result = this.#start(seat, now); break;
             case 'setRounds': result = this.#setRounds(seat, a.n); break;
-            case 'roll': result = this.#roll(seat, now); break;
+            case 'roll': result = this.#roll(seat, a.die === 'safe', now); break;
+            case 'trap': result = this.#trap(seat); break;
+            case 'buy': result = this.#buy(seat, !!a.go, now); break;
             case 'choose': result = this.#choose(seat, a.to, now); break;
-            case 'duel': result = this.#duelPick(seat, a.target, now); break;
+            case 'duel': result = this.#duelPick(seat, a.target, a.stake === 'coins' ? 'coins' : 'star', now); break;
             case 'teleport': result = this.#teleport(seat, !!a.go, now); break;
             case 'mini': result = this.#mini(seat, a, now); break;
             case 'rematch': result = this.#rematch(now); break;
             default: return err('Unbekannte Aktion.');
         }
-        if (!result.error) s.moveNo++;
+        if (!result.error) {
+            s.moveNo++;
+            this.#track();
+        }
         return result;
+    }
+
+    // Statistik für den Bonus-Stern „Münzmagnet“
+    #track() {
+        for (const p of this.s.players) if (p.coins > (p.maxCoins ?? 0)) p.maxCoins = p.coins;
     }
 
     #setRounds(seat, n) {
@@ -149,7 +175,9 @@ export class PartyGame {
 
     #newGame(now) {
         const s = this.s;
-        for (const p of s.players) Object.assign(p, { coins: START_COINS, stars: 0, pos: START, prev: null, shield: 0 });
+        for (const p of s.players) Object.assign(p, { coins: START_COINS, stars: 0, pos: START, prev: null, shield: 0, miniWins: 0, duelWins: 0, maxCoins: START_COINS });
+        s.traps = [];
+        s.bonus = null;
         s.round = 0;
         s.mini = null;
         s.miniBag = [];
@@ -218,23 +246,41 @@ export class PartyGame {
         s.turnDeadline = now + TURN_MS;
     }
 
-    #roll(seat, now) {
+    #roll(seat, safe, now) {
         const s = this.s;
         if (s.phase !== 'board') return err('Gerade wird nicht gewürfelt.');
         if (seat !== this.#turnSeat) return err('Du bist nicht dran.');
         if (s.turnPhase !== 'roll') return err('Warte, bis die Figur angekommen ist.');
-        this.#doRoll(seat, now);
+        this.#doRoll(seat, now, safe);
         return OK;
     }
 
-    #doRoll(seat, now) {
+    // Normaler Würfel 1–6 oder sicherer Würfel 2–4
+    #doRoll(seat, now, safe = false) {
         const s = this.s;
-        const value = 1 + Math.floor(this.rng() * 6);
-        s.dice = { seat, value };
-        this.#event({ type: 'dice', seat, value });
-        this.#log(`${s.players[seat].name} würfelt eine ${value}.`);
-        s.move = { seat, left: value, anim: 0, bought: false };
+        const [lo, hi] = safe ? SAFE_DIE : [1, 6];
+        const value = lo + Math.floor(this.rng() * (hi - lo + 1));
+        s.dice = { seat, value, safe };
+        this.#event({ type: 'dice', seat, value, safe });
+        this.#log(`${s.players[seat].name} würfelt ${safe ? 'mit dem sicheren Würfel ' : ''}eine ${value}.`);
+        s.move = { seat, left: value, anim: 0, starAsked: false };
         this.#walk(now, []);
+    }
+
+    // Falle auf das eigene Feld legen (vor dem Wurf). Jede Person hat höchstens eine Falle, eine neue ersetzt die alte.
+    #trap(seat) {
+        const s = this.s;
+        const p = s.players[seat];
+        if (s.phase !== 'board' || s.turnPhase !== 'roll' || seat !== this.#turnSeat) return err('Fallen legt man vor dem eigenen Wurf.');
+        if (!STAR_SPOTS.includes(p.pos)) return err('Auf diesem Feld kann man keine Falle legen.');
+        if (s.traps.some(t => t.pos === p.pos)) return err('Hier liegt schon eine Falle.');
+        if (p.coins < TRAP_COST) return err(`Eine Falle kostet ${TRAP_COST} Münzen.`);
+        s.traps = s.traps.filter(t => t.owner !== seat);
+        s.traps.push({ pos: p.pos, owner: seat });
+        this.#addCoins(seat, -TRAP_COST, 'trap');
+        this.#event({ type: 'trap', seat, pos: p.pos });
+        this.#log(`${p.name} legt eine Falle.`);
+        return OK;
     }
 
     #addCoins(seat, delta, why) {
@@ -265,7 +311,7 @@ export class PartyGame {
                 s.turnDeadline = now + m.anim * STEP_MS + CHOICE_MS;
                 return;
             }
-            this.#step(options[0], path);
+            if (this.#step(options[0], path, now)) return;
         }
         this.#emitMove(m.seat, path);
         const anim = m.anim;
@@ -273,7 +319,8 @@ export class PartyGame {
         this.#land(m.seat, now, anim);
     }
 
-    #step(to, path) {
+    // Ein Schritt. Gibt true zurück, wenn am Stern angehalten wird (Frage: kaufen?).
+    #step(to, path, now) {
         const s = this.s;
         const m = s.move;
         const p = s.players[m.seat];
@@ -282,12 +329,35 @@ export class PartyGame {
         path.push(to);
         m.left--;
         m.anim++;
-        // Wer am Stern vorbeikommt (oder darauf landet), kauft ihn, wenn er genug Münzen hat
-        if (!m.bought && to === s.star && p.coins >= STAR_PRICE) {
-            m.bought = true;
+        // Wer am Stern vorbeikommt (oder darauf landet) und genug Münzen hat, wird gefragt
+        if (!m.starAsked && to === s.star && p.coins >= STAR_PRICE) {
+            m.starAsked = true;
             this.#emitMove(m.seat, path);
-            this.#buyStar(m.seat);
+            s.turnPhase = 'buy';
+            s.choice = { seat: m.seat, options: [] };
+            s.turnDeadline = now + m.anim * STEP_MS + CHOICE_MS;
+            return true;
         }
+        return false;
+    }
+
+    #buy(seat, go, now) {
+        const s = this.s;
+        if (s.phase !== 'board' || s.turnPhase !== 'buy') return err('Gerade gibt es keinen Stern zu kaufen.');
+        if (seat !== s.choice.seat) return err('Du bist nicht dran.');
+        this.#doBuy(go, now);
+        return OK;
+    }
+
+    #doBuy(go, now) {
+        const s = this.s;
+        const seat = s.choice.seat;
+        s.choice = null;
+        s.turnPhase = 'moving';
+        if (go) this.#buyStar(seat);
+        else this.#log(`${s.players[seat].name} lässt den Stern liegen.`);
+        s.move.anim = 0;
+        this.#walk(now, []);
     }
 
     #buyStar(seat) {
@@ -316,7 +386,7 @@ export class PartyGame {
         s.turnPhase = 'moving';
         s.move.anim = 0;
         const path = [];
-        this.#step(target, path);
+        if (this.#step(target, path, now)) return;
         this.#walk(now, path);
     }
 
@@ -326,6 +396,15 @@ export class PartyGame {
         const p = s.players[seat];
         const type = SPACE_TYPES[p.pos];
         const wait = anim * STEP_MS;
+        // Falle einer anderen Person: bis zu 5 Münzen an sie, die Falle ist danach weg
+        const trap = s.traps.find(t => t.pos === p.pos && t.owner !== seat);
+        if (trap) {
+            s.traps = s.traps.filter(t => t !== trap);
+            const amount = -this.#addCoins(seat, -TRAP_COST, 'trap');
+            if (amount) this.#addCoins(trap.owner, amount, 'trap');
+            this.#event({ type: 'trapHit', seat, owner: trap.owner, pos: p.pos, amount });
+            this.#log(`${p.name} tappt in die Falle von ${s.players[trap.owner].name} und zahlt ${amount} Münzen.`);
+        }
         if (type === 'blue') {
             this.#addCoins(seat, COIN_GAIN, 'blue');
             this.#log(`${p.name} landet auf einem blauen Feld: +${COIN_GAIN} Münzen.`);
@@ -356,13 +435,13 @@ export class PartyGame {
         s.movingUntil = now + wait + EFFECT_MS;
     }
 
-    #duelPick(seat, target, now) {
+    #duelPick(seat, target, stake, now) {
         const s = this.s;
         if (s.phase !== 'board' || s.turnPhase !== 'duel') return err('Gerade gibt es kein Duell.');
         if (seat !== s.choice.seat) return err('Du bist nicht dran.');
         const t = Number(target);
         if (!s.choice.options.includes(t)) return err('Ungültiger Gegner.');
-        this.#startDuel(seat, t, now);
+        this.#startDuel(seat, t, now, stake);
         return OK;
     }
 
@@ -399,6 +478,8 @@ export class PartyGame {
         const { seat, options } = s.choice;
         if (s.turnPhase === 'choose') {
             this.#continueWith(options[Math.floor(this.rng() * options.length)], now);
+        } else if (s.turnPhase === 'buy') {
+            this.#doBuy(true, now);
         } else if (s.turnPhase === 'duel') {
             const online = options.filter(i => s.players[i].connected);
             const pool = online.length ? online : options;
@@ -499,19 +580,21 @@ export class PartyGame {
         this.#log(`Minispiel: ${s.mini.title}`);
     }
 
-    #startDuel(a, b, now) {
+    // stake: 'star' (Stern, sonst Münzen) oder 'coins' (nur Münzen)
+    #startDuel(a, b, now, stake = 'star') {
         const s = this.s;
         const type = DUEL_TYPES[Math.floor(this.rng() * DUEL_TYPES.length)];
         s.choice = null;
         s.miniCounter++;
         s.mini = createMini({ type, id: s.miniCounter, rng: this.rng, players: s.players, now, star: false, duel: [a, b] });
+        s.mini.stake = stake;
         s.phase = 'mini';
         s.inDuel = true;
-        this.#event({ type: 'duel', a, b });
-        this.#log(`Duell: ${s.players[a].name} gegen ${s.players[b].name} (${s.mini.title}).`);
+        this.#event({ type: 'duel', a, b, stake });
+        this.#log(`Duell um ${stake === 'coins' ? 'Münzen' : 'einen Stern'}: ${s.players[a].name} gegen ${s.players[b].name} (${s.mini.title}).`);
     }
 
-    // Duell: Wer gewinnt, bekommt vom Gegner 1 Stern (außer er hat ein Schild) oder bis zu 10 Münzen.
+    // Duell: Wer gewinnt, bekommt vom Gegner 1 Stern (außer er hat ein Schild oder es geht nur um Münzen) oder bis zu 10 Münzen.
     #duelRewards() {
         const s = this.s;
         const m = s.mini;
@@ -520,17 +603,19 @@ export class PartyGame {
         const sb = m.scores[b] ?? 0;
         if (sa === sb) {
             m.result = [{ seat: a, score: sa, rank: 1, coins: 0, stars: 0 }, { seat: b, score: sb, rank: 1, coins: 0, stars: 0 }];
-            m.outcome = { winner: null };
+            m.outcome = { winner: null, stake: m.stake };
             this.#log(`Duell unentschieden: ${s.players[a].name} und ${s.players[b].name} gehen leer aus.`);
             return;
         }
         const [w, l] = sa > sb ? [a, b] : [b, a];
         const W = s.players[w];
         const L = s.players[l];
-        const shielded = L.stars > 0 && L.shield > 0;
+        const forStar = m.stake !== 'coins';
+        const shielded = forStar && L.stars > 0 && L.shield > 0;
         let stars = 0;
         let coins = 0;
-        if (L.stars > 0 && !shielded) {
+        W.duelWins = (W.duelWins ?? 0) + 1;
+        if (forStar && L.stars > 0 && !shielded) {
             stars = 1;
             L.stars--;
             W.stars++;
@@ -543,7 +628,7 @@ export class PartyGame {
             { seat: w, score: m.scores[w] ?? 0, rank: 1, coins, stars },
             { seat: l, score: m.scores[l] ?? 0, rank: 2, coins: -coins, stars: -stars },
         ];
-        m.outcome = { winner: w, loser: l, stars, coins, shielded };
+        m.outcome = { winner: w, loser: l, stars, coins, shielded, stake: m.stake };
         this.#log(`${W.name} gewinnt das Duell und bekommt ${stars ? 'einen Stern' : `${coins} Münzen`} von ${L.name}${shielded ? ' (das Schild schützt den Stern)' : ''}.`);
     }
 
@@ -564,6 +649,7 @@ export class PartyGame {
             s.players[r.seat].stars += r.stars;
         }
         m.result = rewards;
+        for (const r of rewards) if (r.rank === 1 && r.score > 0) s.players[r.seat].miniWins = (s.players[r.seat].miniWins ?? 0) + 1;
         const winner = rewards.find(r => r.rank === 1 && r.score > 0);
         this.#log(winner ? `${m.title}: ${s.players[winner.seat].name} gewinnt${winner.stars ? ' einen Stern' : ''}!` : `${m.title}: niemand hat gepunktet.`);
     }
@@ -580,12 +666,25 @@ export class PartyGame {
         }
         if (s.round >= s.rounds) {
             s.phase = 'over';
+            this.#awardBonus();
             const best = this.ranking()[0];
             this.#log(`Das Spiel ist aus! ${s.players[best.seat].name} gewinnt.`);
         } else {
             this.#startRound(now);
         }
         this.#bump();
+    }
+
+    // Bonus-Sterne: je Wertung bekommen die Besten (mit mehr als 0) einen Stern
+    #awardBonus() {
+        const s = this.s;
+        s.bonus = BONUSES.map(b => {
+            const best = Math.max(0, ...s.players.map(p => p[b.key] ?? 0));
+            const seats = best > 0 ? s.players.map((p, i) => i).filter(i => (s.players[i][b.key] ?? 0) === best) : [];
+            for (const i of seats) s.players[i].stars++;
+            if (seats.length) this.#log(`Bonus-Stern ${b.title}: ${seats.map(i => s.players[i].name).join(', ')}`);
+            return { key: b.key, title: b.title, what: b.what, value: best, seats };
+        });
     }
 
     // Endwertung: Sterne zählen je 10 Münzen
@@ -626,6 +725,7 @@ export class PartyGame {
                 this.#bump();
             }
         }
+        this.#track();
         return s.moveNo !== before;
     }
 
@@ -653,7 +753,15 @@ export class PartyGame {
             inDuel: s.inDuel,
             starPos: s.star,
             dice: s.dice,
-            players: s.players.map(p => ({ name: p.name, connected: p.connected, coins: p.coins, stars: p.stars, pos: p.pos, shield: p.shield })),
+            players: s.players.map(p => ({
+                name: p.name, connected: p.connected, coins: p.coins, stars: p.stars, pos: p.pos, shield: p.shield,
+                miniWins: p.miniWins ?? 0, duelWins: p.duelWins ?? 0, maxCoins: p.maxCoins ?? p.coins,
+            })),
+            traps: s.traps,
+            trapCost: TRAP_COST,
+            safeDie: SAFE_DIE,
+            bonuses: BONUSES,
+            bonus: s.phase === 'over' ? s.bonus : null,
             miniCycle: { done: s.miniCounter === 0 ? 0 : availableMinis(s.players.length).length - (s.miniBag?.length ?? 0), total: availableMinis(s.players.length).length },
             mini: s.mini ? miniView(s.mini, seat, now, s.players) : null,
             events: s.events,
