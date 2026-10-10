@@ -46,6 +46,7 @@
 
     --cut: 12px;
     --clip: polygon(-28px -28px, calc(100% - 40px) -28px, calc(100% + 28px) 40px, calc(100% + 28px) calc(100% + 28px), -28px calc(100% + 28px));
+    --clip-l: polygon(-28px -28px, calc(100% - 44px) -28px, calc(100% + 28px) 44px, calc(100% + 28px) calc(100% + 28px), -28px calc(100% + 28px));
     --clip-s: polygon(-28px -28px, calc(100% - 36px) -28px, calc(100% + 28px) 36px, calc(100% + 28px) calc(100% + 28px), -28px calc(100% + 28px));
 }
 
@@ -397,6 +398,7 @@ input.code {
 /* Tisch = Cyan-Panel mit Innenglow */
 .table-wrap {
     --bc: rgba(5, 217, 232, .6);
+    clip-path: var(--clip-l);
     --fill: rgba(5, 217, 232, .035);
     --cut: 16px;
     position: relative;
@@ -481,6 +483,7 @@ input.code {
 /* Ständer = gelb umrandet */
 .rack {
     --bc: rgba(252, 238, 10, .75);
+    clip-path: var(--clip-l);
     --fill: rgba(0, 0, 0, .55);
     --cut: 16px;
     display: flex;
@@ -560,6 +563,7 @@ input.code {
 }
 .overlay-box {
     --bc: var(--cyan);
+    clip-path: var(--clip-l);
     --fill: rgba(10, 12, 20, .94);
     --cut: 16px;
     max-width: 460px;
