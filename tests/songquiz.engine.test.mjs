@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SongQuizGame, MAX_PLAYERS, ROUNDS } from '../js/games/songquiz/engine.js';
+import { SongQuizGame, MIN_PLAYERS, MAX_PLAYERS, ROUNDS } from '../js/games/songquiz/engine.js';
 
 const fakeCatalog = (n = 80) => Array.from({ length: n }, (_, i) => ({ id: `Song ${i} | Artist ${i % 40}`, title: `Song ${i}`, artist: `Artist ${i % 40}`, decade: 1990, lang: 'en' }));
 let urlCounter = 0;
@@ -39,10 +39,9 @@ async function startLive(g, clock) {
     assert.equal(g.s.round.phase, 'live');
 }
 
-test('Lobby: Start nur durch den Gastgeber ab 2 Spielern, höchstens 10, danach nur noch bekannte', () => {
+test('Lobby: Start nur durch den Gastgeber, höchstens 10, danach nur noch bekannte', () => {
     const g = new SongQuizGame({ rng: seeded(1), catalog: fakeCatalog(), songProvider: provider });
     g.join('a', 'A');
-    assert.ok(g.apply(0, { t: 'start' }).error);
     g.join('b', 'B');
     assert.ok(g.apply(1, { t: 'start' }).error);
     for (let i = 2; i < MAX_PLAYERS; i++) assert.equal(g.join('p' + i, 'P' + i), i);
@@ -63,6 +62,17 @@ test('Songs werden vorab geladen und die erste Runde startet', async () => {
     assert.equal(g.s.round.phase, 'prepare');
     assert.equal(g.s.round.offset, 0, 'Raten und Auflösung passen zusammen in die 30-Sekunden-Vorschau');
     assert.ok(g.s.queue.length <= 3);
+});
+
+test('Auch allein spielbar: Start mit einer Person, Auflösung sobald alles gefunden ist', async () => {
+    assert.equal(MIN_PLAYERS, 1);
+    const g = newGame(1);
+    const clock = { t: 1_000_000 };
+    await startLive(g, clock);
+    const { title, artist } = g.s.round.song;
+    g.apply(0, { t: 'answer', text: `${title} ${artist}` }, clock.t);
+    assert.equal(g.s.round.phase, 'reveal');
+    assert.equal(g.s.players[0].score, 2 + 2 + 1);
 });
 
 test('Ansicht verrät die Lösung erst beim Auflösen', async () => {

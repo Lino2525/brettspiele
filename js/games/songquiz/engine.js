@@ -1,4 +1,4 @@
-// Spielablauf fürs Lieder-Raten (2 bis 10 Spieler). Läuft nur beim Host und ist die einzige Instanz, die den
+// Spielablauf fürs Lieder-Raten (1 bis 10 Spieler, auch allein). Läuft nur beim Host und ist die einzige Instanz, die den
 // Spielstand verändert. Die richtige Antwort verlässt den Host erst beim Auflösen der Runde.
 //
 // Ablauf einer Runde: prepare (alle laden den Ausschnitt) -> live (raten, Hinweise nach 7 s und 14 s)
@@ -8,7 +8,7 @@
 import { CATALOG } from './catalog.js';
 import { checkGuess, maskText } from './answer.js';
 
-export const MIN_PLAYERS = 2;
+export const MIN_PLAYERS = 1;
 export const MAX_PLAYERS = 10;
 export const ROUNDS = 20;
 const HOST_SEAT = 0;

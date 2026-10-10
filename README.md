@@ -45,7 +45,7 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
   Handel (Geld, Grundstücke, Freikarten), Schulden und Bankrott. Alle sehen Würfel, Figuren und Karten live.
   Bauen, Hypotheken und Verkäufe sind nur im eigenen Zug möglich (oder bei eigenen Schulden).
 
-- **Lieder-Raten** (2-10 Personen): 20 Sekunden aus bekannten Hits erraten, Titel oder Künstler tippen.
+- **Lieder-Raten** (1-10 Personen, auch allein spielbar): 20 Sekunden aus bekannten Hits erraten, Titel oder Künstler tippen.
   Wertung: Titel 1 Punkt, Künstler 1 Punkt, beides in einer Runde +1 Bonus, wer Titel bzw. Künstler als Erste/r errät +1.
   20 Runden pro Durchgang, danach "Weitere 20 Runden" (Songs wiederholen sich nicht, auch nicht bei einem neuen Spiel,
   der Host merkt sich die gespielten Songs im Browser). Der Ausschnitt läuft ohne Pause durch, auch während der
