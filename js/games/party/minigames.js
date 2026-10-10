@@ -42,6 +42,8 @@ export const MINIS = {
 };
 for (const [type, def] of Object.entries(SUBGAMES)) MINIS[type] = { title: def.title, kind: 'sub', playMs: def.capMs, rules: def.rules, teams: def.teams, minPlayers: def.minPlayers };
 export const MINI_TYPES = Object.keys(MINIS);
+// Für Duelle (zwei Personen, die anderen schauen zu) eignen sich die Geschicklichkeitsspiele
+export const DUEL_TYPES = MINI_TYPES.filter(t => MINIS[t].kind === 'solo');
 // Minispiele, die mit dieser Personenzahl spielbar sind (Undercover braucht mindestens 3)
 export const availableMinis = n => MINI_TYPES.filter(t => (MINIS[t].minPlayers ?? 2) <= n);
 
@@ -56,13 +58,14 @@ function shuffle(list, rng) {
 
 const sample = (list, n, rng) => shuffle(list, rng).slice(0, n);
 
-// players: [{ coins, stars, connected }]
-export function createMini({ type, id, rng, players, now, star }) {
+// players: [{ coins, stars, connected }]; duel: [Platz, Platz] für ein Duell (nur diese beiden spielen)
+export function createMini({ type, id, rng, players, now, star, duel = null }) {
     const def = MINIS[type];
     const mini = {
         id, type, kind: def.kind, title: def.title, rules: def.rules, star: !!star,
         phase: 'intro', introEnd: now + INTRO_MS, playStart: null, playEnd: null, resultEnd: null,
         playMs: def.playMs, params: {}, secret: {}, subs: {}, scores: null, result: null,
+        duel, live: {},
     };
     if (def.kind === 'sub') {
         const sub = createSub(type, { rng, players, star });
@@ -170,7 +173,7 @@ function finish(mini, now, players) {
 
 // Zeitsteuerung. Gibt true zurück, wenn sich etwas geändert hat.
 export function tickMini(mini, now, players) {
-    const seats = activeSeats(players);
+    const seats = activeSeats(players).filter(s => !mini.duel || mini.duel.includes(s));
     if (mini.phase === 'intro') {
         if (now >= mini.introEnd) {
             startPlay(mini, now);
@@ -236,10 +239,17 @@ export function miniAction(mini, seat, a, now, players) {
         return mini.engine.apply(seat, act, now);
     }
     if (mini.kind === 'solo') {
+        if (mini.duel && !mini.duel.includes(seat)) return err('Das ist ein Duell, du schaust zu.');
+        if (a.kind === 'live' && mini.duel) {
+            // Zwischenstand für die Zuschauer
+            if (mini.subs[seat] === undefined) mini.live[seat] = Math.min(MINIS[mini.type].max, Math.max(0, Math.floor(isNum(a.score) ? a.score : 0)));
+            return OK;
+        }
         if (a.kind !== 'score') return err('Unbekannte Aktion.');
         if (mini.subs[seat] !== undefined) return OK; // nur das erste Ergebnis zählt
         const max = MINIS[mini.type].max;
         mini.subs[seat] = Math.min(max, Math.max(0, Math.floor(isNum(a.score) ? a.score : 0)));
+        if (mini.duel) mini.live[seat] = mini.subs[seat];
         return OK;
     }
     if (mini.kind === 'estimate') {
@@ -306,6 +316,7 @@ export function miniView(mini, seat, now, players) {
         id: mini.id, type: mini.type, kind: mini.kind, title: mini.title, rules: mini.rules, star: mini.star, phase: mini.phase,
         msLeft: mini.phase === 'intro' ? left(mini.introEnd) : mini.phase === 'play' ? left(mini.playEnd) : mini.phase === 'result' ? left(mini.resultEnd) : 0,
         teamCapable: !!MINIS[mini.type].teams, playMs: mini.playMs, params: {}, submitted: Object.keys(mini.subs).map(Number), result: mini.result,
+        duel: mini.duel ?? null, stake: mini.stake ?? null, live: mini.duel ? mini.live : null, outcome: mini.outcome ?? null,
     };
     if (mini.kind === 'sub') {
         v.teams = mini.teams ? { of: mini.teams.of, names: mini.teams.names } : null;

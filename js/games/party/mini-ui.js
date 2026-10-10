@@ -5,6 +5,7 @@
 //   api.submit(score)  Ergebnis melden (bei Geschicklichkeitsspielen, nur einmal)
 //   api.send(payload)  Aktion an den Host (Quiz, Zeichnen, Schätzfrage)
 //   api.names()        Namen aller Plätze (für die Auflösung der Schätzfrage)
+//   api.progress(n)    Zwischenstand melden (nur im Duell, damit die anderen zuschauen können)
 // Rückgabe: { update(mini), destroy() }
 
 import { mountGame } from '../common/kit.js';
@@ -56,6 +57,7 @@ function solo(box, api, start) {
     const ctl = {
         later,
         finish,
+        progress: score => api.progress?.(Math.max(0, Math.round(score))),
         get done() {
             return done;
         },
@@ -118,6 +120,7 @@ function timing(box, mini, api) {
             const half = tr.width / 2;
             const pts = dist <= half ? Math.round(70 + 30 * (1 - dist / half)) : Math.max(0, Math.round(70 * (1 - (dist - half) / 0.2)));
             total += pts;
+            ctl.progress(total);
             res.textContent = pts >= 90 ? `Volltreffer! +${pts}` : pts > 0 ? `+${pts}` : 'Daneben!';
             idx++;
             if (idx >= 3) {
@@ -211,6 +214,7 @@ function hoops(box, mini, api) {
                 if (p >= 1) {
                     if (ball.hit) {
                         baskets++;
+                        ctl.progress(baskets * 100);
                         flash = now;
                     }
                     ball = null;
@@ -285,6 +289,7 @@ function reaction(box, mini, api) {
                 const ms = Math.round(performance.now() - goAt);
                 const pts = Math.max(0, 600 - ms);
                 total += pts;
+                ctl.progress(total);
                 state = 'pause';
                 pad.className = 'rx-pad done';
                 text.textContent = `${ms} ms`;
@@ -331,6 +336,7 @@ function tapping(box, mini, api) {
             }
             taps++;
             countEl.textContent = taps;
+            ctl.progress(taps);
         });
         ctl.onTimeout = end;
         return { destroy: () => clearInterval(ticker) };
@@ -382,6 +388,7 @@ function memory(box, mini, api) {
             input++;
             if (input >= level) {
                 score += 100;
+                ctl.progress(score);
                 level++;
                 accepting = false;
                 if (level > 14) ctl.finish(score);
@@ -436,6 +443,7 @@ function math(box, mini, api) {
                 fb.className = 'mt-fb bad';
             }
             info.textContent = `Punkte: ${score}`;
+            ctl.progress(score);
             cur = problem();
             q.textContent = `${cur.text} = ?`;
             input.value = '';
@@ -673,6 +681,7 @@ function stroop(box, mini, api) {
                 fb.className = 'st-fb bad';
             }
             info.textContent = `Punkte: ${score}`;
+            ctl.progress(score);
             next();
         }));
         ctl.later(() => ctl.finish(score), duration(api));
@@ -717,6 +726,7 @@ function stopwatch(box, mini, api) {
             const diff = Math.abs(ms - goal);
             const pts = auto ? 0 : Math.max(0, Math.round(300 * (1 - diff / 1000)));
             total += pts;
+            ctl.progress(total);
             timeEl.classList.remove('hidden');
             timeEl.textContent = fmt(auto ? goal + 2000 : ms);
             res.textContent = auto ? 'Zu spät! 0 Punkte' : `${diff < 50 ? 'Volltreffer! ' : ''}Abweichung ${fmt(diff)} s · +${pts}`;
@@ -790,6 +800,7 @@ function mole(box, mini, api) {
                 h.className = 'mo-hole boom';
             }
             info.textContent = `Punkte: ${score}`;
+            ctl.progress(score);
             const id = a.id;
             ctl.later(() => {
                 if (!active.has(i)) h.className = 'mo-hole';
@@ -839,6 +850,7 @@ function oddone(box, mini, api) {
                 fb.className = 'od-fb bad';
             }
             info.textContent = `Punkte: ${score} · Stufe ${level + 1}`;
+            ctl.progress(score);
             puzzle();
         });
         ctl.later(() => ctl.finish(score), duration(api));
@@ -873,6 +885,7 @@ function numberhunt(box, mini, api) {
             if (Number(t.dataset.n) === next) {
                 t.classList.add('done');
                 next++;
+                ctl.progress(score());
                 if (next > 25) {
                     tick();
                     ctl.finish(score());
@@ -936,6 +949,7 @@ function sortblitz(box, mini, api) {
             const ok = side === cur.side;
             score = ok ? score + 100 : Math.max(0, score - 50);
             info.textContent = `Punkte: ${score}`;
+            ctl.progress(score);
             card.className = `sb-card ${ok ? 'ok' : 'bad'}`;
             next();
         };
