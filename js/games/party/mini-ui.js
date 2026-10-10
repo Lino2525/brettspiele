@@ -9,6 +9,7 @@
 // Rückgabe: { update(mini), destroy() }
 
 import { mountGame } from '../common/kit.js';
+import { SOLO_BUFFER_MS } from './minigames.js';
 import { createSlfUI } from '../slf/ui.js';
 import { createUndercoverUI } from '../undercover/ui.js';
 import { createLadderUI } from '../ladder/ui.js';
@@ -449,6 +450,7 @@ function math(box, mini, api) {
             input.value = '';
             input.focus();
         });
+        ctl.later(() => ctl.finish(score), duration(api, mini));
         ctl.onTimeout = () => ctl.finish(score);
     });
 }
@@ -646,8 +648,8 @@ const NEON = [
     { name: 'GRÜN', color: '#39ff14' },
 ];
 
-// Spieldauer: meist 20 Sekunden, bei spätem Einstieg entsprechend weniger
-const duration = (api, ms = 20000) => Math.min(ms, Math.max(1000, api.remaining() - 400));
+// Spieldauer auf dem Gerät: Spielzeit des Hosts minus Puffer (fürs Melden), bei spätem Einstieg entsprechend weniger
+const duration = (api, mini) => Math.min(mini.playMs - SOLO_BUFFER_MS, Math.max(1000, api.remaining() - 400));
 
 function stroop(box, mini, api) {
     return solo(box, api, ctl => {
@@ -684,7 +686,7 @@ function stroop(box, mini, api) {
             ctl.progress(score);
             next();
         }));
-        ctl.later(() => ctl.finish(score), duration(api));
+        ctl.later(() => ctl.finish(score), duration(api, mini));
         ctl.onTimeout = () => ctl.finish(score);
     });
 }
@@ -808,7 +810,7 @@ function mole(box, mini, api) {
             }, 260);
         }));
         ctl.later(spawn, 600);
-        ctl.later(() => ctl.finish(score), duration(api));
+        ctl.later(() => ctl.finish(score), duration(api, mini));
         ctl.onTimeout = () => ctl.finish(score);
     });
 }
@@ -853,7 +855,7 @@ function oddone(box, mini, api) {
             ctl.progress(score);
             puzzle();
         });
-        ctl.later(() => ctl.finish(score), duration(api));
+        ctl.later(() => ctl.finish(score), duration(api, mini));
         ctl.onTimeout = () => ctl.finish(score);
     });
 }
@@ -896,7 +898,7 @@ function numberhunt(box, mini, api) {
                 t.classList.add('bad');
             }
         });
-        ctl.later(() => ctl.finish(score()), duration(api, 30000));
+        ctl.later(() => ctl.finish(score()), duration(api, mini));
         ctl.onTimeout = () => ctl.finish(score());
     });
 }
@@ -925,8 +927,10 @@ function sortblitz(box, mini, api) {
         let count = 0;
         let rule = -1;
         let cur = null;
+        let locked = false;
         const next = () => {
-            if (count % 6 === 0) {
+            cur = null;
+            if (count % 8 === 0) {
                 // Regelwechsel (nie dieselbe Regel zweimal hintereinander)
                 let r = Math.floor(rng() * SB_RULES.length);
                 if (r === rule) r = (r + 1) % SB_RULES.length;
@@ -937,6 +941,19 @@ function sortblitz(box, mini, api) {
                 ruleEl.classList.remove('flash');
                 void ruleEl.offsetWidth;
                 ruleEl.classList.add('flash');
+                // Kurze Pause, damit man die neue Regel lesen kann
+                locked = true;
+                card.textContent = `${SB_RULES[r].left} ◀ ▶ ${SB_RULES[r].right}`;
+                card.className = 'sb-card rule';
+                const card0 = SB_RULES[r].make(rng);
+                count++;
+                ctl.later(() => {
+                    locked = false;
+                    cur = card0;
+                    card.textContent = cur.text;
+                    card.className = 'sb-card';
+                }, count === 1 ? 1200 : 1600);
+                return;
             }
             cur = SB_RULES[rule].make(rng);
             card.textContent = cur.text;
@@ -945,7 +962,7 @@ function sortblitz(box, mini, api) {
         };
         next();
         const choose = side => {
-            if (ctl.done) return;
+            if (ctl.done || locked || !cur) return;
             const ok = side === cur.side;
             score = ok ? score + 100 : Math.max(0, score - 50);
             info.textContent = `Punkte: ${score}`;
@@ -962,7 +979,7 @@ function sortblitz(box, mini, api) {
             else if (e.key === 'ArrowRight') choose('right');
         };
         document.addEventListener('keydown', key);
-        ctl.later(() => ctl.finish(score), duration(api));
+        ctl.later(() => ctl.finish(score), duration(api, mini));
         ctl.onTimeout = () => ctl.finish(score);
         return { destroy: () => document.removeEventListener('keydown', key) };
     });

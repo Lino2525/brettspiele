@@ -15,10 +15,10 @@ export const RESULT_MS = 9000;
 const SUB_INTRO_MS = 9000; // Gesellschaftsspiele brauchen mehr Zeit zum Lesen der Regeln (und der Teams)
 const GRACE_MS = 2000; // so lange nach Ablauf werden noch Ergebnisse angenommen
 
-const QUIZ = { count: 4, askMs: 10000, revealMs: 2500 };
-const FLAG = { count: 5, askMs: 8000, revealMs: 2000 };
-const EST = { count: 4, askMs: 15000, revealMs: 4500 };
-const DRAW_MS = 60000;
+const QUIZ = { count: 4, askMs: 15000, revealMs: 3000 };
+const FLAG = { count: 5, askMs: 12000, revealMs: 2500 };
+const EST = { count: 4, askMs: 25000, revealMs: 5000 };
+const DRAW_MS = 75000;
 const MAX_STROKE_NUMBERS = 600; // Zahlen pro Strich (x und y zählen einzeln)
 const MAX_DRAW_NUMBERS = 9000; // insgesamt pro Zeichnung
 
@@ -27,16 +27,16 @@ export const MINIS = {
     hoops: { title: 'Korbwurf', kind: 'solo', playMs: 22000, max: 3000, rules: 'Tippe zum Werfen und triff den beweglichen Korb. Jeder Treffer zählt. Du hast 20 Sekunden.' },
     reaction: { title: 'Blitzreaktion', kind: 'solo', playMs: 30000, max: 1800, rules: 'Tippe, sobald der Bildschirm grün wird. Zu früh getippt gibt null Punkte. Drei Versuche.' },
     tapping: { title: 'Tipp-Marathon', kind: 'solo', playMs: 11000, max: 300, rules: 'Tippe so schnell du kannst, 8 Sekunden lang!' },
-    memory: { title: 'Merkreihe', kind: 'solo', playMs: 42000, max: 1500, rules: 'Merke dir die Reihenfolge der Farben und tippe sie nach. Jede Runde wird sie länger.' },
-    math: { title: 'Kopfrechnen', kind: 'solo', playMs: 24000, max: 3000, rules: 'Löse in 20 Sekunden so viele Rechenaufgaben wie möglich. Falsche Antworten kosten Punkte.' },
-    quiz: { title: 'Wissen', kind: 'quiz', playMs: QUIZ.count * (QUIZ.askMs + QUIZ.revealMs), rules: `${QUIZ.count} Fragen, je 10 Sekunden. Wer richtig und schnell antwortet, bekommt die meisten Punkte.` },
+    memory: { title: 'Merkreihe', kind: 'solo', playMs: 60000, max: 1500, rules: 'Merke dir die Reihenfolge der Farben und tippe sie nach. Jede Runde wird sie länger.' },
+    math: { title: 'Kopfrechnen', kind: 'solo', playMs: 34000, max: 4000, rules: 'Löse in 30 Sekunden so viele Rechenaufgaben wie möglich. Falsche Antworten kosten Punkte.' },
+    quiz: { title: 'Wissen', kind: 'quiz', playMs: QUIZ.count * (QUIZ.askMs + QUIZ.revealMs), rules: `${QUIZ.count} Fragen, je ${QUIZ.askMs / 1000} Sekunden. Wer richtig und schnell antwortet, bekommt die meisten Punkte.` },
     flags: { title: 'Flaggen', kind: 'quiz', playMs: FLAG.count * (FLAG.askMs + FLAG.revealMs), rules: `${FLAG.count} Flaggen: Welches Land ist es? Schnell sein lohnt sich.` },
-    stroop: { title: 'Farbe oder Wort', kind: 'solo', playMs: 24000, max: 3000, rules: 'Ein Farbwort erscheint in einer anderen Farbe. Tippe die Farbe, in der es geschrieben ist, nicht das Wort! 20 Sekunden, Fehler kosten Punkte.' },
+    stroop: { title: 'Farbe oder Wort', kind: 'solo', playMs: 34000, max: 5000, rules: 'Ein Farbwort erscheint in einer anderen Farbe. Tippe die Farbe, in der es geschrieben ist, nicht das Wort! 30 Sekunden, Fehler kosten Punkte.' },
     stopwatch: { title: 'Stoppuhr', kind: 'solo', playMs: 36000, max: 900, rules: 'Die Uhr zählt hoch und wird dann unsichtbar. Stoppe sie so genau wie möglich bei der Zielzeit. Drei Versuche.' },
     mole: { title: 'Maulwurf', kind: 'solo', playMs: 24000, max: 3000, rules: 'Tippe die gelben Ziele, sobald sie auftauchen. Die pinken Bomben lässt du in Ruhe! 20 Sekunden.' },
-    oddone: { title: 'Ausreißer', kind: 'solo', playMs: 24000, max: 3000, rules: 'Ein Feld hat einen minimal anderen Farbton. Finde und tippe es, die Unterschiede werden immer kleiner. 20 Sekunden.' },
-    numberhunt: { title: 'Zahlenjagd', kind: 'solo', playMs: 36000, max: 1200, rules: 'Tippe die Zahlen von 1 bis 25 in der richtigen Reihenfolge, so schnell du kannst. Wer fertig ist, bekommt Zeitbonus.' },
-    sortblitz: { title: 'Sortierblitz', kind: 'solo', playMs: 24000, max: 3000, rules: 'Links oder rechts? Sortiere die Karten nach der Regel, die oben steht. Die Regel wechselt alle paar Karten. 20 Sekunden.' },
+    oddone: { title: 'Ausreißer', kind: 'solo', playMs: 34000, max: 5000, rules: 'Ein Feld hat einen minimal anderen Farbton. Finde und tippe es, die Unterschiede werden immer kleiner. 30 Sekunden.' },
+    numberhunt: { title: 'Zahlenjagd', kind: 'solo', playMs: 49000, max: 1200, rules: 'Tippe die Zahlen von 1 bis 25 in der richtigen Reihenfolge, so schnell du kannst. Wer fertig ist, bekommt Zeitbonus.' },
+    sortblitz: { title: 'Sortierblitz', kind: 'solo', playMs: 39000, max: 6000, rules: 'Links oder rechts? Sortiere die Karten nach der Regel, die oben steht. Die Regel wechselt alle 8 Karten, dann gibt es eine kurze Pause zum Lesen. 35 Sekunden.' },
     estimate: { title: 'Schätzfrage', kind: 'estimate', playMs: EST.count * (EST.askMs + EST.revealMs), rules: `${EST.count} Schätzfragen: Tippe eine Zahl. Wer am nächsten liegt, bekommt die meisten Punkte.` },
     draw: { title: 'Zeichnen & Raten', kind: 'draw', playMs: DRAW_MS, rules: 'Eine Person zeichnet einen Begriff, alle anderen raten ihn. Richtig raten bringt Punkte, dem Zeichner auch.' },
 };
@@ -44,6 +44,9 @@ for (const [type, def] of Object.entries(SUBGAMES)) MINIS[type] = { title: def.t
 export const MINI_TYPES = Object.keys(MINIS);
 // Für Duelle (zwei Personen, die anderen schauen zu) eignen sich die Geschicklichkeitsspiele
 export const DUEL_TYPES = MINI_TYPES.filter(t => MINIS[t].kind === 'solo');
+// Geschicklichkeitsspiele mit fester Spieldauer: Das Gerät spielt so lange wie playMs minus diesem Puffer
+export const SOLO_BUFFER_MS = 4000;
+
 // Minispiele, die mit dieser Personenzahl spielbar sind (Undercover braucht mindestens 3)
 export const availableMinis = n => MINI_TYPES.filter(t => (MINIS[t].minPlayers ?? 2) <= n);
 

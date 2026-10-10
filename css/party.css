@@ -551,6 +551,7 @@
     clip-path: var(--clip);
     transition: background-color .1s, border-color .1s;
 }
+.sb-card.rule { font-size: clamp(1rem, 4.4vw, 1.5rem); color: var(--cyan); border-color: var(--cyan); text-shadow: 0 0 10px rgba(5, 217, 232, .6); }
 .sb-card.ok { border-color: var(--green); background: rgba(57, 255, 20, .16); }
 .sb-card.bad { border-color: var(--pink); background: rgba(255, 42, 109, .2); }
 .sb-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(100%, 460px); }
