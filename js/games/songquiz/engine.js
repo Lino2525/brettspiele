@@ -1,8 +1,9 @@
 // Spielablauf fürs Lieder-Raten (2 bis 10 Spieler). Läuft nur beim Host und ist die einzige Instanz, die den
 // Spielstand verändert. Die richtige Antwort verlässt den Host erst beim Auflösen der Runde.
 //
-// Ablauf einer Runde: prepare (alle laden den Ausschnitt) -> live (raten, Hinweise nach 10 s und 20 s)
-//                     -> reveal (Auflösung) -> nächste Runde. Nach 20 Runden folgt der Siegerbildschirm.
+// Ablauf einer Runde: prepare (alle laden den Ausschnitt) -> live (raten, Hinweise nach 7 s und 14 s)
+//                     -> reveal (Auflösung) -> nächste Runde. Der Ausschnitt läuft ab dem Start durchgehend,
+//                     auch während der Auflösung, bis der nächste Song kommt. Nach 20 Runden folgt der Siegerbildschirm.
 // Songs holt der Host über songProvider (iTunes-Suche) schon vorab; tick() wird vom Host regelmäßig aufgerufen.
 import { CATALOG } from './catalog.js';
 import { checkGuess, maskText } from './answer.js';
@@ -11,11 +12,10 @@ export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 10;
 export const ROUNDS = 20;
 const HOST_SEAT = 0;
-const CLIP_SECONDS = [5, 8, 12]; // Länge des Ausschnitts: Start, nach Hinweis 1, nach Hinweis 2
-const REVEAL_CLIP_SECONDS = 9;
+const CLIP_START = 0; // Startpunkt in der 30-Sekunden-Vorschau: Raten und Auflösung passen zusammen hinein
 const PREPARE_MS = 6000;
-const LIVE_MS = 30000;
-const HINT_AT_MS = [10000, 20000];
+const LIVE_MS = 20000;
+const HINT_AT_MS = [7000, 14000];
 const REVEAL_MS = 9000;
 const PREFETCH = 3;
 const RETRY_MS = 8000;
@@ -71,10 +71,10 @@ export class SongQuizGame {
         for (const p of game.s.players) p.connected = false;
         // Eine unterbrochene Runde wird aufgelöst, danach geht es normal weiter.
         const r = game.s.round;
+        if (r) r.startedAt = Date.now(); // die Auflösung spielt den Ausschnitt dann von vorn
         if (r && r.phase !== 'reveal') {
             r.phase = 'reveal';
             r.revealEnd = Date.now() + 4000;
-            r.clipSeq++;
         }
         return game;
     }
@@ -257,9 +257,7 @@ export class SongQuizGame {
                 for (let h = r.hint; h < HINT_AT_MS.length; h++) {
                     if (elapsed >= HINT_AT_MS[h]) {
                         r.hint = h + 1;
-                        r.len = CLIP_SECONDS[r.hint];
-                        r.clipSeq++;
-                        changed = true; // Hinweis und längerer Ausschnitt müssen alle erfahren
+                        changed = true; // den Hinweis müssen alle erfahren
                     }
                 }
                 if (now >= r.endsAt) this.#reveal(now);
@@ -283,15 +281,13 @@ export class SongQuizGame {
         s.round = {
             id: s.roundCounter,
             song,
-            offset: Math.floor(this.rng() * 13), // 0 bis 12 s in die 30-Sekunden-Vorschau
+            offset: CLIP_START,
             phase: 'prepare',
             prepareEnd: now + PREPARE_MS,
             startedAt: null,
             endsAt: null,
             revealEnd: null,
             hint: 0,
-            clipSeq: 0,
-            len: CLIP_SECONDS[0],
             ready: [],
             got,
             gain: {},
@@ -312,8 +308,6 @@ export class SongQuizGame {
         r.phase = 'live';
         r.startedAt = now;
         r.endsAt = now + LIVE_MS;
-        r.clipSeq = 1;
-        r.len = CLIP_SECONDS[0];
         this.s.moveNo++;
     }
 
@@ -321,8 +315,6 @@ export class SongQuizGame {
         const r = this.s.round;
         r.phase = 'reveal';
         r.revealEnd = now + REVEAL_MS;
-        r.len = REVEAL_CLIP_SECONDS;
-        r.clipSeq++;
         this.s.moveNo++;
     }
 
@@ -419,8 +411,8 @@ export class SongQuizGame {
                 phase: r.phase,
                 url: r.song.previewUrl,
                 offset: r.offset,
-                len: r.len,
-                clipSeq: r.clipSeq,
+                // so lange läuft der Ausschnitt schon (alle spielen ihn synchron ab dem Rundenstart)
+                playMs: r.startedAt !== null && r.phase !== 'prepare' ? Math.max(0, now - r.startedAt) : 0,
                 hint: r.hint,
                 // Hinweise: Wortlängen, später mit Anfangsbuchstaben (nie die Lösung selbst)
                 mask: !revealed && r.hint > 0 ? { title: maskText(r.song.title, r.hint), artist: maskText(r.song.artist, r.hint) } : null,
@@ -428,6 +420,7 @@ export class SongQuizGame {
                 liveMsLeft: r.phase === 'live' ? Math.max(0, r.endsAt - now) : 0,
                 liveMsTotal: LIVE_MS,
                 revealMsLeft: revealed ? Math.max(0, r.revealEnd - now) : 0,
+                revealMsTotal: REVEAL_MS,
                 my: r.got[seat] ?? null,
                 song: revealed ? { title: r.song.title, artist: r.song.artist, art: r.song.art } : null,
                 gain: revealed ? r.gain : null,

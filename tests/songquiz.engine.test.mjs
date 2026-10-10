@@ -61,7 +61,7 @@ test('Songs werden vorab geladen und die erste Runde startet', async () => {
     await until(g, clock, () => g.s.phase === 'round');
     assert.equal(g.s.roundNo, 1);
     assert.equal(g.s.round.phase, 'prepare');
-    assert.ok(g.s.round.offset >= 0 && g.s.round.offset <= 12);
+    assert.equal(g.s.round.offset, 0, 'Raten und Auflösung passen zusammen in die 30-Sekunden-Vorschau');
     assert.ok(g.s.queue.length <= 3);
 });
 
@@ -107,29 +107,29 @@ test('Wertung: Titel/Künstler je 1 Punkt, Erste(r) +1, beides = Bonus', async (
     assert.equal(g2.s.players[2].score, 2 + 2 + 1, 'Titel+Künstler+beide zuerst+Bonus');
 });
 
-test('Hinweise nach 10 s und 20 s, Ende nach 30 s, Auflösung dauert 9 s', async () => {
+test('Hinweise nach 7 s und 14 s, Ende nach 20 s, Auflösung dauert 9 s, Ausschnitt läuft durch', async () => {
     const g = newGame();
     const clock = { t: 1_000_000 };
     await startLive(g, clock);
     const r = g.s.round;
-    const seq0 = r.clipSeq;
-    assert.equal(r.len, 5);
+    const start = clock.t;
     assert.equal(g.view(0, clock.t).round.mask, null);
-    clock.t += 10_100;
+    assert.equal(g.view(0, clock.t).round.playMs, 0);
+    clock.t += 7_100;
     assert.ok(g.tick(clock.t));
     assert.equal(r.hint, 1);
-    assert.equal(r.len, 8);
-    assert.ok(r.clipSeq > seq0, 'Ausschnitt wird erneut abgespielt');
     const m1 = g.view(0, clock.t).round.mask;
     assert.match(m1.title, /^[•\s]+$/, 'Hinweis 1: nur Wortlängen');
-    clock.t += 10_000;
+    assert.equal(g.view(0, clock.t).round.playMs, clock.t - start, 'kein Neustart beim Hinweis');
+    clock.t += 7_000;
     g.tick(clock.t);
     assert.equal(r.hint, 2);
-    assert.equal(r.len, 12);
     assert.match(g.view(0, clock.t).round.mask.title, /^S/, 'Hinweis 2: Anfangsbuchstabe');
-    clock.t += 10_000;
+    clock.t += 6_000;
     g.tick(clock.t);
     assert.equal(g.s.round.phase, 'reveal');
+    assert.equal(g.view(0, clock.t).round.playMs, clock.t - start, 'kein Neustart bei der Auflösung');
+    assert.ok((20_000 + 9_000) / 1000 + r.offset <= 30, 'alles passt in die 30-Sekunden-Vorschau');
     clock.t += 9_100;
     g.tick(clock.t);
     assert.ok(g.s.round === null || g.s.round.id > r.id, 'nächste Runde');

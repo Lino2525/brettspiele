@@ -1,6 +1,6 @@
 // Oberfläche fürs Lieder-Raten: Ausschnitt anhören, Titel/Künstler tippen, Hinweise, Auflösung, Rangliste.
 // Der Ton kommt als 30-Sekunden-Vorschau direkt von Apples Servern. Alle laden ihn vor und starten gemeinsam,
-// sobald der Host die Runde freigibt.
+// sobald der Host die Runde freigibt. Der Ausschnitt läuft dann ohne Pause durch, bis der nächste Song kommt.
 import { music } from '../../core/music.js';
 
 const esc = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -22,7 +22,6 @@ const TEMPLATE = `
     <button class="btn primary" type="submit">Raten</button>
   </form>
   <div class="qmine"></div>
-  <div class="qrow"><button class="btn small replay" type="button">🔁 Nochmal hören</button></div>
   <div class="qplayers"></div>
   <div class="overlay" hidden><div class="overlay-box"></div></div>
   <div class="tapfix" hidden><button class="btn primary big" type="button">🔊 Ton aktivieren</button></div>
@@ -35,14 +34,13 @@ export function mountSongQuiz(root, session) {
     const el = {
         round: $('.qround'), host: $('.qhost'), bar: $('.qbar i'), eq: $('.eq'), status: $('.qstatus'), mask: $('.qmask'),
         reveal: $('.qreveal'), cover: $('.qcover'), song: $('.qsong'), form: $('.qform'), input: $('.qinput'),
-        mine: $('.qmine'), replay: $('.replay'), players: $('.qplayers'), overlay: $('.overlay'), overlayBox: $('.overlay-box'),
+        mine: $('.qmine'), players: $('.qplayers'), overlay: $('.overlay'), overlayBox: $('.overlay-box'),
         tapfix: $('.tapfix'), toast: $('.toast'),
     };
 
-    const st = { view: null, receivedAt: 0, avatars: [], loadedId: null, playedFor: null, playedSeq: 0, lastClip: null };
+    const st = { view: null, receivedAt: 0, avatars: [], loadedId: null, playedFor: null };
     const audio = new Audio();
     audio.preload = 'auto';
-    let stopTimer = null;
     let toastTimer = null;
     let readyTimer = null;
 
@@ -66,28 +64,30 @@ export function mountSongQuiz(root, session) {
         }
     });
 
-    function playClip(offset, len) {
-        st.lastClip = { offset, len };
-        clearTimeout(stopTimer);
+    // Position im Ausschnitt, an der der Host gerade ist (läuft lokal zwischen seinen Meldungen weiter)
+    function songPosition() {
+        const r = st.view?.round;
+        if (!r) return 0;
+        return r.offset + (r.playMs + performance.now() - st.receivedAt) / 1000;
+    }
+
+    function playSong() {
         const go = () => {
-            try { audio.currentTime = offset; } catch { /* noch nicht bereit, Position folgt beim Start */ }
+            try { audio.currentTime = songPosition(); } catch { /* noch nicht bereit, Position folgt beim Start */ }
             const p = audio.play();
             if (p) p.then(() => (el.tapfix.hidden = true)).catch(() => (el.tapfix.hidden = false));
-            stopTimer = setTimeout(() => audio.pause(), len * 1000);
         };
         if (audio.readyState >= 1) go();
         else audio.addEventListener('loadedmetadata', go, { once: true });
     }
 
     function stopAudio() {
-        clearTimeout(stopTimer);
         audio.pause();
     }
 
     function loadRound(r) {
         st.loadedId = r.id;
         st.playedFor = null;
-        st.playedSeq = 0;
         audio.src = r.url;
         audio.load();
         let sent = false;
@@ -105,12 +105,8 @@ export function mountSongQuiz(root, session) {
 
     el.tapfix.querySelector('button').addEventListener('click', () => {
         el.tapfix.hidden = true;
-        if (st.lastClip) playClip(st.lastClip.offset, st.lastClip.len);
-    });
-
-    el.replay.addEventListener('click', () => {
         const r = st.view?.round;
-        if (r && r.phase === 'live') playClip(r.offset, r.len);
+        if (r && (r.phase === 'live' || r.phase === 'reveal')) playSong();
     });
 
     // ---------- Zustand ----------
@@ -121,10 +117,10 @@ export function mountSongQuiz(root, session) {
         const r = v.round;
         if (v.phase === 'round' && r) {
             if (st.loadedId !== r.id) loadRound(r);
-            if ((r.phase === 'live' || r.phase === 'reveal') && (st.playedFor !== r.id || r.clipSeq !== st.playedSeq)) {
+            // einmal pro Runde starten, danach läuft der Ausschnitt durch (auch während der Auflösung)
+            if ((r.phase === 'live' || r.phase === 'reveal') && st.playedFor !== r.id) {
                 st.playedFor = r.id;
-                st.playedSeq = r.clipSeq;
-                playClip(r.offset, r.len);
+                playSong();
             }
         } else if (v.phase !== 'round') {
             stopAudio();
@@ -175,7 +171,6 @@ export function mountSongQuiz(root, session) {
         // Eingabe
         el.input.disabled = !live;
         el.form.querySelector('button').disabled = !live;
-        el.replay.disabled = !live;
         el.mine.innerHTML = live || reveal
             ? `<span class="${r.my?.title ? 'got' : ''}">${r.my?.title ? '✓' : '○'} Titel</span><span class="${r.my?.artist ? 'got' : ''}">${r.my?.artist ? '✓' : '○'} Künstler</span>`
             : '';
@@ -214,7 +209,7 @@ export function mountSongQuiz(root, session) {
             const list = v.players.map((p, i) => `<li><span class="dot ${p.connected ? 'on' : 'off'}"></span>${esc(p.name)}${i === v.seat ? ' (Du)' : ''}</li>`).join('');
             const isHost = v.seat === v.hostSeat;
             html = `<h2>Lieder-Raten</h2><ul class="plist">${list}</ul>
-                <p>Es können ${v.minPlayers} bis ${v.maxPlayers} Personen mitspielen. Hört kurze Ausschnitte bekannter Hits und tippt Titel oder Künstler.</p>
+                <p>Es können ${v.minPlayers} bis ${v.maxPlayers} Personen mitspielen. Hört 20 Sekunden aus bekannten Hits und tippt Titel oder Künstler.</p>
                 <p class="muted">Tippe einmal auf den Bildschirm, damit der Ton läuft.</p>` +
                 (isHost
                     ? `<button class="btn primary" data-act="start" type="button"${v.players.length >= v.minPlayers ? '' : ' disabled'}>Spiel starten</button>`
@@ -256,7 +251,7 @@ export function mountSongQuiz(root, session) {
         if (r.phase === 'live') {
             frac = Math.max(0, r.liveMsLeft - elapsed) / r.liveMsTotal;
         } else if (r.phase === 'reveal') {
-            frac = Math.max(0, r.revealMsLeft - elapsed) / 9000;
+            frac = Math.max(0, r.revealMsLeft - elapsed) / r.revealMsTotal;
             cls = 'reveal';
         } else {
             frac = 1;
@@ -305,7 +300,6 @@ export function mountSongQuiz(root, session) {
     return {
         destroy() {
             clearInterval(barTimer);
-            clearTimeout(stopTimer);
             clearTimeout(readyTimer);
             audio.pause();
             unsubscribe();
