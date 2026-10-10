@@ -2,8 +2,8 @@
 import { esc, scoreOverHTML } from '../common/kit.js';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
-// Farbverlauf der Stufen von grün (leicht) nach rot (schwer)
-const levelColor = n => `hsl(${Math.round(125 - (n - 1) * (125 / 9))}, 62%, 38%)`;
+// Farbverlauf der Stufen in Neon: von grün (leicht) über gelb und orange nach pink (schwer)
+const levelColor = n => `hsl(${Math.round(125 - (n - 1) * (150 / 9))}, 100%, 55%)`;
 
 export function createLadderUI() {
     function chooseHTML(v) {

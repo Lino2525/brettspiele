@@ -2,14 +2,14 @@
 import { HostSession, ClientSession, makeRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from './core/session.js';
 import { fileToAvatar } from './core/avatar.js';
 import { music } from './core/music.js';
-import { RummyGame } from './games/rummy/engine.js';
+import { RummyGame, MIN_PLAYERS as RUMMY_MIN, MAX_PLAYERS as RUMMY_MAX } from './games/rummy/engine.js';
 import { mountRummy } from './games/rummy/ui.js';
-import { MonopolyGame } from './games/monopoly/engine.js';
+import { MonopolyGame, MIN_PLAYERS as MONO_MIN, MAX_PLAYERS as MONO_MAX } from './games/monopoly/engine.js';
 import { mountMonopoly } from './games/monopoly/ui.js';
-import { SongQuizGame } from './games/songquiz/engine.js';
+import { SongQuizGame, MIN_PLAYERS as QUIZ_MIN, MAX_PLAYERS as QUIZ_MAX } from './games/songquiz/engine.js';
 import { mountSongQuiz } from './games/songquiz/ui.js';
 import { resolveSong } from './games/songquiz/itunes.js';
-import { PartyGame } from './games/party/engine.js';
+import { PartyGame, MIN_PLAYERS as PARTY_MIN, MAX_PLAYERS as PARTY_MAX } from './games/party/engine.js';
 import { mountParty } from './games/party/ui.js';
 
 // Neue Spiele werden hier eingetragen: Engine (Host), Oberfläche (alle).
@@ -27,17 +27,18 @@ function attachSongQuiz(engine) {
 }
 
 const GAMES = {
-    rummy: { title: 'Mini Rummy', Engine: RummyGame, mount: mountRummy, resumable: state => state.phase !== 'waiting' },
+    rummy: { title: 'Mini Rummy', players: [RUMMY_MIN, RUMMY_MAX], Engine: RummyGame, mount: mountRummy, resumable: state => state.phase !== 'waiting' },
     songquiz: {
         title: 'Lieder-Raten',
+        players: [QUIZ_MIN, QUIZ_MAX],
         Engine: SongQuizGame,
         mount: mountSongQuiz,
         resumable: state => state.phase !== 'waiting',
         music: false, // hier hört man die Song-Ausschnitte, keine Hintergrundmusik
         attach: attachSongQuiz,
     },
-    party: { title: 'Sternenjagd', Engine: PartyGame, mount: mountParty, resumable: state => state.phase !== 'waiting' && state.phase !== 'over' },
-    monopoly: { title: 'Immobilienspiel', Engine: MonopolyGame, mount: mountMonopoly, resumable: state => state.phase === 'playing' },
+    party: { title: 'Sternenjagd', players: [PARTY_MIN, PARTY_MAX], Engine: PartyGame, mount: mountParty, resumable: state => state.phase !== 'waiting' && state.phase !== 'over' },
+    monopoly: { title: 'Immobilienspiel', players: [MONO_MIN, MONO_MAX], Engine: MonopolyGame, mount: mountMonopoly, resumable: state => state.phase === 'playing' },
 };
 
 const $ = id => document.getElementById(id);
@@ -130,8 +131,28 @@ function showGame(session, gameId) {
     if (game.music !== false) music.start();
     $('roomInfo').textContent = `${game.title} · Raum ${session.roomCode}`;
     session.onStatus = text => ($('status').textContent = text);
+    watchLinked(session);
     const ui = game.mount($('gameRoot'), session);
     current = { session, ui };
+}
+
+// Topbar: "● 3/4 LINKED" aus den Spielerlisten der Ansichten (nur Anzeige, die Spiele selbst bleiben unberührt)
+function watchLinked(session) {
+    const el = $('linked');
+    const emit = session.emitView.bind(session);
+    const show = v => {
+        const players = v?.players;
+        if (!Array.isArray(players)) return;
+        const on = players.filter(p => p.connected !== false).length;
+        el.hidden = false;
+        el.textContent = `● ${on}/${v.maxPlayers ?? players.length} LINKED`;
+        el.classList.toggle('low', on < players.length);
+    };
+    session.emitView = v => {
+        show(v);
+        emit(v);
+    };
+    show(session.lastView);
 }
 
 $('leaveBtn').addEventListener('click', () => {
@@ -233,9 +254,12 @@ $('password').value = store.get('bsp.password') || '';
 
 for (const [id, game] of Object.entries(GAMES)) {
     const btn = document.createElement('button');
-    btn.className = 'btn primary';
+    btn.className = 'btn game-row';
     btn.type = 'button';
-    btn.textContent = `${game.title} starten`;
+    btn.title = `${game.title} starten`;
+    const [min, max] = game.players;
+    btn.innerHTML = `<span class="num">${String(Object.keys(GAMES).indexOf(id) + 1).padStart(2, '0')}</span><span class="gtxt"><span class="gname"></span><span class="gmeta">${min === max ? min : `${min}–${max}`} PLAYERS</span></span>`;
+    btn.querySelector('.gname').textContent = game.title;
     btn.addEventListener('click', () => hostGame(id));
     $('gameList').appendChild(btn);
 

@@ -187,16 +187,16 @@ function hoops(box, mini, api) {
         ctl.frame(now => {
             hx = hoopX(now);
             g.clearRect(0, 0, W, H);
-            g.fillStyle = '#16301f';
+            g.fillStyle = '#0a0d14';
             g.fillRect(0, 0, W, H);
             // Korb
-            g.strokeStyle = '#ff8a3d';
+            g.strokeStyle = '#ff9a00';
             g.lineWidth = 6;
             g.beginPath();
             g.moveTo(hx - 36, 90);
             g.lineTo(hx + 36, 90);
             g.stroke();
-            g.strokeStyle = 'rgba(255,255,255,.6)';
+            g.strokeStyle = 'rgba(5,217,232,.7)';
             g.lineWidth = 2;
             for (let k = -3; k <= 3; k++) {
                 g.beginPath();
@@ -219,12 +219,12 @@ function hoops(box, mini, api) {
                     by = H - 50 - (H - 140) * p;
                 }
             }
-            g.fillStyle = '#ff7043';
+            g.fillStyle = '#ff2a6d';
             g.beginPath();
             g.arc(W / 2, by, 13, 0, Math.PI * 2);
             g.fill();
             if (now - flash < 400) {
-                g.fillStyle = '#8be28b';
+                g.fillStyle = '#39ff14';
                 g.font = 'bold 34px system-ui';
                 g.textAlign = 'center';
                 g.fillText('Treffer!', W / 2, 220);
@@ -343,7 +343,7 @@ function memory(box, mini, api) {
     return solo(box, api, ctl => {
         const rng = mulberry32(mini.params.seed);
         const seq = Array.from({ length: 30 }, () => Math.floor(rng() * 4));
-        const colors = ['#e53935', '#1e88e5', '#43a047', '#fdd835'];
+        const colors = ['#ff2a6d', '#05d9e8', '#fcee0a', '#b967ff'];
         box.innerHTML = '<div class="mem-info">Merke dir die Reihenfolge …</div><div class="mem-pads">' +
             colors.map((c, i) => `<button type="button" class="mem-pad" data-i="${i}" style="--c:${c}" disabled></button>`).join('') + '</div>';
         const info = box.querySelector('.mem-info');
@@ -493,7 +493,7 @@ function quiz(box, mini, api) {
 
 // ---------- Zeichnen und Raten ----------
 
-const DRAW_COLORS = ['#ffffff', '#ef5350', '#42a5f5', '#66bb6a', '#ffee58', '#ff9800'];
+const DRAW_COLORS = ['#e8f9ff', '#ff2a6d', '#05d9e8', '#39ff14', '#fcee0a', '#ff9a00'];
 
 function draw(box, mini, api) {
     const isDrawer = mini.params.drawer === api.seat;
@@ -508,7 +508,7 @@ function draw(box, mini, api) {
     let current = null;
     let color = 0;
     const paint = strokes => {
-        g.fillStyle = '#1b2a22';
+        g.fillStyle = '#0a0d14';
         g.fillRect(0, 0, 500, 500);
         g.lineCap = 'round';
         g.lineJoin = 'round';

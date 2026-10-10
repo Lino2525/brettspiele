@@ -1,8 +1,9 @@
 // Darstellung des Spielplans: Felder im 11x11-Raster, Besitzer, Häuser und die Spielfiguren.
 import { SPACES, GROUPS } from './board.js';
 
-export const PLAYER_COLORS = ['#e53935', '#1e88e5', '#2e9e4f', '#f9a825'];
-export const PLAYER_TEXT = ['#fff', '#fff', '#fff', '#1d1a10'];
+// Neon-Grid: gelb, cyan, pink, violett (Schrift immer dunkel)
+export const PLAYER_COLORS = ['#fcee0a', '#05d9e8', '#ff2a6d', '#b967ff'];
+export const PLAYER_TEXT = ['#08080d', '#08080d', '#08080d', '#08080d'];
 
 export const money = n => `M ${Number(n).toLocaleString('de-DE')}`;
 
