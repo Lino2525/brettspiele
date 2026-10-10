@@ -1,16 +1,20 @@
-// Oberfläche von Sternenjagd: Spielbrett mit Würfeln und Figuren, Punktetafel und Minispiele.
-// Bewusst schlicht gehalten. Alle sehen Würfel, Bewegung und Ereignisse live, die Animationen laufen lokal ab.
-import { RING, SPACE_TYPES, ringCell, GRID_ROWS, GRID_COLS, COIN_GAIN, COIN_LOSS } from './board.js';
+// Oberfläche von Sternenjagd: Spielbrett (Wegenetz) mit Würfel und Figuren, Punktetafel, Entscheidungen und Minispiele.
+// Alle sehen Würfel, Bewegung und Ereignisse live, die Animationen laufen lokal ab.
+import { NODES, SEGMENTS, BOARD_W, BOARD_H, COIN_GAIN, COIN_LOSS } from './board.js';
 import { createMiniGame } from './mini-ui.js';
-import { MINIS, MINI_TYPES } from './minigames.js';
+import { MINIS, MINI_TYPES, DUEL_TYPES } from './minigames.js';
 
 const esc = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Neon-Grid: gelb, cyan, pink, violett; ab dem 5. Platz orange und grün
 export const PLAYER_COLORS = ['#fcee0a', '#05d9e8', '#ff2a6d', '#b967ff', '#ff9a00', '#39ff14'];
-const SPACE_LABEL = { start: 'START', blue: `+${COIN_GAIN}`, red: `−${COIN_LOSS}`, green: '?' };
+const SPACE_LABEL = { start: '▶', blue: `+${COIN_GAIN}`, red: `−${COIN_LOSS}`, luck: '?', shield: '🛡', duel: 'VS', teleport: 'TP' };
+const SPACE_NAME = { start: 'Start', blue: `+${COIN_GAIN} Münzen`, red: `−${COIN_LOSS} Münzen`, luck: 'Glücksfeld', shield: 'Schild', duel: 'Duell', teleport: 'Teleport zum Stern' };
 const REDUCED = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MINI_TITLES = MINI_TYPES.map(t => MINIS[t].title);
+const DUEL_TITLES = DUEL_TYPES.map(t => MINIS[t].title);
+const ARROWS = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'];
+const PORTRAIT = '(max-width: 640px) and (orientation: portrait)';
 // Versatz bei mehreren Figuren auf einem Feld (2 x 2)
 const TOKEN_OFFSETS = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0], [0, -1.6]];
 
@@ -19,9 +23,15 @@ const TEMPLATE = `
   <div class="ptop"><span class="pround"></span><span class="phint"></span></div>
   <div class="pscore"></div>
   <div class="pstage">
-    <div class="pboard-wrap"><div class="pboard"></div></div>
+    <div class="pboard-wrap"><div class="pboard"><svg class="plines" aria-hidden="true"></svg></div></div>
     <div class="pmini" hidden></div>
   </div>
+  <div class="pcontrol">
+    <div class="pdice"><span class="pdie">?</span></div>
+    <div class="pmain"><div class="pstatus"></div><div class="pact"></div></div>
+    <div class="pfeed"></div>
+  </div>
+  <div class="plegend">${['blue', 'red', 'luck', 'shield', 'duel', 'teleport'].map(t => `<span><i class="lg t-${t}">${SPACE_LABEL[t]}</i>${SPACE_NAME[t]}</span>`).join('')}<span><i class="lg oneway">➜</i>Einbahnstraße</span></div>
   <div class="overlay" hidden><div class="overlay-box"></div></div>
   <div class="toast" hidden></div>
 </div>`;
@@ -30,42 +40,86 @@ export function mountParty(root, session) {
     root.innerHTML = TEMPLATE;
     const $ = sel => root.querySelector(sel);
     const el = {
-        round: $('.pround'), hint: $('.phint'), score: $('.pscore'), boardWrap: $('.pboard-wrap'), board: $('.pboard'),
-        mini: $('.pmini'), overlay: $('.overlay'), overlayBox: $('.overlay-box'), toast: $('.toast'),
+        round: $('.pround'), hint: $('.phint'), score: $('.pscore'), boardWrap: $('.pboard-wrap'), board: $('.pboard'), lines: $('.plines'),
+        mini: $('.pmini'), overlay: $('.overlay'), overlayBox: $('.overlay-box'), toast: $('.toast'), control: $('.pcontrol'), legend: $('.plegend'),
     };
 
     const st = {
         view: null, avatars: [], displayPos: [], lastEvent: 0, receivedAt: 0, mini: null, dicePlaying: false, shownDice: null,
-        movingSeat: null, laidOut: false, prevScore: [], gainAt: [],
+        movingSeat: null, laidOut: false, prevScore: [], gainAt: [], pending: 0, portrait: false, statusBase: '',
     };
     let toastTimer = null;
     let dead = false;
     let chain = Promise.resolve();
+    // Animationen laufen nacheinander; solange noch etwas läuft, warten Entscheidungen (Abzweigung, Duell, Teleport)
     const enqueue = fn => {
-        chain = chain.then(() => (dead ? null : fn())).catch(console.error);
+        st.pending++;
+        chain = chain
+            .then(() => (dead ? null : fn()))
+            .catch(console.error)
+            .finally(() => {
+                st.pending--;
+                if (!st.pending && !dead && st.view) renderBoard();
+            });
     };
 
     // ---------- Spielbrett aufbauen ----------
 
-    const cells = [];
-    for (let i = 0; i < RING; i++) {
-        const [row, col] = ringCell(i);
+    const cells = NODES.map(n => {
         const c = document.createElement('div');
-        c.className = `pcell t-${SPACE_TYPES[i]}`;
-        c.style.gridRow = row;
-        c.style.gridColumn = col;
-        c.innerHTML = `<span class="pl">${SPACE_LABEL[SPACE_TYPES[i]]}</span><span class="pst" hidden>★</span>`;
+        c.className = `pcell t-${n.type}`;
+        c.dataset.id = n.id;
+        c.title = SPACE_NAME[n.type];
+        c.innerHTML = `<span class="pl">${SPACE_LABEL[n.type]}</span>`;
         el.board.appendChild(c);
-        cells.push(c);
-    }
-    const center = document.createElement('div');
-    center.className = 'pcenter';
-    center.style.gridRow = `2 / ${GRID_ROWS}`;
-    center.style.gridColumn = `2 / ${GRID_COLS}`;
-    center.innerHTML = '<div class="pdice"><span class="pdie">?</span></div><div class="pstatus"></div><div class="pact"></div><div class="pfeed"></div>';
-    el.board.appendChild(center);
+        return c;
+    });
     const tokEls = [];
-    const ui = { dice: center.querySelector('.pdie'), status: center.querySelector('.pstatus'), act: center.querySelector('.pact'), feed: center.querySelector('.pfeed') };
+    const starEl = document.createElement('span');
+    starEl.className = 'pst';
+    starEl.textContent = '★';
+    starEl.hidden = true;
+    el.board.appendChild(starEl);
+    const ui = { dice: $('.pdie'), status: $('.pstatus'), act: $('.pact'), feed: $('.pfeed') };
+
+    // Koordinaten in Rastereinheiten; auf dem Handy hochkant wird das Brett um 90° gedreht
+    const unit = id => {
+        const n = NODES[id];
+        return st.portrait ? [BOARD_H - (n.y + 1), n.x + 1] : [n.x + 1, n.y + 1];
+    };
+
+    function layoutBoard() {
+        st.portrait = typeof matchMedia === 'function' && matchMedia(PORTRAIT).matches;
+        const [w, h] = st.portrait ? [BOARD_H, BOARD_W] : [BOARD_W, BOARD_H];
+        el.board.style.setProperty('--cols', w);
+        el.board.style.setProperty('--rows', h);
+        el.board.classList.toggle('portrait', st.portrait);
+        cells.forEach((c, id) => {
+            const [x, y] = unit(id);
+            c.style.left = `${(x / w) * 100}%`;
+            c.style.top = `${(y / h) * 100}%`;
+        });
+        // Wege als Linien, Einbahnstraßen mit Pfeilspitzen in der Mitte
+        let svg = '';
+        for (const seg of SEGMENTS) {
+            const [x1, y1] = unit(seg.a);
+            const [x2, y2] = unit(seg.b);
+            svg += `<line class="seg ${seg.kind}${seg.oneway ? ' oneway' : ''}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+            if (seg.oneway) {
+                const len = Math.hypot(x2 - x1, y2 - y1);
+                const [dx, dy] = [(x2 - x1) / len, (y2 - y1) / len];
+                const [mx, my] = [(x1 + x2) / 2, (y1 + y2) / 2];
+                const pts = [[mx + dx * 0.32, my + dy * 0.32], [mx - dx * 0.22 - dy * 0.26, my - dy * 0.22 + dx * 0.26], [mx - dx * 0.22 + dy * 0.26, my - dy * 0.22 - dx * 0.26]];
+                svg += `<polygon class="arrow ${seg.kind}" points="${pts.map(p => p.map(n => n.toFixed(2)).join(',')).join(' ')}"/>`;
+            }
+        }
+        el.lines.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        el.lines.innerHTML = svg;
+        renderTokens();
+        layoutTokens(true);
+    }
+    const portraitQuery = typeof matchMedia === 'function' ? matchMedia(PORTRAIT) : null;
+    portraitQuery?.addEventListener?.('change', layoutBoard);
 
     // ---------- Zustand und Animationen ----------
 
@@ -107,15 +161,16 @@ export function mountParty(root, session) {
         if (kind) line.className = kind;
         line.textContent = text;
         ui.feed.appendChild(line);
-        while (ui.feed.children.length > 4) ui.feed.firstChild.remove();
+        while (ui.feed.children.length > 3) ui.feed.firstChild.remove();
         setTimeout(() => line.remove(), 4200);
     }
 
     // Zahl und Ring auf einem Feld (nur bei sichtbarem Brett)
     function cellCenter(i) {
-        const c = cells[i];
-        if (!c || !el.board.offsetWidth) return null;
-        return { x: c.offsetLeft + c.offsetWidth / 2, y: c.offsetTop + c.offsetHeight / 2 };
+        if (!cells[i] || !el.board.offsetWidth || el.boardWrap.hidden) return null;
+        const [x, y] = unit(i);
+        const [w, h] = st.portrait ? [BOARD_H, BOARD_W] : [BOARD_W, BOARD_H];
+        return { x: (x / w) * el.board.clientWidth, y: (y / h) * el.board.clientHeight };
     }
 
     function fx(cellIndex, text, kind) {
@@ -160,8 +215,8 @@ export function mountParty(root, session) {
             }
             case 'move': {
                 st.movingSeat = e.seat;
-                for (let k = 1; k <= e.steps; k++) {
-                    st.displayPos[e.seat] = (e.from + k) % RING;
+                for (const id of e.path) {
+                    st.displayPos[e.seat] = id;
                     renderTokens();
                     await sleep(300);
                 }
@@ -169,6 +224,24 @@ export function mountParty(root, session) {
                 renderTokens();
                 break;
             }
+            case 'teleport':
+                fx(e.from, '', 'tele');
+                st.displayPos[e.seat] = e.to;
+                renderTokens();
+                feed(`${name(e.seat)} teleportiert sich zum Stern!`, 'tele');
+                await sleep(350);
+                fx(e.to, 'TELEPORT', 'tele');
+                await sleep(500);
+                break;
+            case 'shield':
+                feed(`🛡 ${name(e.seat)} hat ein Schild (3 Runden)`, 'evt');
+                fx(e.pos, '🛡 SCHILD', 'evt');
+                await sleep(600);
+                break;
+            case 'duel':
+                feed(`Duell: ${name(e.a)} gegen ${name(e.b)}!`, 'neg');
+                await sleep(300);
+                break;
             case 'star':
                 feed(`★ ${name(e.seat)} kauft den Stern!`, 'star');
                 fx(e.pos, '★ STERN!', 'star');
@@ -204,8 +277,12 @@ export function mountParty(root, session) {
     function render() {
         const v = st.view;
         const playing = v.phase === 'mini' && v.mini;
+        const wasHidden = el.boardWrap.hidden;
         el.boardWrap.hidden = !!playing;
+        el.control.hidden = !!playing;
+        el.legend.hidden = !!playing || v.phase === 'waiting';
         el.mini.hidden = !playing;
+        if (wasHidden && !playing) st.laidOut = false;
         renderTop();
         renderScore();
         if (playing) renderMini(v);
@@ -244,7 +321,7 @@ export function mountParty(root, session) {
                 const avatar = st.avatars[i];
                 return `<div class="pchip${turn ? ' on-turn' : ''}${gain ? ' gain' : ''}${i === v.seat ? ' me' : ''}${p.connected ? '' : ' off'}" style="--pc:${PLAYER_COLORS[i]};animation-delay:-${Math.round(delay)}ms">
                     <span class="ptk" style="background:${PLAYER_COLORS[i]}${avatar ? `;background-image:url('${avatar}')` : ''}">${avatar ? '' : esc(p.name.slice(0, 1).toUpperCase())}</span>
-                    <span class="pname">${esc(p.name)}</span><span class="pst2">★${p.stars}</span><span class="pco">¢${p.coins}</span></div>`;
+                    <span class="pname">${esc(p.name)}</span>${p.shield > 0 ? `<span class="pshield" title="Schild: noch ${p.shield} ${p.shield === 1 ? 'Runde' : 'Runden'}">🛡${p.shield}</span>` : ''}<span class="pst2">★${p.stars}</span><span class="pco">¢${p.coins}</span></div>`;
             })
             .join('');
     }
@@ -252,10 +329,13 @@ export function mountParty(root, session) {
     function renderTokens() {
         const v = st.view;
         if (!v) return;
-        cells.forEach((c, i) => {
-            c.querySelector('.pst').hidden = v.starPos !== i;
-            c.classList.toggle('has-star', v.starPos === i);
-        });
+        cells.forEach((c, i) => c.classList.toggle('has-star', v.starPos === i));
+        const star = v.phase === 'waiting' ? null : cellCenter(v.starPos);
+        starEl.hidden = !star;
+        if (star) {
+            starEl.style.left = `${star.x}px`;
+            starEl.style.top = `${star.y}px`;
+        }
         layoutTokens(false);
     }
 
@@ -307,27 +387,104 @@ export function mountParty(root, session) {
             st.laidOut = true;
         }
     }
-    const resizer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => layoutTokens(true)) : null;
+    const resizer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+        renderTokens();
+        layoutTokens(true);
+    }) : null;
     resizer?.observe(el.board);
+    layoutBoard();
+
+    function setStatus(text) {
+        st.statusBase = text;
+        ui.status.textContent = text;
+    }
+
+    // Richtung von einem Feld zum nächsten als Pfeil (so, wie das Brett gerade angezeigt wird)
+    function arrow(from, to) {
+        const [x1, y1] = unit(from);
+        const [x2, y2] = unit(to);
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        return ARROWS[(Math.round(angle / (Math.PI / 4)) + 8) % 8];
+    }
 
     function renderBoard() {
         const v = st.view;
         renderTokens();
-        if (v.phase === 'board') {
-            const mine = v.turnSeat === v.seat;
-            const cur = name(v.turnSeat);
-            if (v.turnPhase === 'roll') {
-                ui.status.textContent = mine ? 'Du bist dran!' : `${cur} ist dran`;
-                ui.act.innerHTML = mine ? '<button class="btn primary big" type="button" data-act="roll">Würfeln</button>' : '<span class="muted">Warte auf den Wurf …</span>';
-            } else {
-                ui.status.textContent = `${cur} zieht …`;
-                ui.act.innerHTML = '';
-            }
-        } else {
-            ui.status.textContent = '';
-            ui.act.innerHTML = '';
-        }
+        cells.forEach(c => {
+            c.classList.remove('opt', 'opt-view');
+            delete c.dataset.act;
+            delete c.dataset.to;
+        });
         if (v.phase === 'board' && v.dice && st.shownDice === null) setDice(v.dice.value);
+        if (v.phase !== 'board') {
+            setStatus('');
+            ui.act.innerHTML = '';
+            return;
+        }
+        const seat = v.choice ? v.choice.seat : v.turnSeat;
+        const mine = seat === v.seat;
+        const cur = name(seat);
+        const me = v.players[v.seat];
+        // Während die Figur noch läuft, wird nichts gefragt
+        if (st.pending && v.turnPhase !== 'roll') {
+            setStatus(`${cur} zieht …`);
+            ui.act.innerHTML = '';
+            return;
+        }
+        switch (v.turnPhase) {
+            case 'roll':
+                setStatus(mine ? 'Du bist dran!' : `${cur} ist dran`);
+                ui.act.innerHTML = mine ? '<button class="btn primary big" type="button" data-act="roll">Würfeln</button>' : '<span class="muted">Warte auf den Wurf …</span>';
+                break;
+            case 'choose': {
+                const from = v.players[seat].pos;
+                for (const id of v.choice.options) {
+                    cells[id].classList.add(mine ? 'opt' : 'opt-view');
+                    if (mine) {
+                        cells[id].dataset.act = 'choose';
+                        cells[id].dataset.to = id;
+                    }
+                }
+                if (mine) {
+                    setStatus(`Abzweigung! Wohin? Noch ${v.moveLeft} ${v.moveLeft === 1 ? 'Feld' : 'Felder'}`);
+                    ui.act.innerHTML = v.choice.options
+                        .map(id => `<button class="btn primary dir" type="button" data-act="choose" data-to="${id}"><b>${arrow(from, id)}</b> ${SPACE_LABEL[NODES[id].type]}</button>`)
+                        .join('');
+                } else {
+                    setStatus(`${cur} wählt den Weg …`);
+                    ui.act.innerHTML = '';
+                }
+                break;
+            }
+            case 'duel':
+                if (mine) {
+                    setStatus('Duell! Gegen wen trittst du an?');
+                    ui.act.innerHTML = v.choice.options
+                        .map(i => {
+                            const p = v.players[i];
+                            return `<button class="btn duel-pick" type="button" data-act="duel" data-target="${i}" style="--pc:${PLAYER_COLORS[i]}">${esc(p.name)} <small>★${p.stars} ¢${p.coins}${p.shield > 0 ? ' 🛡' : ''}</small></button>`;
+                        })
+                        .join('') + '<p class="pnote">Sieg: 1 Stern vom Gegner (bei Schild oder ohne Stern bis zu 10 Münzen). Niederlage: dasselbe andersherum.</p>';
+                } else {
+                    setStatus(`${cur} sucht sich einen Gegner für ein Duell …`);
+                    ui.act.innerHTML = '';
+                }
+                break;
+            case 'teleport':
+                if (mine) {
+                    const enough = me.coins >= v.starPrice;
+                    setStatus('Teleport! Direkt zum Stern springen?');
+                    ui.act.innerHTML = `<button class="btn primary" type="button" data-act="teleport" data-go="1">Teleportieren</button><button class="btn" type="button" data-act="teleport" data-go="0">Hierbleiben</button>
+                        <p class="pnote">${enough ? `Der Stern kostet ${v.starPrice} Münzen, du hast ${me.coins}.` : `Du hast nur ${me.coins} Münzen, der Stern kostet ${v.starPrice}. Du stehst dann aber direkt daneben.`}</p>`;
+                } else {
+                    setStatus(`${cur} überlegt, ob sie oder er sich teleportiert …`);
+                    ui.act.innerHTML = '';
+                }
+                break;
+            default:
+                setStatus(`${cur} zieht …`);
+                ui.act.innerHTML = '';
+        }
     }
 
     // ---------- Minispiele ----------
@@ -351,8 +508,10 @@ export function mountParty(root, session) {
         const cur = st.mini;
         const head = el.mini.querySelector('.mhead');
         const body = el.mini.querySelector('.mbody');
-        const cycle = v.miniCycle ? `<span class="phint">Minispiel ${v.miniCycle.done} von ${v.miniCycle.total}</span>` : '';
-        const heading = m.phase === 'intro' && cur.reeling ? 'Minispiel' : m.title;
+        const duel = m.duel;
+        const playsHere = !duel || duel.includes(v.seat);
+        const cycle = duel ? `<span class="phint">${esc(name(duel[0]))} gegen ${esc(name(duel[1]))}</span>` : v.miniCycle ? `<span class="phint">Minispiel ${v.miniCycle.done} von ${v.miniCycle.total}</span>` : '';
+        const heading = m.phase === 'intro' && cur.reeling ? (duel ? 'Duell' : 'Minispiel') : duel ? `Duell · ${m.title}` : m.title;
         head.innerHTML = `<strong>${esc(heading)}</strong>${cycle}${m.star ? '<span class="mstar">★ Sternrunde</span>' : ''}<span class="mtimer"></span>`;
         if (m.phase !== cur.phase) {
             cur.instance?.destroy();
@@ -364,11 +523,29 @@ export function mountParty(root, session) {
             cur.deadline = performance.now() + m.msLeft;
             if (m.phase === 'intro') {
                 // Zufalls-Walze nur, wenn die Einleitung noch fast die volle Zeit hat (nicht beim späten Beitritt)
-                if (!REDUCED && m.msLeft >= 4500 && MINI_TITLES.includes(m.title)) runReel(cur, body, v, m);
+                if (!REDUCED && m.msLeft >= 4500 && MINI_TITLES.includes(m.title)) runReel(cur, body, v, m, duel ? DUEL_TITLES : MINI_TITLES);
                 else body.innerHTML = introHTML(cur, v, m);
+            } else if (m.phase === 'play' && !playsHere) {
+                body.innerHTML = '<div class="pduel-watch"></div>';
             } else if (m.phase === 'play') {
                 body.innerHTML = '';
+                // Im Duell geht der Zwischenstand gebündelt an den Host, damit die anderen zuschauen können
+                const live = score => {
+                    if (!duel) return;
+                    cur.liveScore = score;
+                    if (cur.liveTimer) return;
+                    cur.liveTimer = setTimeout(() => {
+                        cur.timers.delete(cur.liveTimer);
+                        cur.liveTimer = null;
+                        if (cur.liveScore !== cur.liveSent) {
+                            cur.liveSent = cur.liveScore;
+                            session.send({ t: 'mini', kind: 'live', score: cur.liveScore });
+                        }
+                    }, 400);
+                    cur.timers.add(cur.liveTimer);
+                };
                 const api = {
+                    progress: live,
                     seat: v.seat,
                     remaining: () => cur.deadline - performance.now(),
                     avatars: () => st.avatars,
@@ -380,29 +557,31 @@ export function mountParty(root, session) {
             }
         }
         if (m.phase === 'play') cur.instance?.update(m);
+        if (m.phase === 'play' && !playsHere) body.querySelector('.pduel-watch').innerHTML = watchHTML(v);
         if (m.phase === 'result') body.innerHTML = resultHTML(v);
     }
 
     function introHTML(cur, v, m) {
         const secs = Math.max(0.5, (cur.deadline - performance.now()) / 1000);
         const title = esc(m.title);
-        return `<div class="mintro"><i class="scanbar"></i><h2 class="glitch" data-text="${title}">${title}</h2><p>${esc(m.rules)}</p>${teamIntroHTML(v)}${m.star ? '<p class="mstar">Wer gewinnt, bekommt einen Stern!</p>' : ''}<p class="muted">Gleich geht’s los …</p><div class="mprog"><i style="--ms:${secs.toFixed(2)}s"></i></div></div>`;
+        const vs = m.duel ? `<div class="pduel-vs">${duelSide(v, m.duel[0])}<b>VS</b>${duelSide(v, m.duel[1])}</div>${m.duel.includes(v.seat) ? '' : '<p class="muted">Du schaust zu.</p>'}` : '';
+        return `<div class="mintro"><i class="scanbar"></i>${vs}<h2 class="glitch" data-text="${title}">${title}</h2><p>${esc(m.rules)}</p>${teamIntroHTML(v)}${m.star ? '<p class="mstar">Wer gewinnt, bekommt einen Stern!</p>' : ''}<p class="muted">Gleich geht’s los …</p><div class="mprog"><i style="--ms:${secs.toFixed(2)}s"></i></div></div>`;
     }
 
     // Minispiel-Zufall: Slot-Walze mit allen Titeln. Das Ziel ist das Spiel, das der Host wirklich gewählt hat.
     // Die Walze bremst von 40 ms auf ca. 370 ms je Zeile ab (kubisch), rastet grün ein und wartet 1,3 s.
-    function runReel(cur, body, v, m) {
-        const len = MINI_TITLES.length;
-        const target = MINI_TITLES.indexOf(m.title);
+    function runReel(cur, body, v, m, titles) {
+        const len = titles.length;
+        const target = titles.indexOf(m.title);
         const STEPS = 16;
         let idx = (((target - STEPS) % len) + len) % len;
-        body.innerHTML = `<div class="reel"><div class="reel-label">Minispiel-Zufall</div><div class="reel-win">${['d2', 'd1', 'c', 'd1', 'd2'].map(c => `<div class="reel-row ${c}"></div>`).join('')}<div class="reel-bracket"></div></div><div class="reel-lock">ZIEL ERFASST</div></div>`;
+        body.innerHTML = `<div class="reel"><div class="reel-label">${m.duel ? 'Duell-Zufall' : 'Minispiel-Zufall'}</div><div class="reel-win">${['d2', 'd1', 'c', 'd1', 'd2'].map(c => `<div class="reel-row ${c}"></div>`).join('')}<div class="reel-bracket"></div></div><div class="reel-lock">ZIEL ERFASST</div></div>`;
         cur.reeling = true;
         const heading = el.mini.querySelector('.mhead strong');
-        if (heading) heading.textContent = 'Minispiel';
+        if (heading) heading.textContent = m.duel ? 'Duell' : 'Minispiel';
         const reel = body.querySelector('.reel');
         const rows = [...body.querySelectorAll('.reel-row')];
-        const paint = () => rows.forEach((row, k) => (row.textContent = MINI_TITLES[(idx + k - 2 + 2 * len) % len]));
+        const paint = () => rows.forEach((row, k) => (row.textContent = titles[(idx + k - 2 + 2 * len) % len]));
         const later = (fn, ms) => {
             const id = setTimeout(() => {
                 cur.timers.delete(id);
@@ -421,7 +600,7 @@ export function mountParty(root, session) {
                     cur.reeling = false;
                     body.innerHTML = introHTML(cur, st.view, st.view.mini ?? m);
                     const head = el.mini.querySelector('.mhead strong');
-                    if (head) head.textContent = m.title;
+                    if (head) head.textContent = m.duel ? `Duell · ${m.title}` : m.title;
                 }, 1300);
                 return;
             }
@@ -442,17 +621,44 @@ export function mountParty(root, session) {
         return '';
     }
 
+    function duelSide(v, seat) {
+        const avatar = st.avatars[seat];
+        const p = v.players[seat];
+        return `<span class="pduel-side" style="--pc:${PLAYER_COLORS[seat]}"><span class="ptk" style="background:${PLAYER_COLORS[seat]}${avatar ? `;background-image:url('${avatar}')` : ''}">${avatar ? '' : esc(p.name.slice(0, 1).toUpperCase())}</span>${esc(p.name)}</span>`;
+    }
+
+    // Zuschauer im Duell: Zwischenstand beider Seiten
+    function watchHTML(v) {
+        const m = v.mini;
+        const live = m.live || {};
+        const top = Math.max(1, ...m.duel.map(s => live[s] ?? 0));
+        const side = s => `<div class="pduel-row">${duelSide(v, s)}<div class="pduel-bar" style="--pc:${PLAYER_COLORS[s]}"><i style="width:${((live[s] ?? 0) / top) * 100}%"></i></div><b>${live[s] ?? 0}</b>${m.submitted.includes(s) ? '<small>fertig</small>' : ''}</div>`;
+        return `<p class="muted">Du schaust zu: ${esc(m.title)}</p>${side(m.duel[0])}<div class="pduel-mid">VS</div>${side(m.duel[1])}`;
+    }
+
+    const prizeHTML = r => {
+        if (r.stars) return `<b class="prize star${r.stars < 0 ? ' neg' : ''}">${r.stars > 0 ? '+' : '−'}★</b>`;
+        return `<b class="prize${r.coins < 0 ? ' neg' : ''}">${r.coins < 0 ? '−' : '+'}${Math.abs(r.coins)} ¢</b>`;
+    };
+
     function resultHTML(v) {
         const m = v.mini;
         if (!m.result) return '<div class="mintro"><p>Auswertung …</p></div>';
+        let duelText = '';
+        if (m.duel) {
+            const o = m.outcome || {};
+            duelText = o.winner == null
+                ? '<p class="pduel-res">Unentschieden: Niemand bekommt etwas.</p>'
+                : `<p class="pduel-res"><b>${esc(name(o.winner))}</b> gewinnt das Duell${o.stars ? ` und schnappt sich einen Stern von ${esc(name(o.loser))}!` : o.coins ? ` und bekommt ${o.coins} Münzen von ${esc(name(o.loser))}.` : `, aber bei ${esc(name(o.loser))} ist nichts zu holen.`}${o.shielded ? ' Das Schild hat den Stern geschützt.' : ''}</p>`;
+        }
         const rows = m.result
             .map((r, i) => {
-                const prize = r.stars ? `<b class="prize star">+★</b>` : `<b class="prize">+${r.coins} ¢</b>`;
+                const prize = prizeHTML(r);
                 return `<tr style="--i:${i}" class="${r.rank === 1 && r.score > 0 ? 'win' : ''}${r.seat === v.seat ? ' me' : ''}"><td>${r.rank}.</td><td>${esc(v.players[r.seat].name)}</td><td>${r.score}</td><td>${prize}</td></tr>`;
             })
             .join('');
         const teams = m.teams && m.teamScores ? `<p class="center">${[0, 1].map(t => `<b style="color:${t ? 'var(--cyan)' : 'var(--pink)'}">${esc(m.teams.names[t])}: Ø ${m.teamScores[t]}</b>`).join(' · ')}</p>` : '';
-        return `${teams}<table class="ranking"><thead><tr><th></th><th></th><th>Punkte</th><th>Gewinn</th></tr></thead><tbody>${rows}</tbody></table>`;
+        return `${duelText}${teams}<table class="ranking"><thead><tr><th></th><th></th><th>Punkte</th><th>Gewinn</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
 
     function updateTimers() {
@@ -461,9 +667,11 @@ export function mountParty(root, session) {
         const elapsed = performance.now() - st.receivedAt;
         const t = el.mini.querySelector('.mtimer');
         if (t && v.mini) t.textContent = v.mini.phase === 'result' || (v.mini.kind === 'sub' && v.mini.phase === 'play') ? '' : `${Math.max(0, Math.ceil((v.mini.msLeft - elapsed) / 1000))} s`;
-        if (v.phase === 'board' && v.turnPhase === 'roll') {
+        // Restzeit für eigene Entscheidungen (Würfeln, Abzweigung, Duell, Teleport)
+        if (v.phase === 'board' && (v.turnPhase === 'roll' || v.choice) && !st.pending) {
+            const seat = v.choice ? v.choice.seat : v.turnSeat;
             const left = Math.max(0, Math.ceil((v.turnMsLeft - elapsed) / 1000));
-            if (v.turnSeat === v.seat) ui.status.textContent = `Du bist dran! (${left} s)`;
+            if (seat === v.seat && st.statusBase) ui.status.textContent = `${st.statusBase} (${left} s)`;
         }
     }
     const timer = setInterval(updateTimers, 250);
@@ -480,7 +688,8 @@ export function mountParty(root, session) {
                 .map(n => `<button class="btn${n === v.rounds ? ' primary' : ''}" type="button" data-act="setRounds" data-n="${n}"${isHost ? '' : ' disabled'}>${n}</button>`)
                 .join('');
             html = `<h2>Sternenjagd</h2><ul class="plist">${list}</ul>
-                <p>Es können ${v.minPlayers} bis ${v.maxPlayers} Personen mitspielen. Würfelt über den Rundkurs, sammelt Münzen und Sterne und gewinnt die Minispiele! Ein Stern zählt am Ende 10 Münzen.</p>
+                <p>Es können ${v.minPlayers} bis ${v.maxPlayers} Personen mitspielen. Würfelt über das Spielfeld, entscheidet an Abzweigungen selbst, wohin es geht, sammelt Münzen und Sterne und gewinnt die Minispiele! Ein Stern zählt am Ende 10 Münzen.</p>
+                <ul class="prules"><li><b>Einbahnstraßen</b> (Pfeile) darf man nur in Pfeilrichtung laufen.</li><li><b>🛡 Schild:</b> 3 Runden lang kann dir niemand einen Stern abnehmen.</li><li><b>VS Duell:</b> Wähle einen Gegner. Wer das Minispiel gewinnt, bekommt 1 Stern vom anderen (sonst bis zu 10 Münzen).</li><li><b>TP Teleport:</b> Spring direkt zum Stern.</li></ul>
                 <p class="muted">Rundenzahl:</p><div class="row center">${rounds}</div>` +
                 (isHost
                     ? `<p><button class="btn primary" type="button" data-act="start"${v.players.length >= v.minPlayers ? '' : ' disabled'}>Spiel starten</button></p>`
@@ -529,6 +738,15 @@ export function mountParty(root, session) {
             case 'setRounds':
                 session.send({ t: 'setRounds', n: Number(t.dataset.n) });
                 break;
+            case 'choose':
+                session.send({ t: 'choose', to: Number(t.dataset.to) });
+                break;
+            case 'duel':
+                session.send({ t: 'duel', target: Number(t.dataset.target) });
+                break;
+            case 'teleport':
+                session.send({ t: 'teleport', go: t.dataset.go === '1' });
+                break;
         }
     });
 
@@ -553,6 +771,7 @@ export function mountParty(root, session) {
             clearInterval(timer);
             destroyMini();
             resizer?.disconnect();
+            portraitQuery?.removeEventListener?.('change', layoutBoard);
             root.innerHTML = '';
         },
     };

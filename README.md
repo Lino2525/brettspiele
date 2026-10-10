@@ -53,8 +53,15 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
   holt der Host zur Laufzeit über die kostenlose iTunes-Suche von Apple (30-Sekunden-Vorschau direkt von Apples Servern);
   es wird nichts gespeichert oder gehostet. Ohne Verbindung zu Apple funktioniert das Spiel nicht.
 
-- **Sternenjagd** (2-6 Personen, Partyspiel mit Spielfeld und Minispielen): Rundkurs mit 28 Feldern (blau +3, rot −3,
-  grün = Glücksfeld mit Zufallsereignis), Stern auf dem Brett (kauft man im Vorbeigehen für 5 Münzen, er wandert danach).
+- **Sternenjagd** (2-6 Personen, Partyspiel mit Spielfeld und Minispielen): Wegenetz mit 65 Feldern (`js/games/party/board.js`).
+  Der Rand des inneren Rechtecks und die lila Linie rechts sind Einbahnstraßen (Pfeile), alle anderen Wege gehen in beide
+  Richtungen; umgedreht wird nur in einer Sackgasse. An Abzweigungen fragt das Spiel, wohin es geht (15 s Bedenkzeit,
+  danach entscheidet der Zufall). Felder: blau +3, rot −3, ? = Glücksfeld mit Zufallsereignis, 🛡 Schild (3 Runden kann
+  niemand einen Stern abnehmen), auf der lila Linie 4× Duell und 1× Teleport. Duell: Gegner wählen, beide spielen ein
+  Geschicklichkeits-Minispiel, die anderen schauen mit Live-Zwischenstand zu; wer gewinnt, bekommt 1 Stern vom anderen
+  (mit Schild oder ohne Stern bis zu 10 Münzen), bei Gleichstand passiert nichts. Teleport: auf Wunsch direkt zum Stern
+  (und kaufen, wenn die Münzen reichen). Stern auf dem Brett: kauft man im Vorbeigehen für 5 Münzen, er wandert danach
+  mindestens 5 Felder weiter. Auf schmalen Handys im Hochformat wird das Brett gedreht angezeigt.
   Die Reihenfolge der Würfe bleibt immer gleich. Nach jeder Runde (alle haben gewürfelt) spielen alle ein Minispiel; erst kommen alle einmal dran (zufällige Reihenfolge, oben steht „Minispiel 3 von 20“), dann beginnt ein neuer Durchlauf: Volltreffer (richtiger Moment), Korbwurf, Blitzreaktion,
   Tipp-Marathon, Merkreihe, Kopfrechnen, Farbe oder Wort (Stroop), Stoppuhr, Maulwurf, Ausreißer (Farbton finden), Zahlenjagd (1 bis 25),
   Sortierblitz (links/rechts nach wechselnder Regel), Wissen (Allgemeinwissen), Flaggen (Flaggenbilder von flagcdn.com),

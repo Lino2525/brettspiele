@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { QUESTIONS, FLAGS, WORDS } from '../js/games/party/data.js';
-import { RING, SPACE_TYPES, ringCell, GRID_ROWS, GRID_COLS } from '../js/games/party/board.js';
+import { NODES, NEXT, SEGMENTS, START, SPACE_TYPES, STAR_SPOTS, nextOptions, distances } from '../js/games/party/board.js';
 import { MINIS, MINI_TYPES, createMini, tickMini, miniAction, miniView, computeRewards, INTRO_MS, RESULT_MS } from '../js/games/party/minigames.js';
-import { PartyGame, MAX_PLAYERS, STAR_PRICE } from '../js/games/party/engine.js';
+import { PartyGame, MAX_PLAYERS, STAR_PRICE, CHOICE_MS, SHIELD_ROUNDS, DUEL_COINS } from '../js/games/party/engine.js';
 
 function seeded(seed = 1) {
     let x = seed;
@@ -40,21 +40,401 @@ test('Zeichenbegriffe: eindeutig und nicht leer', () => {
     assert.equal(new Set(WORDS).size, WORDS.length);
 });
 
-test('Spielfeld: 28 Felder, jedes Raster-Feld genau einmal, lückenloser Rundkurs', () => {
-    assert.equal(RING, 28);
-    assert.equal(SPACE_TYPES.length, 28);
-    assert.equal(SPACE_TYPES[0], 'start');
-    assert.equal(SPACE_TYPES.filter(t => t === 'start').length, 1);
-    assert.ok(SPACE_TYPES.filter(t => t === 'green').length >= 5);
-    assert.ok(SPACE_TYPES.filter(t => t === 'red').length >= 5);
-    const cells = Array.from({ length: RING }, (_, i) => ringCell(i));
-    assert.equal(new Set(cells.map(c => c.join(','))).size, RING);
-    for (const [r, c] of cells) assert.ok(r >= 1 && r <= GRID_ROWS && c >= 1 && c <= GRID_COLS);
-    for (let i = 0; i < RING; i++) {
-        const [r1, c1] = cells[i];
-        const [r2, c2] = cells[(i + 1) % RING];
-        assert.equal(Math.abs(r1 - r2) + Math.abs(c1 - c2), 1, `Lücke zwischen Feld ${i} und ${i + 1}`);
+// Feld an Rasterposition
+const at = (x, y) => {
+    const n = NODES.find(q => q.x === x && q.y === y);
+    assert.ok(n, `kein Feld bei ${x},${y}`);
+    return n.id;
+};
+
+test('Spielfeld: Wegenetz mit Start, Schild, 4 Duellen und Teleport, alles erreichbar', () => {
+    const count = t => SPACE_TYPES.filter(x => x === t).length;
+    assert.equal(count('start'), 1);
+    assert.equal(SPACE_TYPES[START], 'start');
+    assert.equal(count('shield'), 1);
+    assert.equal(count('duel'), 4);
+    assert.equal(count('teleport'), 1);
+    assert.ok(count('red') >= 8 && count('blue') >= 25 && count('luck') >= 4);
+    assert.equal(new Set(NODES.map(n => `${n.x},${n.y}`)).size, NODES.length, 'jede Position nur einmal');
+    // Lila Linie von oben nach unten: Duell, Duell, Teleport, Duell, Duell
+    const purple = NODES.filter(n => n.x === 31).sort((p, q) => p.y - q.y).map(n => n.type);
+    assert.deepEqual(purple, ['duel', 'duel', 'teleport', 'duel', 'duel']);
+    // Von jedem erreichbaren Zustand (Feld, Herkunft) geht es weiter, und jedes Feld ist vom Start aus erreichbar
+    const seen = new Set();
+    const nodes = new Set();
+    const stack = [[START, null]];
+    while (stack.length) {
+        const [pos, prev] = stack.pop();
+        const key = `${pos}|${prev}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        nodes.add(pos);
+        const opts = nextOptions(pos, prev);
+        assert.ok(opts.length >= 1, `Sackgasse bei ${pos}`);
+        for (const n of opts) {
+            assert.ok(NEXT[pos].includes(n));
+            stack.push([n, pos]);
+        }
     }
+    assert.equal(nodes.size, NODES.length);
+    // Wege verbinden immer benachbarte Felder (höchstens 4 Rastereinheiten)
+    for (const { a, b } of SEGMENTS) assert.ok(Math.hypot(NODES[a].x - NODES[b].x, NODES[a].y - NODES[b].y) <= 4);
+    // Der Stern liegt nur auf normalen Feldern
+    for (const id of STAR_SPOTS) assert.ok(['blue', 'red', 'luck'].includes(SPACE_TYPES[id]));
+    assert.equal(distances(START)[START], 0);
+});
+
+test('Spielfeld: Einbahnstraßen nur in Pfeilrichtung, sonst in beide Richtungen, kein Umdrehen außer in der Sackgasse', () => {
+    // oberer Rand nach rechts, rechter Rand nach unten, unten nach links, links nach oben, lila Linie nach unten
+    assert.ok(NEXT[at(2, 2)].includes(at(6, 2)) && !NEXT[at(6, 2)].includes(at(2, 2)));
+    assert.ok(NEXT[at(28, 2)].includes(at(28, 5)) && !NEXT[at(28, 5)].includes(at(28, 2)));
+    assert.ok(NEXT[at(28, 14)].every(n => NODES[n].y === 14 && NODES[n].x < 28));
+    assert.ok(!NEXT[at(2, 8)].includes(at(2, 11)), 'linker Rand nur nach oben');
+    assert.ok(NEXT[at(31, 5)].includes(at(31, 6.5)) && !NEXT[at(31, 6.5)].includes(at(31, 5)));
+    // Mittellinie in beide Richtungen
+    assert.ok(NEXT[at(6, 8)].includes(at(9, 8)) && NEXT[at(9, 8)].includes(at(6, 8)));
+    // kein Umdrehen: vom Schild aus nach rechts weiter, wenn man von links kommt
+    assert.deepEqual(nextOptions(at(9, 8), at(6, 8)), [at(12, 8)]);
+    // Sackgasse: Ende der lila Linie von links erreicht -> zurück
+    assert.deepEqual(nextOptions(at(31, 11), at(28, 11)), [at(28, 11)]);
+    // Kreuzung in der Mitte: drei Möglichkeiten
+    assert.equal(nextOptions(at(6, 8), at(6, 5)).length, 3);
+});
+
+// Setzt die Person am Zug auf ein Feld (mit Herkunft) und würfelt eine bestimmte Zahl
+function rollFrom(g, seat, pos, prev, value, now = 0) {
+    const s = g.s;
+    s.turnIdx = s.order.indexOf(seat);
+    s.turnPhase = 'roll';
+    Object.assign(s.players[seat], { pos, prev });
+    const rng = g.rng;
+    g.rng = () => (value - 1) / 6 + 0.01;
+    const r = g.apply(seat, { t: 'roll' }, now);
+    g.rng = rng;
+    return r;
+}
+
+test('Zug: nur wer dran ist würfelt, Figur läuft vom Start nach rechts, Wartezeit, dann der Nächste', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const first = g.s.order[0];
+    const second = g.s.order[1];
+    assert.ok(g.apply(second, { t: 'roll' }, 100).error, 'nicht dran');
+    g.rng = () => 0; // Wurf = 1
+    assert.ok(!g.apply(first, { t: 'roll' }, 100).error);
+    assert.equal(g.s.dice.value, 1);
+    assert.equal(g.s.players[first].pos, at(6, 2));
+    assert.equal(g.s.players[first].prev, START);
+    assert.ok(g.apply(first, { t: 'roll' }, 200).error, 'nicht doppelt würfeln');
+    assert.equal(g.s.turnPhase, 'moving');
+    assert.equal(g.tick(300), false, 'Figur ist noch unterwegs');
+    assert.ok(g.tick(100 + 380 + 2300 + 10));
+    assert.equal(g.s.turnIdx, 1);
+    assert.equal(g.view(second, 5000).turnSeat, second);
+});
+
+test('Abzweigung: das Spiel fragt, nur die Person am Zug entscheidet, danach geht es weiter (auch zweimal)', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    const p = g.s.players[seat];
+    g.s.star = at(16, 0);
+    rollFrom(g, seat, at(6, 2), at(2, 2), 3, 0);
+    assert.equal(g.s.turnPhase, 'choose');
+    assert.deepEqual(g.s.choice.options.sort(), nextOptions(at(6, 2), at(2, 2)).sort());
+    assert.equal(g.view(seat, 0).moveLeft, 3);
+    assert.equal(g.view(seat, 0).choice.seat, seat);
+    assert.ok(g.apply((seat + 1) % 3, { t: 'choose', to: at(6, 5) }, 10).error, 'nur wer zieht');
+    assert.ok(g.apply(seat, { t: 'choose', to: at(28, 2) }, 10).error, 'nur Nachbarfelder');
+    assert.ok(g.apply(seat, { t: 'roll' }, 10).error, 'kein neuer Wurf');
+    assert.ok(!g.apply(seat, { t: 'choose', to: at(6, 5) }, 20).error);
+    // an der Kreuzung (6,8) mit 1 Schritt übrig wird erneut gefragt
+    assert.equal(p.pos, at(6, 8));
+    assert.equal(g.s.turnPhase, 'choose');
+    assert.equal(g.s.choice.options.length, 3);
+    assert.ok(!g.apply(seat, { t: 'choose', to: at(9, 8) }, 30).error);
+    assert.equal(p.pos, at(9, 8));
+    assert.equal(g.s.turnPhase, 'moving');
+    // Schild-Feld
+    assert.equal(p.shield, SHIELD_ROUNDS);
+    // die Bewegung wird in Abschnitten gemeldet
+    const moves = g.s.events.filter(e => e.type === 'move' && e.seat === seat).map(e => e.path);
+    assert.deepEqual(moves.flat(), [at(6, 5), at(6, 8), at(9, 8)]);
+});
+
+test('Abzweigung: wer zu lange überlegt oder offline ist, für den entscheidet das Spiel', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    rollFrom(g, seat, at(6, 2), at(2, 2), 2, 0);
+    assert.equal(g.s.turnPhase, 'choose');
+    assert.equal(g.tick(CHOICE_MS - 10), false);
+    assert.ok(g.tick(CHOICE_MS + 10));
+    assert.notEqual(g.s.turnPhase, 'choose');
+    const h = newGame(3);
+    h.apply(0, { t: 'start' }, 0);
+    const hs = h.s.order[0];
+    rollFrom(h, hs, at(6, 2), at(2, 2), 2, 0);
+    h.setConnected(hs, false);
+    assert.ok(h.tick(10));
+    assert.notEqual(h.s.turnPhase, 'choose');
+});
+
+test('Wer zu lange wartet oder offline ist, wird automatisch gewürfelt', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    g.tick(24000);
+    assert.equal(g.s.dice, null);
+    assert.ok(g.tick(25001));
+    assert.ok(g.s.dice && g.s.dice.seat === seat);
+    const h = newGame(3);
+    h.apply(0, { t: 'start' }, 0);
+    h.setConnected(h.s.order[0], false);
+    assert.ok(h.tick(10));
+    assert.ok(h.s.dice);
+});
+
+// Ein Wegstück finden, auf dem die nächsten len Schritte ohne Abzweigung feststehen (optional: Landefeld einer Art)
+function forced(len, type = null) {
+    for (const prevNode of NODES) for (const pos of NEXT[prevNode.id]) {
+        const path = [];
+        let [cur, prev] = [pos, prevNode.id];
+        for (let i = 0; i < len; i++) {
+            const opts = nextOptions(cur, prev);
+            if (opts.length !== 1) break;
+            [prev, cur] = [cur, opts[0]];
+            path.push(cur);
+        }
+        if (path.length === len && (!type || SPACE_TYPES[path[len - 1]] === type)) return { pos, prev: prevNode.id, path };
+    }
+    throw new Error(`kein gerades Stück der Länge ${len}`);
+}
+
+// Ein Feld finden, von dem aus genau ein Schritt auf ein Feld der gewünschten Art führt
+function stepOnto(type) {
+    for (const prevNode of NODES) for (const pos of NEXT[prevNode.id]) {
+        const opts = nextOptions(pos, prevNode.id);
+        if (opts.length === 1 && SPACE_TYPES[opts[0]] === type) return { pos, prev: prevNode.id, target: opts[0] };
+    }
+    throw new Error(`kein Weg auf ${type}`);
+}
+
+test('Felder: blau +3, rot −3 (nie unter 0)', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    const p = g.s.players[seat];
+    g.s.star = at(16, 0);
+    const blue = stepOnto('blue');
+    rollFrom(g, seat, blue.pos, blue.prev, 1);
+    assert.equal(p.pos, blue.target);
+    assert.equal(p.coins, 5 + 3);
+    const red = stepOnto('red');
+    p.coins = 2;
+    rollFrom(g, seat, red.pos, red.prev, 1, 100);
+    assert.equal(p.pos, red.target);
+    assert.equal(p.coins, 0, 'nicht unter 0');
+});
+
+test('Stern: kaufen im Vorbeigehen für 5 Münzen, danach liegt er mindestens 5 Felder weiter; ohne Münzen kein Kauf', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    const p = g.s.players[seat];
+    const lane = forced(2, 'blue');
+    g.s.star = lane.path[0];
+    const starAt = g.s.star;
+    p.coins = 6;
+    rollFrom(g, seat, lane.pos, lane.prev, 2);
+    assert.equal(p.pos, lane.path[1]);
+    assert.equal(p.stars, 1);
+    assert.ok(p.coins <= 6 - STAR_PRICE + 3, 'bezahlt');
+    assert.notEqual(g.s.star, starAt, 'Stern wandert');
+    assert.ok(distances(starAt)[g.s.star] >= 5);
+    assert.ok(STAR_SPOTS.includes(g.s.star));
+    const h = newGame(3);
+    h.apply(0, { t: 'start' }, 0);
+    const hs = h.s.order[0];
+    const q = h.s.players[hs];
+    h.s.star = lane.path[0];
+    q.coins = 4;
+    rollFrom(h, hs, lane.pos, lane.prev, 2);
+    assert.equal(q.stars, 0);
+    assert.equal(h.s.star, lane.path[0]);
+});
+
+test('Teleport: auf Wunsch direkt zum Stern (und kaufen, wenn es reicht), sonst bleiben', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    const p = g.s.players[seat];
+    const star = STAR_SPOTS[3];
+    g.s.star = star;
+    p.coins = 7;
+    rollFrom(g, seat, at(31, 6.5), at(31, 5), 1);
+    assert.equal(SPACE_TYPES[p.pos], 'teleport');
+    assert.equal(g.s.turnPhase, 'teleport');
+    assert.ok(g.apply((seat + 1) % 3, { t: 'teleport', go: true }, 10).error);
+    assert.ok(!g.apply(seat, { t: 'teleport', go: true }, 10).error);
+    assert.equal(p.pos, star);
+    assert.equal(p.prev, null, 'danach freie Richtung');
+    assert.equal(p.stars, 1);
+    assert.equal(p.coins, 7 - STAR_PRICE);
+    assert.ok(g.s.events.some(e => e.type === 'teleport' && e.to === star));
+    assert.equal(g.s.turnPhase, 'moving');
+    // ablehnen
+    const h = newGame(3);
+    h.apply(0, { t: 'start' }, 0);
+    const hs = h.s.order[0];
+    rollFrom(h, hs, at(31, 6.5), at(31, 5), 1);
+    assert.ok(!h.apply(hs, { t: 'teleport', go: false }, 10).error);
+    assert.equal(h.s.players[hs].pos, at(31, 8));
+});
+
+// Duell starten: Person am Zug landet auf dem Duellfeld (31, 6.5) und wählt target
+function startDuel(g, seat, target) {
+    rollFrom(g, seat, at(31, 5), at(28, 5), 1);
+    assert.equal(g.s.turnPhase, 'duel');
+    assert.ok(!g.apply(seat, { t: 'duel', target }, 10).error);
+    assert.equal(g.s.phase, 'mini');
+    return g.s.mini;
+}
+
+function finishDuel(g, scores, t = 20) {
+    const m = g.s.mini;
+    g.tick(t + 10000);
+    assert.equal(m.phase, 'play');
+    for (const [seat, score] of Object.entries(scores)) g.apply(Number(seat), { t: 'mini', kind: 'score', score }, t + 10100);
+    g.tick(t + 10200);
+    assert.equal(m.phase, 'result');
+    return m;
+}
+
+test('Duell: Gegner wählen (nicht sich selbst), nur die beiden spielen, Sieg bringt einen Stern', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    const other = (seat + 1) % 3;
+    const watcher = (seat + 2) % 3;
+    g.s.players[other].stars = 2;
+    rollFrom(g, seat, at(31, 5), at(28, 5), 1);
+    assert.equal(g.s.turnPhase, 'duel');
+    assert.deepEqual(g.s.choice.options.sort(), [other, watcher].sort());
+    assert.ok(g.apply(seat, { t: 'duel', target: seat }, 10).error, 'nicht gegen sich selbst');
+    assert.ok(g.apply(other, { t: 'duel', target: seat }, 10).error, 'nur wer gelandet ist');
+    assert.ok(!g.apply(seat, { t: 'duel', target: other }, 10).error);
+    const m = g.s.mini;
+    assert.deepEqual(m.duel, [seat, other]);
+    assert.equal(m.kind, 'solo');
+    assert.equal(m.star, false);
+    assert.equal(g.view(watcher, 10).mini.duel.length, 2);
+    g.tick(10000);
+    assert.ok(g.apply(watcher, { t: 'mini', kind: 'score', score: 50 }, 10100).error, 'Zuschauer spielen nicht mit');
+    assert.ok(g.apply(watcher, { t: 'mini', kind: 'live', score: 50 }, 10100).error);
+    assert.ok(!g.apply(seat, { t: 'mini', kind: 'live', score: 999999 }, 10100).error);
+    assert.equal(m.live[seat], MINIS[m.type].max, 'Zwischenstand begrenzt');
+    g.apply(seat, { t: 'mini', kind: 'score', score: 80 }, 10200);
+    assert.equal(m.phase, 'play', 'wartet auf den Gegner, nicht auf Zuschauer');
+    g.apply(other, { t: 'mini', kind: 'score', score: 40 }, 10200);
+    g.tick(10300);
+    assert.equal(m.phase, 'result');
+    assert.deepEqual([g.s.players[seat].stars, g.s.players[other].stars], [1, 1]);
+    assert.deepEqual(m.outcome, { winner: seat, loser: other, stars: 1, coins: 0, shielded: false });
+    // danach geht es auf dem Brett mit der nächsten Person weiter
+    const turnBefore = g.s.turnIdx;
+    g.tick(10300 + 10000);
+    assert.equal(g.s.phase, 'board');
+    assert.equal(g.s.mini, null);
+    assert.equal(g.s.turnIdx, turnBefore + 1);
+    assert.equal(g.s.round, 1, 'kein neues Rundenminispiel durch das Duell');
+});
+
+test('Duell: ohne Stern oder mit Schild gibt es bis zu 10 Münzen, Niederlage kostet selbst, Gleichstand nichts', () => {
+    // Gegner ohne Stern: 10 Münzen
+    let g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    let seat = g.s.order[0];
+    let other = (seat + 1) % 3;
+    g.s.players[other].coins = 25;
+    startDuel(g, seat, other);
+    finishDuel(g, { [seat]: 90, [other]: 10 });
+    assert.equal(g.s.players[other].coins, 25 - DUEL_COINS);
+    // Gegner hat nur 4 Münzen: mehr gibt es nicht
+    g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    seat = g.s.order[0];
+    other = (seat + 1) % 3;
+    g.s.players[other].coins = 4;
+    const before = g.s.players[seat].coins;
+    startDuel(g, seat, other);
+    finishDuel(g, { [seat]: 90, [other]: 10 });
+    assert.equal(g.s.players[other].coins, 0);
+    assert.equal(g.s.players[seat].coins, before + 4);
+    // Schild schützt den Stern, dann Münzen
+    g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    seat = g.s.order[0];
+    other = (seat + 1) % 3;
+    Object.assign(g.s.players[other], { stars: 1, shield: 2, coins: 12 });
+    startDuel(g, seat, other);
+    const m = finishDuel(g, { [seat]: 90, [other]: 10 });
+    assert.equal(g.s.players[other].stars, 1);
+    assert.equal(g.s.players[other].coins, 2);
+    assert.equal(m.outcome.shielded, true);
+    // wer herausfordert und verliert, gibt selbst ab
+    g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    seat = g.s.order[0];
+    other = (seat + 1) % 3;
+    g.s.players[seat].stars = 1;
+    startDuel(g, seat, other);
+    finishDuel(g, { [seat]: 10, [other]: 90 });
+    assert.deepEqual([g.s.players[seat].stars, g.s.players[other].stars], [0, 1]);
+    // Gleichstand
+    g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    seat = g.s.order[0];
+    other = (seat + 1) % 3;
+    g.s.players[other].stars = 1;
+    startDuel(g, seat, other);
+    const tie = finishDuel(g, { [seat]: 50, [other]: 50 });
+    assert.equal(tie.outcome.winner, null);
+    assert.equal(g.s.players[other].stars, 1);
+});
+
+test('Schild: hält 3 Runden (diese und die zwei folgenden), Anzeige in der Ansicht', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const p = g.s.players[1];
+    p.shield = SHIELD_ROUNDS;
+    assert.equal(g.view(0, 0).players[1].shield, 3);
+    let t = 0;
+    const rounds = [];
+    for (let i = 0; i < 6000 && g.s.round < 4; i++) {
+        t += 700;
+        g.tick(t);
+        if (rounds[g.s.round] === undefined) rounds[g.s.round] = p.shield;
+    }
+    assert.deepEqual(rounds.slice(1, 5), [3, 2, 1, 0]);
+});
+
+test('Duell: Auto-Wahl bei Zeitablauf, Wiederherstellen mitten im Duell geht mit dem Zug weiter', () => {
+    const g = newGame(3);
+    g.apply(0, { t: 'start' }, 0);
+    const seat = g.s.order[0];
+    rollFrom(g, seat, at(31, 5), at(28, 5), 1);
+    assert.equal(g.s.turnPhase, 'duel');
+    assert.ok(g.tick(380 + CHOICE_MS + 10));
+    assert.equal(g.s.phase, 'mini');
+    assert.ok(g.s.mini.duel.includes(seat));
+    const turn = g.s.turnIdx;
+    const r = PartyGame.restore(g.serialize(), { rng: seeded(3) });
+    assert.equal(r.s.mini, null);
+    r.tick(100000);
+    assert.equal(r.s.phase, 'board');
+    assert.equal(r.s.round, 1);
+    assert.equal(r.s.turnIdx, turn + 1);
 });
 
 // ---------- Minispiele ----------
@@ -219,102 +599,26 @@ test('Lobby: Start nur durch den Gastgeber ab 2 Spielern, höchstens 6, Rundenza
     assert.equal(g.join('b', 'B'), 1);
 });
 
-test('Zug: nur wer dran ist würfelt, Figur bewegt sich, Wartezeit, dann der Nächste', () => {
-    const g = newGame(3);
-    g.apply(0, { t: 'start' }, 0);
-    const first = g.s.order[0];
-    const second = g.s.order[1];
-    assert.ok(g.apply(second, { t: 'roll' }, 100).error, 'nicht dran');
-    assert.ok(!g.apply(first, { t: 'roll' }, 100).error);
-    const d = g.s.dice;
-    assert.ok(d.value >= 1 && d.value <= 6);
-    assert.equal(g.s.players[first].pos, d.value % 28);
-    assert.ok(g.apply(first, { t: 'roll' }, 200).error, 'nicht doppelt würfeln');
-    assert.equal(g.tick(300), false, 'Figur ist noch unterwegs');
-    assert.ok(g.tick(100 + 6 * 380 + 2300 + 10));
-    assert.equal(g.s.turnIdx, 1);
-    assert.equal(g.view(second, 5000).turnSeat, second);
-});
-
-test('Wer zu lange wartet oder offline ist, wird automatisch gewürfelt', () => {
-    const g = newGame(3);
-    g.apply(0, { t: 'start' }, 0);
-    const seat = g.s.order[0];
-    g.tick(24000);
-    assert.equal(g.s.dice, null);
-    assert.ok(g.tick(25001));
-    assert.ok(g.s.dice && g.s.dice.seat === seat);
-    const h = newGame(3);
-    h.apply(0, { t: 'start' }, 0);
-    h.setConnected(h.s.order[0], false);
-    assert.ok(h.tick(10));
-    assert.ok(h.s.dice);
-});
-
-test('Felder: blau +3, rot −3 (nie unter 0), Münzen verändern sich wie vorgesehen', () => {
-    const g = newGame(3);
-    g.apply(0, { t: 'start' }, 0);
-    const seat = g.s.order[0];
-    const p = g.s.players[seat];
-    g.s.star = 20; // weit weg
-    // Vor dem Wurf so setzen, dass ein blaues Feld erreicht wird
-    p.pos = 0;
-    g.rng = () => 0; // Wurf = 1 -> Feld 1 (blau)
-    g.apply(seat, { t: 'roll' }, 0);
-    assert.equal(p.pos, 1);
-    assert.equal(p.coins, 5 + 3);
-    g.s.turnPhase = 'roll';
-    p.pos = 4;
-    p.coins = 2;
-    g.rng = () => 0.17; // Wurf = 2 -> Feld 6? (blau); setze für rot: Feld 5 = rot, Wurf 1
-    g.rng = () => 0;
-    g.apply(seat, { t: 'roll' }, 100); // 4 -> 5 (rot)
-    assert.equal(p.pos, 5);
-    assert.equal(p.coins, 0, 'nicht unter 0');
-});
-
-test('Stern: kaufen im Vorbeigehen für 5 Münzen, danach liegt er woanders; ohne Münzen kein Kauf', () => {
-    const g = newGame(3);
-    g.apply(0, { t: 'start' }, 0);
-    const seat = g.s.order[0];
-    const p = g.s.players[seat];
-    g.s.star = 3;
-    p.pos = 1;
-    p.coins = 6;
-    g.rng = () => 0.99; // Wurf = 6 -> von 1 über Feld 3 bis 7
-    g.apply(seat, { t: 'roll' }, 0);
-    assert.equal(p.stars, 1);
-    assert.ok(p.coins <= 6 - STAR_PRICE + 3, 'bezahlt');
-    assert.notEqual(g.s.star, 3, 'Stern wandert');
-    assert.ok(g.s.star > 0);
-    // arm: kein Kauf
-    const h = newGame(3);
-    h.apply(0, { t: 'start' }, 0);
-    const hs = h.s.order[0];
-    const q = h.s.players[hs];
-    h.s.star = 3;
-    q.pos = 1;
-    q.coins = 4;
-    h.rng = () => 0;
-    h.rng = () => 0.4; // Wurf = 3 -> Feld 4, über den Stern
-    h.apply(hs, { t: 'roll' }, 0);
-    assert.equal(q.stars, 0);
-    assert.equal(h.s.star, 3);
-});
-
 test('Nach allen Zügen startet ein Minispiel, danach Belohnung und nächste Runde, die die Person nach der Letzten beginnt', () => {
     const g = newGame(3);
     g.apply(0, { t: 'start' }, 0);
     let t = 0;
     let lastRoller = -1;
-    for (let k = 0; k < 3; k++) {
-        t += 100;
-        lastRoller = g.s.order[g.s.turnIdx];
-        g.apply(lastRoller, { t: 'roll' }, t);
-        t += 6 * 380 + 2400;
+    for (let i = 0; i < 400 && !(g.s.phase === 'mini' && !g.s.inDuel); i++) {
+        t += 500;
+        const s = g.s;
+        if (s.phase === 'board' && s.turnPhase === 'roll') {
+            lastRoller = s.order[s.turnIdx];
+            g.apply(lastRoller, { t: 'roll' }, t);
+        } else if (s.phase === 'board' && s.choice) {
+            // an Abzweigungen den ersten Weg, Duelle gegen den Ersten, kein Teleport
+            const c = s.choice;
+            g.apply(c.seat, s.turnPhase === 'choose' ? { t: 'choose', to: c.options[0] } : s.turnPhase === 'duel' ? { t: 'duel', target: c.options[0] } : { t: 'teleport', go: false }, t);
+        }
         g.tick(t);
     }
     assert.equal(g.s.phase, 'mini');
+    assert.equal(g.s.inDuel, false);
     assert.equal(g.s.mini.phase, 'intro');
     t += INTRO_MS + 10;
     g.tick(t);
@@ -400,8 +704,12 @@ function autoplay(n, rounds, seed) {
         if (s.phase === 'board' && s.turnPhase === 'roll') {
             rollers.push(s.order[s.turnIdx]);
             g.apply(s.order[s.turnIdx], { t: 'roll' }, t);
+        } else if (s.phase === 'board' && s.choice) {
+            const c = s.choice;
+            const pick = c.options[step % Math.max(1, c.options.length)];
+            g.apply(c.seat, s.turnPhase === 'choose' ? { t: 'choose', to: pick } : s.turnPhase === 'duel' ? { t: 'duel', target: pick } : { t: 'teleport', go: step % 2 === 0 }, t);
         }
-        if (s.phase === 'mini' && s.mini && s.mini.id !== lastMini) {
+        if (s.phase === 'mini' && s.mini && !s.mini.duel && s.mini.id !== lastMini) {
             lastMini = s.mini.id;
             types.push(s.mini.type);
             rollers.push('mini');
