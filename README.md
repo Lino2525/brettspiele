@@ -45,11 +45,11 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
   Handel (Geld, Grundstücke, Freikarten), Schulden und Bankrott. Alle sehen Würfel, Figuren und Karten live.
   Bauen, Hypotheken und Verkäufe sind nur im eigenen Zug möglich (oder bei eigenen Schulden).
 
-- **Lieder-Raten** (2-10 Personen): kurze Ausschnitte (5 s) bekannter Hits erraten, Titel oder Künstler tippen.
+- **Lieder-Raten** (1-10 Personen, auch allein spielbar): 20 Sekunden aus bekannten Hits erraten, Titel oder Künstler tippen.
   Wertung: Titel 1 Punkt, Künstler 1 Punkt, beides in einer Runde +1 Bonus, wer Titel bzw. Künstler als Erste/r errät +1.
   20 Runden pro Durchgang, danach "Weitere 20 Runden" (Songs wiederholen sich nicht, auch nicht bei einem neuen Spiel,
-  der Host merkt sich die gespielten Songs im Browser). Nach 10 s und 20 s gibt es Hinweise (Wortlängen, Anfangsbuchstaben)
-  und einen längeren Ausschnitt. Die Songliste (`js/games/songquiz/catalog.js`) enthält nur Titel und Künstler. Die Töne
+  der Host merkt sich die gespielten Songs im Browser). Der Ausschnitt läuft ohne Pause durch, auch während der
+  Auflösung mit Cover, bis der nächste Song kommt. Nach 7 s und 14 s gibt es Hinweise (Wortlängen, Anfangsbuchstaben). Die Songliste (`js/games/songquiz/catalog.js`) enthält nur Titel und Künstler. Die Töne
   holt der Host zur Laufzeit über die kostenlose iTunes-Suche von Apple (30-Sekunden-Vorschau direkt von Apples Servern);
   es wird nichts gespeichert oder gehostet. Ohne Verbindung zu Apple funktioniert das Spiel nicht.
 

@@ -65,7 +65,6 @@
 .qinput:disabled { opacity: .5; }
 .qmine { display: flex; gap: 14px; justify-content: center; min-height: 1.4em; font-family: var(--mono); color: var(--muted); font-size: .9rem; }
 .qmine .got { color: var(--green); }
-.qrow { display: flex; justify-content: center; }
 
 .qplayers { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
 .qp { --bc: rgba(255, 255, 255, .22); --fill: rgba(255, 255, 255, .05); display: flex; align-items: center; gap: 8px; padding: 6px 10px; }
