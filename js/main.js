@@ -3,6 +3,7 @@ import { HostSession, ClientSession, makeRoomCode, normalizeRoomCode, ROOM_CODE_
 import { fileToAvatar } from './core/avatar.js';
 import { music } from './core/music.js';
 import { nachtfeld } from './core/nachtfeld.js';
+import { probeIce } from './core/ice.js';
 import { RummyGame, MIN_PLAYERS as RUMMY_MIN, MAX_PLAYERS as RUMMY_MAX } from './games/rummy/engine.js';
 import { mountRummy } from './games/rummy/ui.js';
 import { MonopolyGame, MIN_PLAYERS as MONO_MIN, MAX_PLAYERS as MONO_MAX } from './games/monopoly/engine.js';
@@ -281,12 +282,44 @@ async function joinGame(rawCode) {
             : e.message === 'full' ? 'Dieser Raum ist voll oder das Spiel hat schon begonnen.'
             : e.message === 'denied' ? (openPassword(), 'Falsches oder fehlendes Passwort.')
             : e.message === 'timeout' || e.message === 'ice-failed'
-                ? 'Keine Verbindung zum Host möglich. Ist das Spiel dort noch offen? Mit Mobilfunk bitte einmal WLAN probieren (oder umgekehrt).'
+                ? 'Keine Verbindung zum Host möglich. Ist das Spiel dort noch offen? Tippt auf beiden Geräten auf „Verbindung prüfen“: Fehlt das Relais, klappt es oft nur im selben Netz. Mit Mobilfunk auch einmal WLAN probieren (oder umgekehrt).'
             : `Verbindung fehlgeschlagen (${e.message}).`,
         );
         setBusy(false);
     }
 }
+
+// ---------- Verbindung prüfen ----------
+// Zeigt, welche Wege dieses Gerät nutzen kann: direkt über das Internet (STUN) und über ein Relais (TURN).
+
+$('netBtn')?.addEventListener('click', async () => {
+    const btn = $('netBtn');
+    const out = $('netResult');
+    btn.disabled = true;
+    btn.textContent = 'Prüfe Verbindung …';
+    out.hidden = true;
+    let r;
+    try {
+        r = await probeIce();
+    } catch {
+        r = null;
+    }
+    btn.disabled = false;
+    btn.textContent = 'Erneut prüfen';
+    const direct = r && r.srflx + r.prflx > 0;
+    const relay = r && r.relay > 0;
+    const row = (ok, label, yes, no) => `<li class="${ok ? 'ok' : 'bad'}"><span>${label}</span><b>${ok ? yes : no}</b></li>`;
+    const summary = !r
+        ? 'Der Test konnte nicht laufen. Unterstützt dieser Browser WebRTC?'
+        : relay
+            ? 'Alles bereit: Verbindungen sollten auch über verschiedene Netze klappen.'
+            : direct
+                ? 'Direkt klappt es mit vielen Netzen. Ohne Relais kann es scheitern, wenn das andere Gerät im Mobilfunk oder hinter einer strengen Firewall ist.'
+                : 'Dieses Gerät erreicht keinen Verbindungsserver. Ist ein VPN, eine Firewall oder ein Werbeblocker aktiv?';
+    out.innerHTML = `<ul>${row(direct, 'Direkt über das Internet', 'möglich', 'nicht möglich')}${row(relay, 'Relais für schwierige Netze', 'erreichbar', 'nicht erreichbar')}</ul><p></p>`;
+    out.querySelector('p').textContent = summary;
+    out.hidden = false;
+});
 
 // ---------- Start ----------
 
@@ -294,6 +327,13 @@ document.querySelectorAll('.music-slot').forEach(slot => music.mount(slot));
 
 $('name').value = store.get('bsp.name') || '';
 $('password').value = store.get('bsp.password') || '';
+
+// Beitreten und Starten zuerst anschließen: Sie müssen auch dann funktionieren, wenn danach etwas Dekoratives scheitert
+$('joinBtn').addEventListener('click', () => joinGame($('code').value));
+$('code').addEventListener('keydown', e => {
+    if (e.key === 'Enter') joinGame($('code').value);
+});
+$('hostBtn').addEventListener('click', () => hostGame(selected));
 
 // ---------- Spielauswahl: Pillen auf dem Wasser, Partikelform und Dock ----------
 
@@ -371,7 +411,6 @@ $('gameList').addEventListener('keydown', e => {
     document.querySelector(`.pill[data-game="${next}"]`).focus();
 });
 
-$('hostBtn').addEventListener('click', () => hostGame(selected));
 nachtfeld.start($('nachtfeld'));
 nachtfeld.anchor($('stageSpace'));
 select(selected);
@@ -416,10 +455,6 @@ for (const [id, game] of Object.entries(GAMES)) {
     }
 }
 
-$('joinBtn').addEventListener('click', () => joinGame($('code').value));
-$('code').addEventListener('keydown', e => {
-    if (e.key === 'Enter') joinGame($('code').value);
-});
 
 const invited = new URLSearchParams(location.search).get('raum');
 if (invited) {

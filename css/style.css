@@ -269,6 +269,17 @@ input:not([type=range], [type=checkbox], [type=radio], [type=file], [type=color]
 .pw summary:hover { color: var(--text); }
 .pw .field { margin: 10px 0 0; max-width: 360px; }
 
+.netline { margin: 6px 0 0; }
+.netresult { margin-top: 8px; padding: 10px 14px; border-radius: var(--r-ctl); border: 1px solid var(--line); background: rgba(2, 6, 20, .45); font-size: .85rem; animation: fadeIn .3s ease-out; }
+.netresult ul { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 4px; }
+.netresult li { display: flex; align-items: center; gap: 8px; }
+.netresult li::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--rose); box-shadow: 0 0 8px var(--rose); }
+.netresult li.ok::before { background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+.netresult li span { flex: 1; color: var(--muted); }
+.netresult li.ok b { color: var(--mint); }
+.netresult li.bad b { color: #ff8da3; }
+.netresult p { margin: 0; color: var(--text); }
+
 .dock-join { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
 .join-label { color: var(--muted); font-size: .9rem; white-space: nowrap; }
 

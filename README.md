@@ -22,6 +22,23 @@ Die Seite muss im Internet erreichbar sein (z. B. GitHub Pages, Netlify oder Clo
 alle kostenlos). Es ist eine rein statische Seite, hochgeladen wird der ganze Ordner.
 Danach: Host klickt "Mini Rummy starten", kopiert den Einladungslink und schickt ihn. Sobald 2 bis 4 Personen in der Lobby sind, startet der Host mit "Spiel starten" (danach kann niemand Neues mehr beitreten, wer rausfliegt kommt aber zurück).
 
+## Verbindung über verschiedene Netze
+
+Die Browser verbinden sich direkt (WebRTC). Damit das auch zwischen verschiedenen Netzen klappt (z. B. WLAN in
+Deutschland und Mobilfunk in Serbien), nutzt `js/core/ice.js` mehrere STUN-Server (Google, Cloudflare) und als Relais
+(TURN) den kostenlosen Server von PeerJS, auch über TCP. Das PeerJS-Relais hat keine Garantie; fällt es aus und lässt
+eines der Netze keine direkte Verbindung zu (häufig im Mobilfunk), klappt es nur noch im selben Netz.
+
+- **Verbindung prüfen** (Knopf im Startfenster): zeigt auf dem jeweiligen Gerät, ob die direkte Verbindung und das
+  Relais erreichbar sind. Am besten auf beiden Geräten prüfen. Im Spiel zeigt die Leiste beim Gast
+  „Verbunden (direkt)“ oder „Verbunden (über Relais)“.
+- **Eigenes Relais (empfohlen, kostenlos):** bei einem TURN-Anbieter ein kostenloses Konto anlegen und die Zugangsdaten
+  oben in `js/core/ice.js` eintragen: entweder die Adresse für die Zugangsdaten (`TURN_CREDENTIALS_URL`, z. B. bei
+  Metered Open Relay) oder feste Zugangsdaten (`EXTRA_TURN`, z. B. ExpressTURN). Das PeerJS-Relais bleibt als Reserve.
+
+Der Hintergrund (`nachtfeld.js`) fängt eigene Fehler ab, damit ältere Browser (z. B. Safari bis iOS 15) trotzdem
+beitreten können.
+
 ## Zugangsschutz
 
 - Raumcode: 6 Zeichen, nur mit dem Code (oder Link) kommt man in einen Raum. Ist der Raum voll oder das Spiel gestartet, kommt niemand Neues mehr rein.

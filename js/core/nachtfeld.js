@@ -19,6 +19,17 @@ const INK = '2, 4, 12';
 
 // ---------- Formen ----------
 
+// Abgerundetes Rechteck als Pfad. Bewusst ohne ctx.roundRect: das fehlt in älteren Browsern (z. B. Safari bis iOS 15)
+function roundedRect(g, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+}
+
 function star(g, cx, cy, ro, ri) {
     g.beginPath();
     for (let i = 0; i < 10; i++) {
@@ -41,7 +52,7 @@ const DRAW = {
             g.translate(110 + i * 50, 120 + Math.abs(i) * 10);
             g.rotate(i * 0.24);
             g.beginPath();
-            g.roundRect(-34, -48, 68, 96, 12);
+            roundedRect(g, -34, -48, 68, 96, 12);
             g.globalCompositeOperation = 'destination-out';
             g.fill();
             g.globalCompositeOperation = 'source-over';
@@ -57,7 +68,7 @@ const DRAW = {
         const h = [16, 34, 58, 40, 86, 124, 76, 168, 104, 140, 70, 98, 46, 30, 16];
         h.forEach((v, i) => {
             g.beginPath();
-            g.roundRect(14 + i * 13, 110 - v / 2, 8, v, 4);
+            roundedRect(g, 14 + i * 13, 110 - v / 2, 8, v, 4);
             g.fill();
         });
     },
@@ -374,6 +385,17 @@ function drawParticles(t, gold, count, alphaScale) {
 function frame(t) {
     raf = 0;
     if (!ctx) return;
+    try {
+        draw(t);
+    } catch (e) {
+        running = false;
+        console.warn('Nachtfeld angehalten:', e);
+        return;
+    }
+    if (running) raf = requestAnimationFrame(frame);
+}
+
+function draw(t) {
     parallax.x += ((pointer.x > -1e3 ? pointer.x / W - 0.5 : 0) - parallax.x) * 0.04;
     parallax.y += ((pointer.y > -1e3 ? pointer.y / H - 0.5 : 0) - parallax.y) * 0.04;
     // Leichte Nachzieh-Spuren: Grund nur teilweise übermalen
@@ -390,7 +412,6 @@ function frame(t) {
         // Im Spiel weniger und dunkler, damit nichts vom Brett ablenkt
         drawParticles(t, false, t < warpUntil ? N : Math.round(N * 0.3), t < warpUntil ? 1 : 0.4);
     }
-    if (running) raf = requestAnimationFrame(frame);
 }
 
 // Standbild für "weniger Bewegung": Partikel direkt auf die Form setzen
@@ -420,7 +441,18 @@ function pause() {
     raf = 0;
 }
 
-export const nachtfeld = {
+// Der Hintergrund ist Dekoration: Ein Fehler darin (etwa in einem älteren Browser) darf nie das Menü oder ein Spiel
+// lahmlegen. Deshalb fängt jede öffentliche Funktion Fehler ab und der Hintergrund bleibt dann einfach stehen.
+const safe = api => Object.fromEntries(Object.entries(api).map(([name, fn]) => [name, (...args) => {
+    try {
+        return fn(...args);
+    } catch (e) {
+        console.warn(`Nachtfeld (${name}):`, e);
+        return undefined;
+    }
+}]));
+
+export const nachtfeld = safe({
     start(el) {
         canvas = el;
         ctx = canvas.getContext('2d', { alpha: false });
@@ -479,4 +511,4 @@ export const nachtfeld = {
         else scatter(true);
         if (reduced()) still();
     },
-};
+});

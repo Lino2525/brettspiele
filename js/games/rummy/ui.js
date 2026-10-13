@@ -198,7 +198,7 @@ export function mountRummy(root, session) {
             const r = t.getBoundingClientRect();
             const dx = b.left - r.left;
             const dy = b.top - r.top;
-            if (Math.abs(dx) + Math.abs(dy) < 2) return;
+            if (Math.abs(dx) + Math.abs(dy) < 2 || !t.animate) return;
             t.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2, .8, .2, 1)' });
         });
     }
@@ -214,11 +214,11 @@ export function mountRummy(root, session) {
     function afterDraw() {
         if (st.checkSet !== null && !REDUCED) {
             const setEl = el.table.querySelector(`.set[data-index="${st.checkSet}"]`);
-            if (setEl?.classList.contains('bad') && setEl.children.length >= 3) {
+            if (setEl?.animate && setEl.classList.contains('bad') && setEl.children.length >= 3) {
                 setEl.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(-3px)' }, { transform: 'translateX(0)' }], { duration: 320 });
             }
         }
-        if (st.flashRack && !REDUCED) {
+        if (st.flashRack && !REDUCED && el.rack.animate) {
             el.rack.animate([{ boxShadow: '0 0 0 0 rgba(255, 207, 107, .75), inset 0 1px 0 rgba(255, 207, 107, .3)' }, { boxShadow: '0 0 0 14px rgba(255, 207, 107, 0), inset 0 1px 0 rgba(255, 207, 107, .3)' }], { duration: 900, easing: 'ease-out' });
         }
         st.checkSet = null;

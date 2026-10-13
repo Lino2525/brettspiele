@@ -7,6 +7,8 @@
 //   session.onAvatars = fn(list)  Avatar-Bilder (Data-URL oder null) je Platz, nur im Arbeitsspeicher
 //   session.close()
 
+import { getIceServers } from './ice.js';
+
 const PEER_PREFIX = 'brettspiele-';
 const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const ROOM_CODE_LENGTH = 6;
@@ -79,9 +81,10 @@ export class HostSession extends Session {
     }
 
     // Meldet den Raum beim Vermittlungsserver an. Schlägt mit code 'unavailable-id' fehl, wenn der Code vergeben ist.
-    open() {
+    async open() {
+        const config = { iceServers: await getIceServers() };
         return new Promise((resolve, reject) => {
-            const peer = new Peer(peerIdFor(this.roomCode));
+            const peer = new Peer(peerIdFor(this.roomCode), { config });
             this.#peer = peer;
             let opened = false;
             peer.on('open', () => {
@@ -189,11 +192,29 @@ export class HostSession extends Session {
     }
 }
 
+// Zeigt nach dem Verbinden, ob die Daten direkt oder über ein Relais (TURN) laufen; hilft bei Verbindungsproblemen.
+function reportPath(pc, show) {
+    if (!pc?.getStats) return;
+    setTimeout(async () => {
+        try {
+            const stats = await pc.getStats();
+            let pair = null;
+            stats.forEach(r => {
+                if (r.type === 'transport' && r.selectedCandidatePairId) pair = stats.get(r.selectedCandidatePairId);
+            });
+            if (!pair) stats.forEach(r => { if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') pair = r; });
+            const local = pair && stats.get(pair.localCandidateId);
+            if (local?.candidateType) show(local.candidateType === 'relay' ? 'Verbunden (über Relais)' : 'Verbunden (direkt)');
+        } catch { /* Statistik nicht verfügbar: Anzeige bleibt "Verbunden" */ }
+    }, 1500);
+}
+
 export class ClientSession extends Session {
     #peer = null;
     #conn = null;
     #closed = false;
     #retryTimer = null;
+    #config = undefined;
 
     constructor({ roomCode, token, name, password, avatar }) {
         super();
@@ -206,7 +227,8 @@ export class ClientSession extends Session {
     }
 
     // Löst nach der Begrüßung durch den Host auf. Danach verbindet sich die Sitzung bei Abbrüchen selbst neu.
-    connect() {
+    async connect() {
+        this.#config = { iceServers: await getIceServers() };
         return new Promise((resolve, reject) => this.#dial(resolve, reject));
     }
 
@@ -223,7 +245,7 @@ export class ClientSession extends Session {
 
     #dial(resolve, reject) {
         this.#peer?.destroy();
-        const peer = new Peer();
+        const peer = new Peer({ config: this.#config });
         this.#peer = peer;
         let welcomed = false;
         // Ohne Antwort des Hosts nicht ewig "Verbinde…" anzeigen (z. B. wenn WebRTC im Netz blockiert wird).
@@ -260,6 +282,7 @@ export class ClientSession extends Session {
                         clearTimeout(timer);
                         this.gameId = msg.gameId;
                         this.onStatus('Verbunden');
+                        reportPath(conn.peerConnection, text => this.onStatus(text));
                         if (resolve) resolve(this);
                         resolve = reject = null;
                         break;
