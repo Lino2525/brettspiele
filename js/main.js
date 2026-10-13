@@ -2,6 +2,7 @@
 import { HostSession, ClientSession, makeRoomCode, normalizeRoomCode, ROOM_CODE_LENGTH } from './core/session.js';
 import { fileToAvatar } from './core/avatar.js';
 import { music } from './core/music.js';
+import { nachtfeld } from './core/nachtfeld.js';
 import { RummyGame, MIN_PLAYERS as RUMMY_MIN, MAX_PLAYERS as RUMMY_MAX } from './games/rummy/engine.js';
 import { mountRummy } from './games/rummy/ui.js';
 import { MonopolyGame, MIN_PLAYERS as MONO_MIN, MAX_PLAYERS as MONO_MAX } from './games/monopoly/engine.js';
@@ -26,10 +27,27 @@ function attachSongQuiz(engine) {
     });
 }
 
+// Symbole auf den Pillen im Menü (gleiches Motiv wie die Partikelform in nachtfeld.js)
+const ICONS = {
+    rummy: '<rect x="3" y="6" width="7" height="11" rx="1.6" transform="rotate(-10 6.5 11.5)"/><rect x="8.5" y="4.5" width="7" height="11" rx="1.6"/><rect x="14" y="6" width="7" height="11" rx="1.6" transform="rotate(10 17.5 11.5)"/>',
+    songquiz: '<path d="M3 12v0M6.5 9v6M10 5v14M13.5 8v8M17 10v4M20.5 12v0"/>',
+    party: '<path d="m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>',
+    monopoly: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>',
+};
+
+// text: ein Satz, der das Spiel im Menü beschreibt
 const GAMES = {
-    rummy: { title: 'Mini Rummy', players: [RUMMY_MIN, RUMMY_MAX], Engine: RummyGame, mount: mountRummy, resumable: state => state.phase !== 'waiting' },
+    rummy: {
+        title: 'Mini Rummy',
+        text: 'Zahlensteine zu Reihen und Gruppen legen. Wer zuerst alle Steine los ist, gewinnt.',
+        players: [RUMMY_MIN, RUMMY_MAX],
+        Engine: RummyGame,
+        mount: mountRummy,
+        resumable: state => state.phase !== 'waiting',
+    },
     songquiz: {
         title: 'Lieder-Raten',
+        text: '20 Sekunden aus bekannten Hits: Wer zuerst Titel oder Künstler tippt, holt die Punkte. Geht auch allein.',
         players: [QUIZ_MIN, QUIZ_MAX],
         Engine: SongQuizGame,
         mount: mountSongQuiz,
@@ -37,9 +55,25 @@ const GAMES = {
         music: false, // hier hört man die Song-Ausschnitte, keine Hintergrundmusik
         attach: attachSongQuiz,
     },
-    party: { title: 'Sternenjagd', players: [PARTY_MIN, PARTY_MAX], Engine: PartyGame, mount: mountParty, resumable: state => state.phase !== 'waiting' && state.phase !== 'over' },
-    monopoly: { title: 'Immobilienspiel', players: [MONO_MIN, MONO_MAX], Engine: MonopolyGame, mount: mountMonopoly, resumable: state => state.phase === 'playing' },
+    party: {
+        title: 'Sternenjagd',
+        text: 'Würfeln, Sterne kaufen, Fallen legen und nach jeder Runde ein Minispiel gegeneinander.',
+        players: [PARTY_MIN, PARTY_MAX],
+        Engine: PartyGame,
+        mount: mountParty,
+        resumable: state => state.phase !== 'waiting' && state.phase !== 'over',
+    },
+    monopoly: {
+        title: 'Immobilienspiel',
+        text: 'Straßen kaufen, Häuser bauen, Miete kassieren, bis nur noch eine Person übrig ist.',
+        players: [MONO_MIN, MONO_MAX],
+        Engine: MonopolyGame,
+        mount: mountMonopoly,
+        resumable: state => state.phase === 'playing',
+    },
 };
+
+const playersText = ([min, max]) => (min === max ? `${min} Personen` : min === 1 ? `allein oder bis ${max}` : `${min} bis ${max} Personen`);
 
 const $ = id => document.getElementById(id);
 const store = {
@@ -110,6 +144,11 @@ function playerName() {
     return name;
 }
 
+function openPassword() {
+    $('pwBox').open = true;
+    $('password').focus();
+}
+
 const roomPassword = () => {
     const pw = $('password').value;
     store.set('bsp.password', pw);
@@ -129,14 +168,18 @@ function showGame(session, gameId) {
     $('lobby').hidden = true;
     $('gameScreen').hidden = false;
     if (game.music !== false) music.start();
-    $('roomInfo').textContent = `${game.title} · Raum ${session.roomCode}`;
+    nachtfeld.mode('game');
+    const info = $('roomInfo');
+    info.innerHTML = '<span class="rtitle"></span><span class="rcode">Raum <b></b></span>';
+    info.querySelector('.rtitle').textContent = game.title;
+    info.querySelector('b').textContent = session.roomCode;
     session.onStatus = text => ($('status').textContent = text);
     watchLinked(session);
     const ui = game.mount($('gameRoot'), session);
     current = { session, ui };
 }
 
-// Topbar: "● 3/4 LINKED" aus den Spielerlisten der Ansichten (nur Anzeige, die Spiele selbst bleiben unberührt)
+// Spielleiste: "3 von 4 verbunden" aus den Spielerlisten der Ansichten (nur Anzeige, die Spiele selbst bleiben unberührt)
 function watchLinked(session) {
     const el = $('linked');
     const emit = session.emitView.bind(session);
@@ -145,7 +188,7 @@ function watchLinked(session) {
         if (!Array.isArray(players)) return;
         const on = players.filter(p => p.connected !== false).length;
         el.hidden = false;
-        el.textContent = `● ${on}/${v.maxPlayers ?? players.length} LINKED`;
+        el.textContent = `${on} von ${v.maxPlayers ?? players.length} verbunden`;
         el.classList.toggle('low', on < players.length);
     };
     session.emitView = v => {
@@ -236,7 +279,7 @@ async function joinGame(rawCode) {
         lobbyMsg(
             e.message === 'not-found' ? 'Diesen Raum gibt es nicht (oder er ist gerade nicht online).'
             : e.message === 'full' ? 'Dieser Raum ist voll oder das Spiel hat schon begonnen.'
-            : e.message === 'denied' ? 'Falsches oder fehlendes Passwort.'
+            : e.message === 'denied' ? (openPassword(), 'Falsches oder fehlendes Passwort.')
             : e.message === 'timeout' || e.message === 'ice-failed'
                 ? 'Keine Verbindung zum Host möglich. Ist das Spiel dort noch offen? Mit Mobilfunk bitte einmal WLAN probieren (oder umgekehrt).'
             : `Verbindung fehlgeschlagen (${e.message}).`,
@@ -252,17 +295,96 @@ document.querySelectorAll('.music-slot').forEach(slot => music.mount(slot));
 $('name').value = store.get('bsp.name') || '';
 $('password').value = store.get('bsp.password') || '';
 
-for (const [id, game] of Object.entries(GAMES)) {
-    const btn = document.createElement('button');
-    btn.className = 'btn game-row';
-    btn.type = 'button';
-    btn.title = `${game.title} starten`;
-    const [min, max] = game.players;
-    btn.innerHTML = `<span class="num">${String(Object.keys(GAMES).indexOf(id) + 1).padStart(2, '0')}</span><span class="gtxt"><span class="gname"></span><span class="gmeta">${min === max ? min : `${min}–${max}`} PLAYERS</span></span>`;
-    btn.querySelector('.gname').textContent = game.title;
-    btn.addEventListener('click', () => hostGame(id));
-    $('gameList').appendChild(btn);
+// ---------- Spielauswahl: Pillen auf dem Wasser, Partikelform und Dock ----------
 
+const ids = Object.keys(GAMES);
+let selected = GAMES[store.get('bsp.lastGame')] ? store.get('bsp.lastGame') : 'party';
+let showcase = null; // wechselt die Spiele automatisch, bis jemand etwas anfasst
+
+function select(id, { user = false } = {}) {
+    if (user) stopShowcase();
+    if (id === selected && $('dockTitle').textContent) return;
+    selected = id;
+    if (user) store.set('bsp.lastGame', id);
+    const game = GAMES[id];
+    document.querySelectorAll('.pill').forEach(p => {
+        const on = p.dataset.game === id;
+        p.setAttribute('aria-checked', String(on));
+        p.tabIndex = on ? 0 : -1;
+    });
+    const dock = $('dockTitle').parentElement;
+    dock.classList.remove('swap');
+    void dock.offsetWidth; // Animation neu starten
+    dock.classList.add('swap');
+    $('dockTitle').textContent = game.title;
+    $('dockText').textContent = game.text;
+    $('dockMeta').textContent = playersText(game.players);
+    $('hostBtn').textContent = `${game.title} starten`;
+    nachtfeld.show(id);
+}
+
+function stopShowcase() {
+    clearInterval(showcase);
+    showcase = null;
+}
+
+// Pillen liegen auf dem vorderen Bogen der Wellenringe (Position in Prozent der Bühne)
+ids.forEach((id, i) => {
+    const game = GAMES[id];
+    const a = Math.PI * (0.92 - (i * 0.84) / Math.max(1, ids.length - 1));
+    const btn = document.createElement('button');
+    btn.className = 'pill';
+    btn.type = 'button';
+    btn.dataset.game = id;
+    btn.setAttribute('role', 'radio');
+    btn.style.setProperty('--i', i);
+    btn.style.setProperty('--px', `${50 + Math.cos(a) * 40}%`);
+    btn.style.setProperty('--py', `${60 + Math.sin(a) * 24}%`);
+    btn.style.setProperty('--tilt', `${Math.cos(a) * -5}deg`);
+    btn.innerHTML = `<span class="pill-ic"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[id] || ICONS.party}</svg></span><span><span class="pill-name"></span><span class="pill-meta"></span></span>`;
+    btn.querySelector('.pill-name').textContent = game.title;
+    btn.querySelector('.pill-meta').textContent = playersText(game.players);
+    btn.addEventListener('click', () => {
+        const r = btn.getBoundingClientRect();
+        nachtfeld.ripple(r.left + r.width / 2, r.bottom - 6);
+        select(id, { user: true });
+    });
+    // Mit der Maus reicht Drüberfahren, um die Form zu sehen; die Auswahl bleibt, bis geklickt wird
+    btn.addEventListener('pointerenter', e => {
+        if (e.pointerType !== 'mouse') return;
+        stopShowcase();
+        nachtfeld.show(id);
+    });
+    btn.addEventListener('pointerleave', e => {
+        if (e.pointerType === 'mouse') nachtfeld.show(selected);
+    });
+    $('gameList').appendChild(btn);
+});
+
+// Pfeiltasten wandern durch die Spiele (Radiogruppe)
+$('gameList').addEventListener('keydown', e => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const next = ids[(ids.indexOf(selected) + step + ids.length) % ids.length];
+    select(next, { user: true });
+    document.querySelector(`.pill[data-game="${next}"]`).focus();
+});
+
+$('hostBtn').addEventListener('click', () => hostGame(selected));
+nachtfeld.start($('nachtfeld'));
+nachtfeld.anchor($('stageSpace'));
+select(selected);
+
+// Bis zur ersten Berührung zeigt das Menü nacheinander alle Spiele
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    showcase = setInterval(() => select(ids[(ids.indexOf(selected) + 1) % ids.length]), 5200);
+    for (const ev of ['pointerdown', 'keydown', 'focusin']) addEventListener(ev, stopShowcase, { once: true });
+}
+
+if (store.get('bsp.password')) $('pwBox').open = true;
+
+for (const [id, game] of Object.entries(GAMES)) {
     const raw = store.get(`bsp.host.${id}`);
     if (raw) {
         try {
@@ -303,5 +425,6 @@ const invited = new URLSearchParams(location.search).get('raum');
 if (invited) {
     $('code').value = normalizeRoomCode(invited);
     $('inviteNote').hidden = false;
-    $('inviteNote').textContent = `Einladung für Raum ${$('code').value}. Name eingeben und beitreten.`;
+    $('inviteNote').textContent = `Du bist in Raum ${$('code').value} eingeladen. Name eingeben und beitreten.`;
+    $('lobby').classList.add('invited');
 }

@@ -115,16 +115,24 @@ Einstellung wird gemerkt. Tempo, Akkorde, Klangfarbe und Pegel lassen sich oben 
 - `js/games/monopoly/`: `board.js` (Plan, Karten, Regelfunktionen), `engine.js` (Ablauf), `board-view.js`, `trade-ui.js`, `ui.js`
 - `js/main.js`: Lobby, hier werden neue Spiele in `GAMES` eingetragen
 
-## Design „Neon Grid 2077“
+## Design „Nachtfeld“
 
-Das Aussehen steckt komplett in `css/*.css` (Tokens in `:root` von `css/style.css`), im Gerüst `index.html` und in den
-Render-Teilen der `ui.js`-Dateien. Spiellogik, Engines und Netzwerk sind davon unberührt.
+Schwarz-blauer Nachthimmel mit Glasflächen. Das Aussehen steckt in `css/*.css` (Tokens in `:root` von `css/style.css`),
+im Gerüst `index.html`, im Hintergrund `js/core/nachtfeld.js` und in den Render-Teilen der `ui.js`-Dateien.
+Spiellogik, Engines und Netzwerk sind davon unberührt.
 
-- Farben: gelb (Aktion), cyan (Info/Münzen), pink (Gefahr), grün (OK/Ereignis), violett; Spielerfarben `--p0` bis `--p5`
-- Schriften: Chakra Petch (Text) und Share Tech Mono (Labels, Status) über Google Fonts, mit Systemschrift als Rückfall
-- Formen: abgeschrägte Ecke oben rechts per `clip-path`, 1px-Neon-Kontur plus Glow. Jedes Element setzt nur `--bc`
-  (Kontur) und `--fill` (Fläche); die Schräge zeichnet ein Hintergrundverlauf, der `clip-path` lässt Platz für den Glow
-- Hintergrund: Raster, Scanlines (`body::after`) und Neon-Regen (`.rain` in `index.html`)
+- Farben: Tiefschwarz `--ink`, Nachtblau `--night`, Signalblau `--signal` (Aktion), Eisblau `--ice` (Info, Münzen),
+  Sternweiß `--star` (Text), Gold `--gold` (Sterne, „du bist dran“, Sieg); dazu `--rose` (Gefahr), `--mint` (richtig),
+  `--iris`, `--amber`. Die alten Namen (`--yellow`, `--cyan`, `--pink` …) zeigen auf die neue Palette. Spielerfarben `--p0` bis `--p5`
+- Schriften: Instrument Serif kursiv für Überschriften, Geist für Text (tabellarische Ziffern), über Google Fonts
+- Formen: Glas mit 1px-Kontur. Jedes Element setzt nur `--bc` (Kontur) und `--fill` (Fläche). Rundungen nach Rang:
+  Knöpfe und Chips als Pille, Felder 14px, Flächen 22px, Steine 9px
+- Hintergrund (`nachtfeld.js`, Canvas): Im Menü formen ein paar tausend Partikel über Wellenringen das Symbol des
+  gewählten Spiels (Zahlensteine, Schallwelle, Stern, Häuser) und wechseln beim Durchgehen der Spiele die Form; bis zur
+  ersten Berührung stellt das Menü alle Spiele nacheinander vor. Beim Spielstart fliegen die Partikel auseinander (Warp)
+  und treiben danach ruhig als Sternenstaub. Die Partikelzahl richtet sich nach Bildschirmgröße und Gerät
+- Menü: Spiele als Glas-Pillen auf dem Wasser, darunter das Dock mit Beschreibung, Name, Start und Beitreten.
+  Wer per Einladungslink kommt, sieht das Beitreten zuerst
 - Sternenjagd: Figuren liegen auf einer eigenen Ebene und gleiten per CSS-Transition; vor jedem Minispiel läuft die
   Slot-Walze (`runReel` in `js/games/party/ui.js`), deren Ziel das vom Host gewählte Minispiel ist
-- `prefers-reduced-motion: reduce` schaltet Regen, Glitch, Scanline-Bewegung, Pulse, Effekte und die Walze ab
+- `prefers-reduced-motion: reduce` zeigt den Hintergrund als Standbild und schaltet alle Animationen ab
