@@ -146,7 +146,7 @@ export function mountGame(root, session, game, opts = {}) {
         const v = st.view;
         if (embedded) {
             const mine = v.players[v.seat];
-            const team = v.teamMode && mine ? `Du bist im ${v.teamNames[mine.team]} · ` : '';
+            const team = v.teamMode && mine ? `Du bist im ${v.teamNames[mine.team]}. ` : '';
             el.top.textContent = team + (game.top?.(v) || '');
             el.stage.hidden = false;
             setHTML(el.stage, game.stage(v, ctx) || '');

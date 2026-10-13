@@ -139,5 +139,12 @@ Spiellogik, Engines und Netzwerk sind davon unberührt.
   eine Leiste die Runden (Sternrunden golden). Vor jedem Minispiel läuft das Warp-Intro (`runReel` in
   `js/games/party/ui.js`): Titel rasen heran, werden langsamer und rasten auf dem vom Host gewählten Minispiel ein,
   der Sternenhimmel fliegt mit (`nachtfeld.warp`)
+- Würfel: `js/core/dice.js` baut einen 3D-Würfel (Sternenjagd einer, Immobilienspiel zwei, die gegeneinander rollen)
+- Immobilienspiel: Spielplan aus dunklem Glas mit Kacheln, Figuren springen von Feld zu Feld, das Zielfeld leuchtet auf,
+  Häuser „wachsen“ beim Bauen, Besitzkarten als helle Blätter, Ereigniskarten drehen sich ins Bild
+- Lieder-Raten: dieselbe Schallwelle wie im Menü (schwingt nur bei laufendem Ton), bei der Auflösung dreht sich eine
+  Schallplatte hinter dem Cover
+- Gesellschaftsspiele (Stadt-Land-Fluss, Undercover, Stufenquiz, Wortraten): gleiche Glasflächen, Stufen von Mint über
+  Gold nach Rose, Teams Rose gegen Eisblau
 - `prefers-reduced-motion: reduce` zeigt den Hintergrund als Standbild und schaltet alle Animationen ab
 - Minispiel „Maulwurf“: goldene Ziele, rote Bomben; „Farbe oder Wort“ nutzt Rot, Blau, Gelb und Grün

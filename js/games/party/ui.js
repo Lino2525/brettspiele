@@ -4,6 +4,7 @@ import { NODES, SEGMENTS, BOARD_W, BOARD_H, STAR_SPOTS, COIN_GAIN, COIN_LOSS } f
 import { createMiniGame } from './mini-ui.js';
 import { MINIS, MINI_TYPES, DUEL_TYPES } from './minigames.js';
 import { nachtfeld } from '../../core/nachtfeld.js';
+import { DIE_HTML, turnDie } from '../../core/dice.js';
 
 const esc = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -16,10 +17,6 @@ const MINI_TITLES = MINI_TYPES.map(t => MINIS[t].title);
 const DUEL_TITLES = DUEL_TYPES.map(t => MINIS[t].title);
 const ARROWS = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'];
 const PORTRAIT = '(max-width: 640px) and (orientation: portrait)';
-// 3D-Würfel: Augen je Seite (Zeile, Spalte im 3 x 3 Raster) und die Drehung, die eine Seite nach vorn bringt
-const PIPS = { 1: [[2, 2]], 2: [[1, 1], [3, 3]], 3: [[1, 1], [2, 2], [3, 3]], 4: [[1, 1], [1, 3], [3, 1], [3, 3]], 5: [[1, 1], [1, 3], [2, 2], [3, 1], [3, 3]], 6: [[1, 1], [2, 1], [3, 1], [1, 3], [2, 3], [3, 3]] };
-const FACE_TURN = { 1: [0, 0], 2: [0, -90], 3: [-90, 0], 4: [90, 0], 5: [0, 90], 6: [0, 180] };
-const DIE_FACES = Object.entries(PIPS).map(([n, pips]) => `<span class="face f${n}">${pips.map(([r, c]) => `<i style="grid-area:${r}/${c}"></i>`).join('')}</span>`).join('');
 // Versatz bei mehreren Figuren auf einem Feld (2 x 2)
 const TOKEN_OFFSETS = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0], [0, -1.6]];
 
@@ -32,7 +29,7 @@ const TEMPLATE = `
     <div class="pmini" hidden></div>
   </div>
   <div class="pcontrol">
-    <div class="pdice" role="img" aria-label="Würfel"><span class="pdie">${DIE_FACES}</span></div>
+    <div class="pdice" role="img" aria-label="Würfel">${DIE_HTML}</div>
     <div class="pmain"><div class="pstatus"></div><div class="pact"></div></div>
     <div class="pfeed"></div>
   </div>
@@ -52,7 +49,7 @@ export function mountParty(root, session) {
 
     const st = {
         view: null, avatars: [], displayPos: [], lastEvent: 0, receivedAt: 0, mini: null, dicePlaying: false, shownDice: null,
-        movingSeat: null, laidOut: false, prevScore: [], gainAt: [], pending: 0, portrait: false, statusBase: '', stake: 'star', spins: 0, topHTML: '',
+        movingSeat: null, laidOut: false, prevScore: [], gainAt: [], pending: 0, portrait: false, statusBase: '', stake: 'star', topHTML: '',
     };
     let toastTimer = null;
     let dead = false;
@@ -162,16 +159,8 @@ export function mountParty(root, session) {
     // Dreht den Würfel auf die Zahl; beim Wurf mit zusätzlichen ganzen Umdrehungen, damit er sichtbar rollt
     function setDice(value, { roll = false, instant = false } = {}) {
         st.shownDice = value;
-        if (roll) st.spins++;
-        const [x, y] = value ? FACE_TURN[value] : [0, 0];
-        const tilt = value ? 'rotateX(-16deg) rotateY(20deg)' : 'rotateX(-28deg) rotateY(38deg)';
-        if (instant) ui.dice.classList.add('instant');
-        ui.dice.style.transform = `${tilt} rotateX(${x + st.spins * 360}deg) rotateY(${y + st.spins * 720}deg)`;
+        turnDie(ui.dice, value, { roll, instant });
         ui.dice.parentElement.setAttribute('aria-label', value ? `Würfel: ${value}` : 'Würfel');
-        if (instant) {
-            void ui.dice.offsetWidth;
-            ui.dice.classList.remove('instant');
-        }
     }
 
     // Kurze Effekte beim Laufen: Figur springt, Feld leuchtet auf, hinter der Figur bleibt eine Lichtspur

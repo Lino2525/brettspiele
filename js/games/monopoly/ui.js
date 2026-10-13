@@ -5,10 +5,11 @@ import {
 } from './board.js';
 import { createBoard, money, PLAYER_COLORS, PLAYER_TEXT } from './board-view.js';
 import { composeHTML, incomingHTML, emptyDraft, readDraftInput } from './trade-ui.js';
+import { DIE_HTML, turnDie } from '../../core/dice.js';
 
 const esc = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+const REDUCED = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const TEMPLATE = `
 <div class="mono">
@@ -16,8 +17,8 @@ const TEMPLATE = `
     <div class="board-wrap">
       <div class="board-slot"></div>
       <div class="controls">
-        <div class="logo">IMMOBILIEN</div>
-        <div class="dice" aria-label="Würfel"><span class="die">⚀</span><span class="die">⚀</span></div>
+        <div class="logo">Immobilienspiel</div>
+        <div class="dice" role="img" aria-label="Würfel"><span class="pdice">${DIE_HTML}</span><span class="pdice">${DIE_HTML}</span></div>
         <div class="ctl-body"></div>
       </div>
     </div>
@@ -72,7 +73,7 @@ export function mountMonopoly(root, session) {
         });
         if (first) {
             st.lastEvent = v.eventSeq;
-            if (v.dice) showDice(v.dice);
+            if (v.dice) showDice(v.dice, { instant: true });
         } else {
             const fresh = v.events.filter(e => e.id > st.lastEvent);
             if (fresh.length) {
@@ -88,26 +89,26 @@ export function mountMonopoly(root, session) {
         board.placeTokens(st.displayPos, st.view.players);
     }
 
-    function showDice(d) {
-        const dice = el.dice.querySelectorAll('.die');
-        dice[0].textContent = FACES[d[0] - 1];
-        dice[1].textContent = FACES[d[1] - 1];
-        el.dice.classList.remove('rolling');
+    // Zwei 3D-Würfel; beim Wurf rollen sie in entgegengesetzte Richtungen
+    function showDice(d, opts = {}) {
+        el.dice.querySelectorAll('.pdie').forEach((die, k) => turnDie(die, d[k], { ...opts, dir: k ? -1 : 1 }));
+        el.dice.setAttribute('aria-label', `Würfel: ${d[0]} und ${d[1]}`);
     }
+
+    // Kurzer Sprung der Figur und Aufleuchten des Zielfelds
+    const restart = (node, cls) => {
+        if (!node || REDUCED) return;
+        node.classList.remove(cls);
+        void node.offsetWidth;
+        node.classList.add(cls);
+    };
 
     async function playEvent(e) {
         const players = st.view.players;
         switch (e.type) {
             case 'dice': {
-                el.dice.classList.add('rolling');
-                const dice = el.dice.querySelectorAll('.die');
-                for (let i = 0; i < 8; i++) {
-                    dice[0].textContent = FACES[Math.floor(Math.random() * 6)];
-                    dice[1].textContent = FACES[Math.floor(Math.random() * 6)];
-                    await sleep(80);
-                }
-                showDice(e.d);
-                await sleep(250);
+                showDice(e.d, { roll: !REDUCED });
+                await sleep(REDUCED ? 200 : 1000);
                 break;
             }
             case 'move':
@@ -117,6 +118,7 @@ export function mountMonopoly(root, session) {
                         p = (p + 1) % 40;
                         st.displayPos[e.seat] = p;
                         board.placeTokens(st.displayPos, players);
+                        restart(board.tokenEl(e.seat), 'hop');
                         await sleep(120);
                     }
                 } else {
@@ -124,6 +126,7 @@ export function mountMonopoly(root, session) {
                     board.placeTokens(st.displayPos, players);
                     await sleep(450);
                 }
+                restart(board.cells[e.to], 'landed');
                 break;
             case 'card':
                 el.cardpop.innerHTML = `<div class="cardpop-box ${e.deck}">
@@ -176,7 +179,7 @@ export function mountMonopoly(root, session) {
                     <span class="ptoken" style="background:${PLAYER_COLORS[i]};color:${PLAYER_TEXT[i]}${avatar ? `;background-image:url('${avatar}')` : ''}">${avatar ? '' : esc(p.name.slice(0, 1).toUpperCase())}</span>
                     <div class="pinfo">
                         <div><strong>${esc(p.name)}</strong>${i === v.seat ? ' <span class="me-tag">Du</span>' : ''}<span class="cash">${money(p.cash)}</span></div>
-                        ${notes.length ? `<div class="muted">${notes.join(' · ')}</div>` : ''}
+                        ${notes.length ? `<div class="muted">${notes.join(', ')}</div>` : ''}
                         <div class="pprops">${props}</div>
                     </div></div>`;
             })
