@@ -1,9 +1,9 @@
 // Darstellung des Spielplans: Felder im 11x11-Raster, Besitzer, Häuser und die Spielfiguren.
 import { SPACES, GROUPS } from './board.js';
 
-// Neon-Grid: gelb, cyan, pink, violett (Schrift immer dunkel)
-export const PLAYER_COLORS = ['#fcee0a', '#05d9e8', '#ff2a6d', '#b967ff'];
-export const PLAYER_TEXT = ['#08080d', '#08080d', '#08080d', '#08080d'];
+// Gold, Eisblau, Rose, Iris wie --p0 bis --p3 (Schrift immer dunkel)
+export const PLAYER_COLORS = ['#ffcf6b', '#8fd8ff', '#ff5c7c', '#9d8cff'];
+export const PLAYER_TEXT = ['#02040c', '#02040c', '#02040c', '#02040c'];
 
 export const money = n => `M ${Number(n).toLocaleString('de-DE')}`;
 
@@ -22,23 +22,25 @@ function gridPos(i) {
 const sideOf = i => (i % 10 === 0 ? 'corner' : i < 10 ? 'bottom' : i < 20 ? 'left' : i < 30 ? 'top' : 'right');
 
 const esc = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+// Lange Namen dürfen an der Wortfuge umbrechen (Theater-straße), nicht mitten im Wort
+const nameHTML = name => esc(name).replace(/(straße|platz|bahnhof|allee|werk|steuer|schaft)/g, '&shy;$1');
 
 function cellInner(i) {
     const s = SPACES[i];
     switch (s.type) {
         case 'street':
             return `<div class="band" style="background:${GROUPS[s.group].color}"><span class="houses"></span></div>
-                <div class="cbody"><div class="cname">${esc(s.name)}</div><div class="cprice">${money(s.price)}</div></div>`;
+                <div class="cbody"><div class="cname">${nameHTML(s.name)}</div><div class="cprice">${money(s.price)}</div></div>`;
         case 'rail':
-            return `<div class="cbody"><div class="cicon">🚂</div><div class="cname">${esc(s.name)}</div><div class="cprice">${money(s.price)}</div></div>`;
+            return `<div class="cbody"><div class="cicon">🚂</div><div class="cname">${nameHTML(s.name)}</div><div class="cprice">${money(s.price)}</div></div>`;
         case 'util':
-            return `<div class="cbody"><div class="cicon">${s.name.startsWith('Wasser') ? '🚰' : '💡'}</div><div class="cname">${esc(s.name)}</div><div class="cprice">${money(s.price)}</div></div>`;
+            return `<div class="cbody"><div class="cicon">${s.name.startsWith('Wasser') ? '🚰' : '💡'}</div><div class="cname">${nameHTML(s.name)}</div><div class="cprice">${money(s.price)}</div></div>`;
         case 'chance':
             return '<div class="cbody"><div class="cicon big chance">?</div><div class="cname">Ereignis</div></div>';
         case 'chest':
-            return '<div class="cbody"><div class="cicon big">🎁</div><div class="cname">Gemeinschaft</div></div>';
+            return '<div class="cbody"><div class="cicon big">🎁</div><div class="cname">Gemein&shy;schaft</div></div>';
         case 'tax':
-            return `<div class="cbody"><div class="cicon">💰</div><div class="cname">${esc(s.name)}</div><div class="cprice">${money(s.amount)}</div></div>`;
+            return `<div class="cbody"><div class="cicon">💰</div><div class="cname">${nameHTML(s.name)}</div><div class="cprice">${money(s.amount)}</div></div>`;
         case 'go':
             return '<div class="cbody"><div class="cname big">LOS</div><div class="cicon">➜</div><div class="cprice">+ M 200</div></div>';
         case 'jail':
@@ -105,6 +107,7 @@ export function createBoard(container, { onCellClick }) {
             const el = tokenEl(seat);
             el.hidden = p.bankrupt;
             el.style.background = PLAYER_COLORS[seat];
+            el.style.setProperty('--pc', PLAYER_COLORS[seat]);
             el.style.color = PLAYER_TEXT[seat];
             const img = avatars[seat];
             el.style.backgroundImage = img ? `url("${img}")` : 'none';
@@ -138,6 +141,7 @@ export function createBoard(container, { onCellClick }) {
             if (!p) return;
             const owner = cell.querySelector('.owner');
             owner.style.background = p.owner === null ? 'transparent' : PLAYER_COLORS[p.owner];
+            owner.style.color = p.owner === null ? 'transparent' : PLAYER_COLORS[p.owner];
             owner.title = p.owner === null ? '' : players[p.owner].name;
             cell.classList.toggle('owned', p.owner !== null);
             cell.classList.toggle('mortgaged', p.mortgaged);
@@ -146,5 +150,5 @@ export function createBoard(container, { onCellClick }) {
         });
     }
 
-    return { el: board, placeTokens, setAvatars, updateCells, cells };
+    return { el: board, placeTokens, setAvatars, updateCells, cells, tokenEl };
 }

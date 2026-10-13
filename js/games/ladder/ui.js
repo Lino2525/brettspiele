@@ -2,8 +2,8 @@
 import { esc, scoreOverHTML } from '../common/kit.js';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
-// Farbverlauf der Stufen in Neon: von grün (leicht) über gelb und orange nach pink (schwer)
-const levelColor = n => `hsl(${Math.round(125 - (n - 1) * (150 / 9))}, 100%, 55%)`;
+// Farbverlauf der Stufen: von Mint (leicht) über Gold nach Rose (schwer), passend zur Palette
+const levelColor = n => `hsl(${Math.round(155 - (n - 1) * (165 / 9))}, 85%, 66%)`;
 
 export function createLadderUI() {
     function chooseHTML(v) {
@@ -19,7 +19,7 @@ export function createLadderUI() {
         const done = v.myAnswer >= 0;
         const opts = q.opts.map((o, i) => `<button class="qz-opt ld-opt${v.myAnswer === i ? ' mine' : ''}" type="button" data-act="answer" data-c="${i}"${done ? ' disabled' : ''}><b>${LETTERS[i]}</b> ${esc(o)}</button>`).join('');
         const others = v.players.map((p, i) => `<span class="ld-chiplvl" style="--c:${levelColor(v.levels[i])}">${esc(p.name)}: Stufe ${v.levels[i]}${v.answered[i] ? ' ✓' : ''}</span>`).join('');
-        return `<div class="ld-cat">${v.category.icon} ${esc(v.category.name)} · <span class="ld-badge" style="--c:${levelColor(q.level)}">Stufe ${q.level}</span></div>
+        return `<div class="ld-cat">${v.category.icon} ${esc(v.category.name)} <span class="ld-badge" style="--c:${levelColor(q.level)}">Stufe ${q.level}</span></div>
             <div class="ld-q">${esc(q.text)}</div><div class="qz-opts">${opts}</div>
             <p class="center muted">${done ? 'Antwort abgeschickt. Warte auf die anderen …' : 'Du hast nur einen Versuch.'}</p><div class="ld-others">${others}</div>`;
     }
@@ -29,7 +29,7 @@ export function createLadderUI() {
             .map(r => `<div class="ld-rrow ${r.ok ? 'ok' : 'bad'}${r.seat === v.seat ? ' me' : ''}">
                 <div class="ld-rhead">${ctx.avatar(r.seat, 22)}<b>${esc(v.players[r.seat].name)}</b><span class="ld-badge" style="--c:${levelColor(r.level)}">Stufe ${r.level}</span><span class="ld-gain">${r.ok ? `+${r.gain}` : r.answer < 0 ? 'keine Antwort' : '0'}</span></div>
                 <div class="ld-rq">${esc(r.text)}</div>
-                <div class="ld-ra">${r.ok ? '✔' : '✘'} Richtig: <b>${esc(r.opts[r.right])}</b>${!r.ok && r.answer >= 0 ? ` · Antwort: ${esc(r.opts[r.answer])}` : ''}</div></div>`)
+                <div class="ld-ra">${r.ok ? '✔' : '✘'} Richtig: <b>${esc(r.opts[r.right])}</b>${!r.ok && r.answer >= 0 ? `, Antwort: ${esc(r.opts[r.answer])}` : ''}</div></div>`)
             .join('');
         const ready = v.ready.includes(v.seat);
         const footer = v.phase === 'over' ? '' : `<p class="center"><button class="btn primary" type="button" data-act="ready"${ready ? ' disabled' : ''}>${ready ? 'Warte auf die anderen …' : 'Weiter'}</button><br><span class="muted">${v.ready.length} von ${v.players.length} bereit</span></p>`;

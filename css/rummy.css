@@ -1,0 +1,358 @@
+/* ==========================================================================
+   Mini Rummy: Tisch, Ständer, Steine, Bewegung und Hinweise
+   Helle Steine auf dunklem Glas. Neu gelegte Steine tragen einen Punkt in der Farbe der Person,
+   die sie gelegt hat, veränderte Reihen einen Rahmen in derselben Farbe (bis zum nächsten Legen).
+   Steine gleiten an ihren neuen Platz (FLIP in js/games/rummy/ui.js).
+   ========================================================================== */
+
+.rummy {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 10px 12px 12px;
+    gap: 10px;
+}
+
+.opp-bar, .me-bar, .actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.opp-bar { justify-content: space-between; }
+.players { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Tisch: dunkles Glas mit blauem Licht von unten */
+.table-wrap {
+    --bc: var(--line);
+    --fill: radial-gradient(120% 90% at 50% 120%, rgba(47, 107, 255, .16), transparent 60%), rgba(4, 10, 28, .55);
+    position: relative;
+    flex: 1;
+    min-height: 140px;
+    overflow: auto;
+}
+.table {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 14px;
+    padding: 14px;
+    min-height: 100%;
+}
+.table.live { outline: 1.5px dashed rgba(143, 216, 255, .5); outline-offset: -8px; border-radius: var(--r-panel); }
+.table.drop, .set.drop, .rack.drop { box-shadow: 0 0 0 2px var(--ice), 0 0 26px rgba(143, 216, 255, .45); }
+
+.banner {
+    position: sticky;
+    top: 8px;
+    z-index: 2;
+    width: fit-content;
+    margin: 8px auto 0;
+    text-align: center;
+    padding: 6px 16px;
+    border-radius: var(--r-pill);
+    background: var(--pc, var(--gold));
+    color: var(--ink);
+    font-weight: 600;
+    font-size: .9rem;
+    box-shadow: 0 8px 24px -8px var(--pc, var(--gold));
+}
+
+.set {
+    --bc: rgba(160, 190, 255, .14);
+    --fill: rgba(2, 6, 20, .4);
+    display: flex;
+    gap: 3px;
+    padding: 6px;
+    min-height: calc(var(--th) + 14px);
+    min-width: 48px;
+    transition: box-shadow .25s, border-color .25s;
+}
+.set { position: relative; }
+.set.bad { --bc: var(--rose); border-style: dashed; box-shadow: 0 0 18px -4px rgba(255, 92, 124, .6); }
+/* Eigener Zug: geänderte Reihe ist gültig bzw. noch unfertig (unter drei Steinen) */
+.set.open { --bc: rgba(143, 216, 255, .45); border-style: dashed; }
+.set.ok { --bc: rgba(79, 224, 166, .6); box-shadow: 0 0 20px -6px rgba(79, 224, 166, .6); }
+
+.newset, .empty {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 150px;
+    max-width: 200px;
+    padding: 8px 12px;
+    text-align: center;
+    font-size: .85rem;
+    color: var(--muted);
+}
+.newset { --bc: var(--line-hi); --fill: transparent; border-style: dashed; }
+.empty { border: 0; max-width: none; flex: 1; font-size: 1rem; }
+
+.me-bar { justify-content: space-between; min-height: 1.6em; }
+.turn { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--gold); }
+
+/* Avatar der Person am Zug: groß im freien Rand links, auf schmalen Bildschirmen klein neben "am Zug". */
+.turn-avatar { animation: avatar-in .45s var(--ease-out); }
+.turn-avatar.big {
+    position: fixed;
+    left: 24px;
+    bottom: 110px;
+    width: max(0px, min(300px, calc((100vw - 1100px) / 2 - 48px)));
+    max-height: 60vh;
+    object-fit: contain;
+    border-radius: var(--r-panel);
+    pointer-events: none;
+}
+.turn-avatar.small { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); box-shadow: 0 0 16px -2px rgba(255, 207, 107, .7); }
+@media (min-width: 1401px) { .turn-avatar.small { display: none; } }
+@media (max-width: 1400px) { .turn-avatar.big { display: none; } }
+@keyframes avatar-in { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+.hint.ok { color: var(--mint); }
+.hint.warn { color: #ff8da3; }
+
+/* Ständer: eigenes Glas mit goldener Kante oben */
+.rack {
+    --bc: rgba(255, 207, 107, .35);
+    --fill: linear-gradient(180deg, rgba(255, 207, 107, .06), rgba(2, 6, 20, .6) 40%);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-content: flex-start;
+    padding: 10px;
+    min-height: calc(var(--th) * 2 + 30px);
+    max-height: 34vh;
+    overflow-y: auto;
+    box-shadow: inset 0 1px 0 rgba(255, 207, 107, .3);
+}
+
+.actions { justify-content: flex-start; }
+/* "Zug beenden" leuchtet, sobald er gültig ist (nicht deaktiviert) */
+.actions .btn.primary:not(:disabled) { animation: pulseY 2.2s ease-in-out infinite; }
+
+/* ---------- Steine ---------- */
+/* Helle Steine auf dunklem Grund, Zahlen in der Steinfarbe: lesbar wie echte Rummy-Steine */
+
+.tile {
+    --tc: var(--night);
+    flex: none;
+    width: var(--tw);
+    height: var(--th);
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--r-tile);
+    border: 0;
+    background: linear-gradient(180deg, #ffffff, var(--tile-bg) 60%, #d9e2f7);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 -3px 0 rgba(10, 26, 63, .18) inset, 0 6px 14px -6px rgba(0, 0, 0, .8);
+    color: var(--tc);
+    font-weight: 700;
+    font-size: calc(var(--tw) * .52);
+    line-height: 1;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    transition: transform .2s var(--ease-spring), box-shadow .2s;
+}
+.tile:hover { transform: translateY(-3px); }
+.tile .n {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.tile .n.r { transform: rotate(180deg); opacity: .35; font-size: .6em; flex: .6; }
+.tile.c0 { --tc: #e8355c; }
+.tile.c1 { --tc: #1f6fe5; }
+.tile.c2 { --tc: #d68a00; }
+.tile.c3 { --tc: #11a073; }
+.tile.joker { font-size: calc(var(--tw) * .22); letter-spacing: .02em; }
+.tile.joker .n { background: linear-gradient(90deg, #e8355c, #d68a00, #1f6fe5, #11a073); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.tile.dragging { opacity: .3; }
+.tile.ghost {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    pointer-events: none;
+    cursor: grabbing;
+    box-shadow: 0 20px 34px -10px rgba(0, 0, 0, .9), 0 0 0 2px var(--ice);
+    transform-origin: center;
+}
+
+
+/* ---------- Tisch übersichtlich halten ---------- */
+/* Auf dem Tisch reicht die Zahl oben (die Spiegelzahl bleibt im Ständer), bei vielen Steinen werden sie kleiner */
+.table .tile { height: calc(var(--th) * .8); }
+.table .tile .n.r { display: none; }
+.table.dense { --tw: 34px; --th: 48px; gap: 10px; padding: 10px; }
+.table.dense .set { padding: 5px; gap: 2px; }
+@media (max-width: 640px) { .table.dense { --tw: 30px; --th: 42px; } }
+
+/* ---------- Zuletzt gelegt (bleibt bis zum nächsten Legen) ---------- */
+.tile { position: relative; }
+.tile.fresh::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--pc);
+    box-shadow: 0 0 0 1.5px #fff, 0 0 8px var(--pc);
+}
+.set.touched { --bc: color-mix(in srgb, var(--pc) 55%, transparent); box-shadow: 0 0 22px -8px var(--pc); }
+/* Lichtstreif über eine Reihe, die gerade verändert wurde */
+.set.shine::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .45) 50%, transparent 65%) 100% 0 / 260% 100% no-repeat;
+    mix-blend-mode: screen;
+    pointer-events: none;
+    animation: setShine 1.1s var(--ease-out) .35s both;
+}
+@keyframes setShine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+/* Wird gerade gelegt (Live-Ansicht für die anderen) */
+.tile.pending { outline: 2px dashed var(--pc); outline-offset: 2px; }
+
+/* Ankunft der Steine eines neuen Zugs: kurz aufploppen, gestaffelt */
+.tile.land { animation: land .6s var(--ease-spring) both; animation-delay: calc(var(--k, 0) * 55ms); }
+@keyframes land {
+    0% { opacity: 0; transform: translateY(-16px) scale(.7); }
+    60% { opacity: 1; box-shadow: 0 0 0 5px color-mix(in srgb, var(--pc) 45%, transparent), 0 6px 14px -6px rgba(0, 0, 0, .8); }
+    100% { transform: none; }
+}
+
+/* ---------- Ständer ---------- */
+/* Austeilen zu Rundenbeginn, gezogener Stein fliegt hinein, eigener Zug lässt den Rand leuchten */
+.rack .tile.deal { animation: deal .55s var(--ease-spring) both; animation-delay: calc(var(--k, 0) * 45ms); }
+@keyframes deal { from { opacity: 0; transform: translateY(-70px) rotate(-14deg) scale(.8); } }
+.rack .tile.drawn { animation: drawn .75s var(--ease-spring) both; }
+@keyframes drawn {
+    0% { opacity: 0; transform: translateY(-90px) rotate(12deg) scale(.6); }
+    60% { opacity: 1; box-shadow: 0 0 26px rgba(143, 216, 255, .9), 0 6px 14px -6px rgba(0, 0, 0, .8); }
+    100% { transform: none; }
+}
+.rack.active { --bc: rgba(255, 207, 107, .6); }
+/* Der letzte Stein schwebt */
+.rack .tile.last-one { animation: lastFloat 2.2s ease-in-out infinite; box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 0 26px rgba(255, 207, 107, .65); }
+@keyframes lastFloat { 50% { transform: translateY(-6px); } }
+.pchip .last { font-size: .72rem; font-weight: 700; color: #fff; background: var(--rose); padding: 2px 9px; border-radius: var(--r-pill); animation: lastPulse 1.8s ease-in-out infinite; }
+@keyframes lastPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 92, 124, .6); }
+    50% { box-shadow: 0 0 0 6px rgba(255, 92, 124, 0), 0 0 16px rgba(255, 92, 124, .7); }
+}
+
+/* Hinweis oben ("Ben hat nur noch einen Stein!") */
+.rnote {
+    position: absolute;
+    left: 50%;
+    top: 56px;
+    z-index: 15;
+    padding: 10px 20px;
+    border-radius: var(--r-pill);
+    background: linear-gradient(180deg, #ff7591, var(--rose));
+    color: #fff;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 16px 40px -12px rgba(255, 92, 124, .9);
+    pointer-events: none;
+    animation: noteIn 3.8s var(--ease-out) forwards;
+}
+@keyframes noteIn {
+    0% { opacity: 0; transform: translate(-50%, -14px) scale(.9); }
+    8%, 86% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -8px); }
+}
+
+/* ---------- Joker ---------- */
+/* Auf dem Tisch zeigt er, für welche Zahl er steht; beim Einsetzen ein kurzer Regenbogenring */
+.tile.joker .jv {
+    position: absolute;
+    left: 50%;
+    bottom: 4px;
+    transform: translateX(-50%);
+    padding: 0 6px;
+    border-radius: var(--r-pill);
+    font-style: normal;
+    font-size: calc(var(--tw) * .3);
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--night);
+    background: linear-gradient(90deg, #ffd0da, #ffe8b0, #c8f5e3, #cfe3ff);
+}
+.tile.joker-in { animation: jokerIn .8s var(--ease-spring) both; animation-delay: calc(var(--k, 0) * 55ms); }
+@keyframes jokerIn {
+    0% { transform: scale(.55) rotate(-16deg); }
+    55% { transform: scale(1.16) rotate(5deg); }
+    100% { transform: none; }
+}
+.tile.joker-in::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 170%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: conic-gradient(#e8355c, #d68a00, #11a073, #1f6fe5, #9d8cff, #e8355c);
+    -webkit-mask-image: radial-gradient(circle, transparent 56%, #000 58%, #000 66%, transparent 68%);
+    mask-image: radial-gradient(circle, transparent 56%, #000 58%, #000 66%, transparent 68%);
+    pointer-events: none;
+    animation: jokerRing .9s ease-out forwards;
+}
+@keyframes jokerRing {
+    from { opacity: 1; transform: translate(-50%, -50%) scale(.5) rotate(0deg); }
+    to { opacity: 0; transform: translate(-50%, -50%) scale(1.5) rotate(180deg); }
+}
+
+/* ---------- Sieg ---------- */
+/* Steine fliegen aus der Mitte hinter dem Ergebnisfenster */
+.rummy .overlay-box { position: relative; }
+.rburst { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.rburst i {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    width: 26px;
+    height: 34px;
+    margin: -17px 0 0 -13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-style: normal;
+    font-weight: 700;
+    font-size: .9rem;
+    color: var(--tc);
+    background: linear-gradient(180deg, #ffffff, #dbe4f8);
+    box-shadow: 0 8px 16px -6px rgba(0, 0, 0, .8), 0 0 18px -4px var(--tc);
+    opacity: 0;
+    animation: burst 2.2s cubic-bezier(.15, .7, .3, 1) var(--d) forwards;
+}
+@keyframes burst {
+    0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(.3); }
+    12% { opacity: 1; }
+    55% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1); }
+    100% { opacity: 0; transform: translate(calc(var(--x) * 1.15), calc(var(--y) + 260px)) rotate(calc(var(--r) * 1.4)) scale(.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tile.land, .tile.joker-in, .rack .tile.deal, .rack .tile.drawn, .rack .tile.last-one, .pchip .last, .rnote, .set.shine::after { animation: none; }
+    .tile.joker-in::before, .rburst { display: none; }
+}
+
+/* Handy: mehr Platz für den Tisch, kompaktere Knöpfe */
+@media (max-width: 640px) {
+    .rack { max-height: 27vh; min-height: calc(var(--th) * 2 + 24px); }
+    .actions { gap: 6px; }
+    .actions .spacer { display: none; }
+    .actions .btn { padding: 8px 12px; font-size: .85rem; }
+}

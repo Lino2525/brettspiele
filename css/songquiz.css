@@ -1,95 +1,131 @@
 /* ---------- Lieder-Raten ---------- */
+/* Die Bühne zeigt dieselbe Schallwelle wie das Menü; bei der Auflösung dreht sich eine Platte hinter dem Cover */
 
 .quiz {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
     max-width: 760px;
     margin: 0 auto;
-    padding: 10px 14px 24px;
+    padding: 14px 14px 28px;
 }
 .game:has(.quiz) { height: auto; min-height: 100dvh; }
 
-.qtop { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 34px; font-weight: 700; }
-.qbar { height: 8px; background: rgba(5, 217, 232, .15); overflow: hidden; }
-.qbar i { display: block; height: 100%; width: 0; background: var(--yellow); box-shadow: 0 0 10px var(--yellow); transition: width .25s linear; }
-.qbar i.reveal { background: var(--green); box-shadow: 0 0 10px var(--green); }
-.qbar i.wait { background: #4a6b78; box-shadow: none; }
+.qtop { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 34px; font-weight: 600; font-size: 1.05rem; }
+.qbar { height: 6px; border-radius: 3px; background: rgba(160, 190, 255, .12); overflow: hidden; }
+.qbar i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, var(--ice), var(--signal-hi)); box-shadow: 0 0 12px rgba(91, 151, 255, .8); transition: width .25s linear; }
+.qbar i.reveal { background: var(--mint); box-shadow: 0 0 12px rgba(79, 224, 166, .7); }
+.qbar i.wait { background: rgba(160, 190, 255, .3); box-shadow: none; }
 
 .qstage {
-    --bc: rgba(5, 217, 232, .55);
-    --cut: 16px;
     position: relative;
-    min-height: 230px;
-    padding: 18px 16px;
-    border: 1px solid var(--bc);
+    min-height: 260px;
+    padding: 24px 18px;
+    border-radius: 28px;
+    border: 1px solid var(--line);
     background:
-        linear-gradient(45deg, transparent calc(50% - 1.6px), var(--bc) calc(50% - 1.6px) calc(50% - .3px), transparent calc(50% - .3px)) top right / var(--cut) var(--cut) no-repeat border-box,
-        radial-gradient(circle at 50% 0%, rgba(5, 217, 232, .2), rgba(8, 8, 13, .75) 70%);
-    clip-path: var(--clip-l);
-    box-shadow: inset 0 0 40px rgba(5, 217, 232, .1);
+        radial-gradient(70% 80% at 50% 115%, rgba(47, 107, 255, .28), transparent 70%),
+        linear-gradient(180deg, rgba(20, 40, 96, .45), rgba(4, 9, 26, .72));
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    backdrop-filter: blur(14px) saturate(1.3);
+    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, .95), inset 0 1px 0 rgba(255, 255, 255, .07);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 12px;
     text-align: center;
+    overflow: hidden;
 }
-.qstatus { font-family: var(--mono); font-size: 1.15rem; min-height: 1.4em; }
-.qmask { display: flex; flex-direction: column; gap: 6px; font-size: 1.25rem; letter-spacing: .14em; font-family: var(--mono); color: var(--yellow); text-shadow: 0 0 8px rgba(252, 238, 10, .4); }
-.qmask small { display: inline-block; min-width: 5.5em; margin-right: 8px; letter-spacing: .1em; text-transform: uppercase; font-size: .75rem; color: var(--cyan); text-shadow: none; text-align: right; }
+.qstatus { font-size: 1.15rem; font-weight: 600; min-height: 1.4em; }
+.qmask { display: flex; flex-direction: column; gap: 6px; font-size: 1.25rem; font-weight: 600; letter-spacing: .16em; color: var(--gold); }
+.qmask small { display: inline-block; min-width: 5.5em; margin-right: 10px; letter-spacing: 0; font-size: .8rem; font-weight: 500; color: var(--muted); text-align: right; }
 
-/* Equalizer: bewegt sich nur, solange Ton läuft */
-.eq { display: flex; align-items: flex-end; gap: 5px; height: 64px; }
-.eq i { display: block; width: 9px; height: 10px; background: var(--cyan); box-shadow: 0 0 8px var(--cyan); opacity: .55; }
-.eq.on i { opacity: 1; animation: eq 0.9s ease-in-out infinite; }
-.eq.on i:nth-child(odd) { background: var(--pink); box-shadow: 0 0 8px var(--pink); }
-.eq.on i:nth-child(2) { animation-delay: -.2s; } .eq.on i:nth-child(3) { animation-delay: -.5s; }
-.eq.on i:nth-child(4) { animation-delay: -.1s; } .eq.on i:nth-child(5) { animation-delay: -.7s; }
-.eq.on i:nth-child(6) { animation-delay: -.35s; } .eq.on i:nth-child(7) { animation-delay: -.6s; }
-@keyframes eq { 0%, 100% { height: 10px; } 50% { height: 60px; } }
+/* Schallwelle: ruht flach, schwingt nur, solange Ton läuft */
+.eq { display: flex; align-items: center; gap: 4px; height: 76px; }
+.eq i {
+    display: block;
+    width: 6px;
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--ice), var(--signal) 70%, var(--iris));
+    transform: scaleY(.1);
+    opacity: .45;
+    transition: transform .5s var(--ease-out), opacity .4s;
+}
+.eq.on i { opacity: 1; box-shadow: 0 0 12px rgba(91, 151, 255, .55); animation: eq 1.1s ease-in-out infinite; animation-delay: calc(var(--k) * -137ms); }
+@keyframes eq {
+    0%, 100% { transform: scaleY(calc(var(--a) * .22)); }
+    50% { transform: scaleY(var(--a)); }
+}
 
-.qreveal { display: flex; align-items: center; gap: 16px; text-align: left; }
+.qreveal { display: flex; align-items: center; gap: 22px; text-align: left; animation: revealIn .6s var(--ease-spring); }
 .qreveal[hidden] { display: none; }
-.qcover { width: 112px; height: 112px; object-fit: cover; border: 1px solid var(--cyan); box-shadow: 0 0 18px rgba(5, 217, 232, .4); background: #0a0d14; }
+@keyframes revealIn { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+/* Platte, die hinter dem Cover herausschaut und sich dreht */
+.qdisc { position: relative; flex: none; width: 120px; height: 120px; margin-right: 44px; }
+.qdisc::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 50px;
+    width: 108px;
+    height: 108px;
+    border-radius: 50%;
+    /* Lichtreflex (dreht mit), Etikett in Gold, Rillen */
+    background:
+        conic-gradient(from 20deg, rgba(255, 255, 255, .16), transparent 12%, transparent 45%, rgba(143, 216, 255, .14) 58%, transparent 72%),
+        radial-gradient(circle, var(--gold) 0 10%, #0a0d18 11% 13%, transparent 14%),
+        repeating-radial-gradient(circle, #10142a 0 2px, #26304f 3px 4px);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .9), 0 0 0 1px rgba(160, 190, 255, .22);
+    animation: spin 3.2s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.qcover { position: relative; width: 120px; height: 120px; object-fit: cover; border-radius: 14px; box-shadow: 0 18px 40px -14px rgba(0, 0, 0, .95), 0 0 0 1px rgba(255, 255, 255, .1); background: var(--night); }
 .qcover[hidden] { display: none; }
 .qsong { display: flex; flex-direction: column; gap: 4px; }
-.qsong strong { font-size: 1.3rem; color: var(--yellow); text-shadow: 0 0 10px rgba(252, 238, 10, .45); }
+.qsong strong { font-size: 1.4rem; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
 .qsong span { color: var(--muted); }
-.qgain { margin-top: 6px; font-family: var(--mono); color: var(--green); text-shadow: 0 0 8px rgba(57, 255, 20, .5); }
-.qgain.none { color: var(--muted); text-shadow: none; }
+.qgain { margin-top: 8px; font-weight: 600; color: var(--mint); }
+.qgain.none { color: var(--muted); font-weight: 400; }
 
 .qform { display: flex; gap: 8px; }
-.qinput { flex: 1; font-size: 1.1rem; padding: 12px 14px; }
+.qinput { flex: 1; font-size: 1.1rem; padding: 13px 16px; }
 .qinput:disabled { opacity: .5; }
-.qmine { display: flex; gap: 14px; justify-content: center; min-height: 1.4em; font-family: var(--mono); color: var(--muted); font-size: .9rem; }
-.qmine .got { color: var(--green); }
+.qmine { display: flex; gap: 16px; justify-content: center; min-height: 1.4em; color: var(--muted); font-size: .9rem; }
+.qmine .got { color: var(--mint); font-weight: 600; }
 
-.qplayers { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
-.qp { --bc: rgba(255, 255, 255, .22); --fill: rgba(255, 255, 255, .05); display: flex; align-items: center; gap: 8px; padding: 6px 10px; }
-.qp.me { --bc: var(--yellow); box-shadow: 0 0 10px rgba(252, 238, 10, .25); }
+.qplayers { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.qp { --bc: var(--line); --fill: rgba(8, 16, 40, .55); display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: var(--r-pill); }
+.qp.me { --bc: rgba(143, 216, 255, .55); }
 .qp.off { opacity: .45; }
-.qav { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--cyan) center/cover; color: #08080d; border: 2px solid rgba(255, 255, 255, .8); font-weight: 700; font-size: .85rem; box-shadow: 0 0 8px rgba(5, 217, 232, .5); }
+.qav { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--ice) center/cover; color: var(--ink); border: 2px solid rgba(255, 255, 255, .9); font-weight: 700; font-size: .85rem; }
 .qname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .marks { display: flex; gap: 2px; }
-.marks i { font-style: normal; filter: grayscale(1); opacity: .25; font-size: .85rem; }
+.marks i { font-style: normal; filter: grayscale(1); opacity: .25; font-size: .85rem; transition: opacity .3s, filter .3s; }
 .marks i.on { filter: none; opacity: 1; }
-.qp .gain { font-family: var(--mono); color: var(--green); }
-.qscore { min-width: 2.2em; text-align: right; font-family: var(--mono); color: var(--yellow); text-shadow: 0 0 6px rgba(252, 238, 10, .5); }
+.qp .gain { font-weight: 600; color: var(--mint); animation: slideUp .35s var(--ease-out); }
+.qscore { min-width: 2.2em; text-align: right; font-weight: 700; color: var(--gold); }
 
-.tapfix { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: rgba(8, 8, 13, .8); backdrop-filter: blur(3px); }
+.tapfix { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; background: rgba(2, 4, 12, .7); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .tapfix[hidden] { display: none; }
+
+@keyframes slideUp { from { opacity: 0; transform: translateY(8px); } }
 
 @media (max-width: 520px) {
     .qreveal { flex-direction: column; text-align: center; }
+    .qdisc { margin-right: 44px; }
     .qplayers { grid-template-columns: 1fr; }
+    .eq { gap: 3px; }
+    .eq i { width: 5px; }
 }
 
 /* Rangliste im Siegerfenster: Namen linksbündig */
-.quiz .ranking td:nth-child(1), .quiz .ranking th:nth-child(1) { width: 2.2em; text-align: left; }
-.quiz .ranking td:nth-child(2), .quiz .ranking th:nth-child(2) { text-align: left; font-family: var(--font); }
+.quiz .ranking td:nth-child(1), .quiz .ranking th:nth-child(1) { width: 2.4em; text-align: left; color: var(--muted); }
+.quiz .ranking td:nth-child(2), .quiz .ranking th:nth-child(2) { text-align: left; }
 
 @media (prefers-reduced-motion: reduce) {
-    .eq.on i { animation: none; height: 36px; }
+    .eq.on i { animation: none; transform: scaleY(var(--a)); }
+    .qdisc::before, .qreveal { animation: none; }
 }

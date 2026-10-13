@@ -124,7 +124,7 @@ Spiellogik, Engines und Netzwerk sind davon unberührt.
 - Farben: Tiefschwarz `--ink`, Nachtblau `--night`, Signalblau `--signal` (Aktion), Eisblau `--ice` (Info, Münzen),
   Sternweiß `--star` (Text), Gold `--gold` (Sterne, „du bist dran“, Sieg); dazu `--rose` (Gefahr), `--mint` (richtig),
   `--iris`, `--amber`. Die alten Namen (`--yellow`, `--cyan`, `--pink` …) zeigen auf die neue Palette. Spielerfarben `--p0` bis `--p5`
-- Schriften: Instrument Serif kursiv für Überschriften, Geist für Text (tabellarische Ziffern), über Google Fonts
+- Schrift: Geist für alles (Überschriften kräftig und eng gesetzt, Zahlen mit tabellarischen Ziffern), über Google Fonts
 - Formen: Glas mit 1px-Kontur. Jedes Element setzt nur `--bc` (Kontur) und `--fill` (Fläche). Rundungen nach Rang:
   Knöpfe und Chips als Pille, Felder 14px, Flächen 22px, Steine 9px
 - Hintergrund (`nachtfeld.js`, Canvas): Im Menü formen ein paar tausend Partikel über Wellenringen das Symbol des
@@ -133,6 +133,25 @@ Spiellogik, Engines und Netzwerk sind davon unberührt.
   und treiben danach ruhig als Sternenstaub. Die Partikelzahl richtet sich nach Bildschirmgröße und Gerät
 - Menü: Spiele als Glas-Pillen auf dem Wasser, darunter das Dock mit Beschreibung, Name, Start und Beitreten.
   Wer per Einladungslink kommt, sieht das Beitreten zuerst
-- Sternenjagd: Figuren liegen auf einer eigenen Ebene und gleiten per CSS-Transition; vor jedem Minispiel läuft die
-  Slot-Walze (`runReel` in `js/games/party/ui.js`), deren Ziel das vom Host gewählte Minispiel ist
+- Sternenjagd: Felder sind runde Glasscheiben in der Farbe ihrer Wirkung, auf Einbahnstraßen fließen Lichtpunkte in
+  Fahrtrichtung. Figuren liegen auf einer eigenen Ebene, springen von Feld zu Feld und ziehen eine Lichtspur; die
+  Felder leuchten beim Überlaufen auf. Der Würfel ist ein 3D-Würfel, der sich auf die gewürfelte Zahl dreht. Oben zeigt
+  eine Leiste die Runden (Sternrunden golden). Vor jedem Minispiel läuft das Warp-Intro (`runReel` in
+  `js/games/party/ui.js`): Titel rasen heran, werden langsamer und rasten auf dem vom Host gewählten Minispiel ein,
+  der Sternenhimmel fliegt mit (`nachtfeld.warp`)
+- Mini Rummy (`css/rummy.css`): Steine gleiten an ihren neuen Platz (auch live bei den anderen, beim Sortieren und
+  Zurücksetzen). Neu gelegte Steine tragen einen Punkt, veränderte Reihen einen Rahmen in der Farbe der Person, die
+  gelegt hat; das bleibt bis zum nächsten Legen. Im eigenen Zug zeigt jede geänderte Reihe sofort grün (gültig),
+  gestrichelt (unter drei Steinen) oder rot. Der Joker zeigt auf dem Tisch, für welche Zahl er steht, und hat beim
+  Einsetzen einen Regenbogenring. Dazu: Austeilen zu Rundenbeginn, gezogener Stein fliegt in den Ständer, Ständer
+  leuchtet auf, wenn man dran ist, Hinweis „nur noch ein Stein“, Steine-Feuerwerk beim Sieg. Ab 36 Steinen auf dem
+  Tisch werden sie dort kleiner
+- Würfel: `js/core/dice.js` baut einen 3D-Würfel (Sternenjagd einer, Immobilienspiel zwei, die gegeneinander rollen)
+- Immobilienspiel: Spielplan aus dunklem Glas mit Kacheln, Figuren springen von Feld zu Feld, das Zielfeld leuchtet auf,
+  Häuser „wachsen“ beim Bauen, Besitzkarten als helle Blätter, Ereigniskarten drehen sich ins Bild
+- Lieder-Raten: dieselbe Schallwelle wie im Menü (schwingt nur bei laufendem Ton), bei der Auflösung dreht sich eine
+  Schallplatte hinter dem Cover
+- Gesellschaftsspiele (Stadt-Land-Fluss, Undercover, Stufenquiz, Wortraten): gleiche Glasflächen, Stufen von Mint über
+  Gold nach Rose, Teams Rose gegen Eisblau
 - `prefers-reduced-motion: reduce` zeigt den Hintergrund als Standbild und schaltet alle Animationen ab
+- Minispiel „Maulwurf“: goldene Ziele, rote Bomben; „Farbe oder Wort“ nutzt Rot, Blau, Gelb und Grün

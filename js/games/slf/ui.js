@@ -75,7 +75,7 @@ export function createSlfUI() {
             const cats = v.allCategories.map((c, i) => `<button class="btn small${v.categories.includes(c) ? ' primary' : ''}" type="button" data-act="toggleCat" data-i="${i}"${isHost ? '' : ' disabled'}>${esc(c)}</button>`).join('');
             return `<p class="muted">Runden:</p><div class="row center">${rounds}</div><p class="muted">Kategorien (3 bis 8):</p><div class="row center wrap">${cats}</div>`;
         },
-        top: v => (v.phase === 'waiting' ? '' : `${v.rounds > 1 ? `Runde ${v.round} von ${v.rounds}` : ''}${v.phase === 'write' ? `${v.rounds > 1 ? ' · ' : ''}Buchstabe ${v.letter}` : ''}`),
+        top: v => (v.phase === 'waiting' ? '' : `${v.rounds > 1 ? `Runde ${v.round} von ${v.rounds}` : ''}${v.phase === 'write' ? `${v.rounds > 1 ? ', ' : ''}Buchstabe ${v.letter}` : ''}`),
         scores: v => (v.phase === 'waiting' ? null : v.totals),
         chip: (v, seat) => ({ note: v.phase === 'write' && v.filled[seat] ? '✓' : v.phase === 'review' && v.ready.includes(seat) ? '✓' : '' }),
         stage(v, ctx) {

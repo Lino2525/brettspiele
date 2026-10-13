@@ -1,6 +1,6 @@
 /* ==========================================================================
    NACHTFELD: Design-Tokens, Grundbausteine, Menü, Spielleiste, Rummy, Fenster
-   Schwarz-blauer Nachthimmel, Glasflächen, Licht statt Neon. Der bewegte Hintergrund
+   Schwarz-blauer Nachthimmel, Glasflächen, Licht statt Neon. Eine Schrift (Geist) für alles. Der bewegte Hintergrund
    ist ein Canvas (js/core/nachtfeld.js), alles andere liegt als Glas darüber.
    Rundungen nach Rang: Knöpfe und Chips als Pille, Felder 14px, Flächen 22px, Steine 9px.
    ========================================================================== */
@@ -63,8 +63,8 @@
     --tw: 42px;
     --th: 58px;
 
-    --display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
     --font: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --display: var(--font); /* Überschriften in derselben Schrift, nur kräftiger und enger gesetzt */
     --mono: var(--font); /* Zahlen laufen über tabellarische Ziffern statt über eine Monospace-Schrift */
 
     /* Die schräge Ecke des alten Designs gibt es nicht mehr */
@@ -93,7 +93,7 @@ body {
 
 [hidden] { display: none !important; }
 
-h1, h2, h3 { font-family: var(--display); font-weight: 400; font-style: italic; letter-spacing: 0; line-height: 1.05; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -.025em; line-height: 1.05; }
 h4 { font-weight: 600; }
 
 :focus-visible { outline: 2px solid var(--ice); outline-offset: 3px; }
@@ -148,7 +148,9 @@ input:not([type=range], [type=checkbox], [type=radio], [type=file], [type=color]
 .lobby-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .lobby h1 {
     margin: 0;
-    font-size: clamp(2.6rem, 6.4vw, 4.4rem);
+    font-size: clamp(2.4rem, 5.6vw, 3.9rem);
+    font-weight: 700;
+    letter-spacing: -.045em;
     line-height: .95;
     background: linear-gradient(180deg, #ffffff 30%, #9cc2ff);
     -webkit-background-clip: text;
@@ -156,7 +158,7 @@ input:not([type=range], [type=checkbox], [type=radio], [type=file], [type=color]
     color: transparent;
     animation: titleIn 1.1s var(--ease-out) both;
 }
-@keyframes titleIn { from { opacity: 0; letter-spacing: .08em; filter: blur(8px); } to { opacity: 1; letter-spacing: 0; filter: none; } }
+@keyframes titleIn { from { opacity: 0; letter-spacing: .04em; filter: blur(8px); } to { opacity: 1; letter-spacing: -.045em; filter: none; } }
 .sub { color: var(--muted); margin: 8px 0 0; font-size: 1rem; }
 
 /* Bühne: die Partikelform schwebt über .stage-space, die Spiele liegen als Glas-Pillen auf dem Wasser */
@@ -223,7 +225,7 @@ input:not([type=range], [type=checkbox], [type=radio], [type=file], [type=color]
 }
 @keyframes dockIn { from { opacity: 0; transform: translateY(24px); } }
 .dock-game { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 16px; margin-bottom: 16px; }
-.dock-game h2 { margin: 0; font-size: clamp(2rem, 4.4vw, 2.7rem); line-height: 1; }
+.dock-game h2 { margin: 0; font-size: clamp(1.7rem, 3.6vw, 2.2rem); line-height: 1.05; }
 .dock-game.swap h2, .dock-game.swap .dock-text { animation: swapIn .5s var(--ease-out); }
 @keyframes swapIn { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } }
 .dock-meta { grid-column: 2; grid-row: 1; margin: 0; color: var(--ice); font-size: .9rem; white-space: nowrap; }
@@ -276,7 +278,7 @@ input:not([type=range], [type=checkbox], [type=radio], [type=file], [type=color]
     padding: 18px;
     margin-bottom: 16px;
 }
-.card h2 { margin: 0 0 12px; font-size: 1.5rem; }
+.card h2 { margin: 0 0 12px; font-size: 1.25rem; }
 
 .row { display: flex; gap: 10px; flex-wrap: wrap; }
 
@@ -296,6 +298,8 @@ textarea:focus, select:focus {
     box-shadow: 0 0 0 4px rgba(143, 216, 255, .14);
 }
 input::placeholder { color: rgba(143, 162, 200, .6); }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input.code {
     flex: 1;
     max-width: 220px;
@@ -307,7 +311,7 @@ input.code {
 input.code::placeholder { letter-spacing: 0; text-transform: none; font-weight: 400; }
 
 .resume { width: min(100%, 760px); margin: 18px auto 0; }
-.resume h2 { margin: 0 0 8px; font-size: 1.3rem; color: var(--muted); }
+.resume h2 { margin: 0 0 8px; font-size: 1.05rem; color: var(--muted); }
 #resumeList { display: flex; flex-direction: column; gap: 8px; }
 .resume-item { display: flex; gap: 8px; width: 100%; }
 .resume-item .btn:first-child { flex: 1; text-align: left; }
@@ -375,7 +379,7 @@ input.code::placeholder { letter-spacing: 0; text-transform: none; font-weight: 
     flex-wrap: wrap;
 }
 .topbar .room { display: inline-flex; align-items: baseline; gap: 10px; }
-.topbar .rtitle { font-family: var(--display); font-style: italic; font-size: 1.5rem; line-height: 1; }
+.topbar .rtitle { font-family: var(--display); font-weight: 600; font-size: 1.15rem; letter-spacing: -.02em; line-height: 1; }
 .topbar .rcode { font-size: .82rem; color: var(--muted); }
 .topbar .rcode b { color: var(--text); font-weight: 600; letter-spacing: .08em; }
 .topbar .linked { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--muted); }
@@ -383,6 +387,7 @@ input.code::placeholder { letter-spacing: 0; text-transform: none; font-weight: 
 .topbar .linked.low::before { background: var(--rose); box-shadow: 0 0 8px var(--rose); }
 .topbar .status { color: var(--muted); font-size: .82rem; }
 .spacer { flex: 1; }
+#copyLink .short { display: none; }
 
 #gameRoot { flex: 1; min-height: 0; }
 
@@ -404,29 +409,8 @@ input.code::placeholder { letter-spacing: 0; text-transform: none; font-weight: 
 }
 .micon:hover { border-color: var(--ice); box-shadow: 0 0 16px -2px rgba(143, 216, 255, .5); }
 
-/* ---------- Rummy ---------- */
+/* ---------- Spielerchips und Verbindungspunkte (Rummy, Sternenjagd) ---------- */
 
-.rummy {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 10px 12px 12px;
-    gap: 10px;
-}
-
-.opp-bar, .me-bar, .actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-.opp-bar { justify-content: space-between; }
-.players { display: flex; gap: 8px; flex-wrap: wrap; }
-
-/* Spielerchips (Rummy, Sternenjagd) */
 .pchip {
     --pc: var(--gold);
     --bc: var(--line);
@@ -461,159 +445,40 @@ input.code::placeholder { letter-spacing: 0; text-transform: none; font-weight: 
 .dot.on { background: var(--mint); box-shadow: 0 0 8px var(--mint); }
 .dot.off { background: var(--rose); box-shadow: 0 0 8px var(--rose); }
 
-/* Tisch: dunkles Glas mit blauem Licht von unten */
-.table-wrap {
-    --bc: var(--line);
-    --fill: radial-gradient(120% 90% at 50% 120%, rgba(47, 107, 255, .16), transparent 60%), rgba(4, 10, 28, .55);
+/* ---------- 3D-Würfel (Sternenjagd, Immobilienspiel; js/core/dice.js dreht ihn auf die Zahl) ---------- */
+.pdice { --ds: clamp(46px, 9vw, 60px); width: var(--ds); height: var(--ds); margin: 4px; perspective: 380px; }
+.pdie {
     position: relative;
-    flex: 1;
-    min-height: 140px;
-    overflow: auto;
+    display: block;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transform: rotateX(-28deg) rotateY(38deg) rotateX(0deg) rotateY(0deg);
+    transition: transform 1s cubic-bezier(.18, .85, .25, 1.02);
 }
-.table {
-    display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    gap: 14px;
-    padding: 14px;
-    min-height: 100%;
+.pdie.instant { transition: none; }
+.pdie .face {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+    padding: 15%;
+    border-radius: 22%;
+    background: linear-gradient(150deg, #ffffff, #dbe5fb);
+    box-shadow: inset 0 0 0 1px rgba(10, 26, 63, .14), inset 0 -5px 10px rgba(10, 26, 63, .14);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
-.table.live { outline: 1.5px dashed rgba(143, 216, 255, .5); outline-offset: -8px; border-radius: var(--r-panel); }
-.table.drop, .set.drop, .rack.drop { box-shadow: 0 0 0 2px var(--ice), 0 0 26px rgba(143, 216, 255, .45); }
+.pdie .face i { width: 72%; aspect-ratio: 1; border-radius: 50%; place-self: center; background: radial-gradient(circle at 40% 35%, #2a4a8f, #0a1a3f); }
+.pdie.safe .face { background: linear-gradient(150deg, #e3f6ff, #8fd8ff); }
+.pdie .f1 { transform: translateZ(calc(var(--ds) / 2)); }
+.pdie .f6 { transform: rotateY(180deg) translateZ(calc(var(--ds) / 2)); }
+.pdie .f2 { transform: rotateY(90deg) translateZ(calc(var(--ds) / 2)); }
+.pdie .f5 { transform: rotateY(-90deg) translateZ(calc(var(--ds) / 2)); }
+.pdie .f3 { transform: rotateX(90deg) translateZ(calc(var(--ds) / 2)); }
+.pdie .f4 { transform: rotateX(-90deg) translateZ(calc(var(--ds) / 2)); }
+.pdice { filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .6)) drop-shadow(0 0 16px rgba(91, 151, 255, .35)); }
 
-.banner {
-    position: sticky;
-    top: 8px;
-    z-index: 2;
-    width: fit-content;
-    margin: 8px auto 0;
-    text-align: center;
-    padding: 6px 16px;
-    border-radius: var(--r-pill);
-    background: var(--gold);
-    color: var(--ink);
-    font-weight: 600;
-    font-size: .9rem;
-    box-shadow: 0 8px 24px -8px rgba(255, 207, 107, .8);
-}
-
-.set {
-    --bc: rgba(160, 190, 255, .14);
-    --fill: rgba(2, 6, 20, .4);
-    display: flex;
-    gap: 3px;
-    padding: 6px;
-    min-height: calc(var(--th) + 14px);
-    min-width: 48px;
-    transition: box-shadow .25s, border-color .25s;
-}
-.set.bad { --bc: var(--rose); border-style: dashed; box-shadow: 0 0 18px -4px rgba(255, 92, 124, .6); }
-
-.newset, .empty {
-    align-self: stretch;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 150px;
-    max-width: 200px;
-    padding: 8px 12px;
-    text-align: center;
-    font-size: .85rem;
-    color: var(--muted);
-}
-.newset { --bc: var(--line-hi); --fill: transparent; border-style: dashed; }
-.empty { border: 0; max-width: none; flex: 1; font-size: 1rem; }
-
-.me-bar { justify-content: space-between; min-height: 1.6em; }
-.turn { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--gold); }
-
-/* Avatar der Person am Zug: groß im freien Rand links, auf schmalen Bildschirmen klein neben "am Zug". */
-.turn-avatar { animation: avatar-in .45s var(--ease-out); }
-.turn-avatar.big {
-    position: fixed;
-    left: 24px;
-    bottom: 110px;
-    width: max(0px, min(300px, calc((100vw - 1100px) / 2 - 48px)));
-    max-height: 60vh;
-    object-fit: contain;
-    border-radius: var(--r-panel);
-    pointer-events: none;
-}
-.turn-avatar.small { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); box-shadow: 0 0 16px -2px rgba(255, 207, 107, .7); }
-@media (min-width: 1401px) { .turn-avatar.small { display: none; } }
-@media (max-width: 1400px) { .turn-avatar.big { display: none; } }
-@keyframes avatar-in { from { opacity: 0; transform: translateY(10px) scale(.96); } }
-.hint.ok { color: var(--mint); }
-.hint.warn { color: #ff8da3; }
-
-/* Ständer: eigenes Glas mit goldener Kante oben */
-.rack {
-    --bc: rgba(255, 207, 107, .35);
-    --fill: linear-gradient(180deg, rgba(255, 207, 107, .06), rgba(2, 6, 20, .6) 40%);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-content: flex-start;
-    padding: 10px;
-    min-height: calc(var(--th) * 2 + 30px);
-    max-height: 34vh;
-    overflow-y: auto;
-    box-shadow: inset 0 1px 0 rgba(255, 207, 107, .3);
-}
-
-.actions { justify-content: flex-start; }
-/* "Zug beenden" leuchtet, sobald er gültig ist (nicht deaktiviert) */
-.actions .btn.primary:not(:disabled) { animation: pulseY 2.2s ease-in-out infinite; }
-
-/* ---------- Steine ---------- */
-/* Helle Steine auf dunklem Grund, Zahlen in der Steinfarbe: lesbar wie echte Rummy-Steine */
-
-.tile {
-    --tc: var(--night);
-    flex: none;
-    width: var(--tw);
-    height: var(--th);
-    display: flex;
-    flex-direction: column;
-    border-radius: var(--r-tile);
-    border: 0;
-    background: linear-gradient(180deg, #ffffff, var(--tile-bg) 60%, #d9e2f7);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 -3px 0 rgba(10, 26, 63, .18) inset, 0 6px 14px -6px rgba(0, 0, 0, .8);
-    color: var(--tc);
-    font-weight: 700;
-    font-size: calc(var(--tw) * .52);
-    line-height: 1;
-    cursor: grab;
-    user-select: none;
-    touch-action: none;
-    transition: transform .2s var(--ease-spring), box-shadow .2s;
-}
-.tile:hover { transform: translateY(-3px); }
-.tile .n {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.tile .n.r { transform: rotate(180deg); opacity: .35; font-size: .6em; flex: .6; }
-.tile.c0 { --tc: #e8355c; }
-.tile.c1 { --tc: #1f6fe5; }
-.tile.c2 { --tc: #d68a00; }
-.tile.c3 { --tc: #11a073; }
-.tile.joker { font-size: calc(var(--tw) * .22); letter-spacing: .02em; }
-.tile.joker .n { background: linear-gradient(90deg, #e8355c, #d68a00, #1f6fe5, #11a073); -webkit-background-clip: text; background-clip: text; color: transparent; }
-
-.tile.dragging { opacity: .3; }
-.tile.ghost {
-    position: fixed;
-    left: 0;
-    top: 0;
-    z-index: 100;
-    pointer-events: none;
-    cursor: grabbing;
-    box-shadow: 0 20px 34px -10px rgba(0, 0, 0, .9), 0 0 0 2px var(--ice);
-    transform-origin: center;
-}
 
 /* ---------- Overlay & Meldung ---------- */
 
@@ -643,7 +508,7 @@ input.code::placeholder { letter-spacing: 0; text-transform: none; font-weight: 
     animation: boxIn .5s var(--ease-spring);
 }
 @keyframes boxIn { from { opacity: 0; transform: translateY(16px) scale(.96); } }
-.overlay-box h2 { margin: 0 0 12px; font-size: 2.2rem; color: var(--text); }
+.overlay-box h2 { margin: 0 0 12px; font-size: 1.75rem; color: var(--text); }
 .plist { list-style: none; margin: 0 0 12px; padding: 0; text-align: left; display: inline-block; }
 .plist li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
 .ranking { width: 100%; border-collapse: collapse; margin: 0 0 18px; text-align: left; }
@@ -707,8 +572,13 @@ input.code::placeholder { letter-spacing: 0; text-transform: none; font-weight: 
     :root { --tw: 36px; --th: 50px; }
     .rummy { padding: 6px; }
     .btn { padding: 9px 14px; }
-    .topbar { padding: 8px 12px; }
-    .topbar .rtitle { font-size: 1.25rem; }
+    .topbar { padding: 8px 12px; gap: 6px 10px; }
+    .topbar .rtitle { font-size: 1.05rem; }
+    .topbar .status:empty { display: none; }
+    .topbar .music input[type=range] { display: none; }
+    .topbar .micon { width: 34px; height: 34px; }
+    #copyLink .long { display: none; }
+    #copyLink .short { display: inline; }
 }
 
 /* ---------- Weniger Bewegung ---------- */

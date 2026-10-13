@@ -7,15 +7,18 @@ const esc = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fmt = n => (n > 0 ? `+${n}` : String(n));
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 
+// Schallwelle aus 24 Balken: in der Mitte höher (wie das Symbol im Menü), jeder schwingt etwas versetzt
+const EQ_BARS = Array.from({ length: 24 }, (_, k) => `<i style="--k:${k};--a:${(0.3 + 0.7 * Math.sin((Math.PI * (k + 0.5)) / 24)).toFixed(2)}"></i>`).join('');
+
 const TEMPLATE = `
 <div class="quiz">
   <div class="qtop"><span class="qround"></span><span class="qhost"></span></div>
   <div class="qbar"><i></i></div>
   <div class="qstage">
-    <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="eq" aria-hidden="true">${EQ_BARS}</div>
     <div class="qstatus"></div>
     <div class="qmask"></div>
-    <div class="qreveal" hidden><img class="qcover" alt=""><div class="qsong"></div></div>
+    <div class="qreveal" hidden><div class="qdisc"><img class="qcover" alt=""></div><div class="qsong"></div></div>
   </div>
   <form class="qform" autocomplete="off">
     <input class="qinput" type="text" maxlength="80" placeholder="Titel oder Künstler …" enterkeyhint="send" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -133,7 +136,7 @@ export function mountSongQuiz(root, session) {
         const v = st.view;
         const r = v.round;
         const isHost = v.seat === v.hostSeat;
-        el.round.textContent = v.phase === 'waiting' ? 'Lieder-Raten' : `Runde ${Math.max(1, v.roundNo)} von ${v.rounds}${v.block > 1 ? ` · Durchgang ${v.block}` : ''}`;
+        el.round.textContent = v.phase === 'waiting' ? 'Lieder-Raten' : `Runde ${Math.max(1, v.roundNo)} von ${v.rounds}${v.block > 1 ? `, Durchgang ${v.block}` : ''}`;
 
         // Host-Knöpfe
         let hostBtn = '';

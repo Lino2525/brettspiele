@@ -1,9 +1,9 @@
 // Gemeinsame Oberfläche der Spiele für 3 bis 6 Personen: Kopfzeile, Punktetafel, Warteraum mit Teams,
 // Ergebnisfenster, Zeitanzeige und Eingaben. Ein Spiel liefert nur noch den Inhalt der Spielfläche.
 export const esc = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-// Neon-Grid: gelb, cyan, pink, violett; ab dem 5. Platz orange und grün. Teams: pink gegen cyan.
-export const PLAYER_COLORS = ['#fcee0a', '#05d9e8', '#ff2a6d', '#b967ff', '#ff9a00', '#39ff14'];
-export const TEAM_COLORS = ['#ff2a6d', '#05d9e8'];
+// Gold, Eisblau, Rose, Iris; ab dem 5. Platz Bernstein und Mint (wie --p0 bis --p5). Teams: Rose gegen Eisblau.
+export const PLAYER_COLORS = ['#ffcf6b', '#8fd8ff', '#ff5c7c', '#9d8cff', '#ffa45c', '#4fe0a6'];
+export const TEAM_COLORS = ['#ff5c7c', '#8fd8ff'];
 export const FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
 // Setzt HTML nur bei Änderung und rettet dabei Eingabefelder (data-keep="…"): Wert, Fokus und Cursor bleiben erhalten.
@@ -146,7 +146,7 @@ export function mountGame(root, session, game, opts = {}) {
         const v = st.view;
         if (embedded) {
             const mine = v.players[v.seat];
-            const team = v.teamMode && mine ? `Du bist im ${v.teamNames[mine.team]} · ` : '';
+            const team = v.teamMode && mine ? `Du bist im ${v.teamNames[mine.team]}. ` : '';
             el.top.textContent = team + (game.top?.(v) || '');
             el.stage.hidden = false;
             setHTML(el.stage, game.stage(v, ctx) || '');
