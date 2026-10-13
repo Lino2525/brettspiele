@@ -33,7 +33,7 @@ export const MINIS = {
     flags: { title: 'Flaggen', kind: 'quiz', playMs: FLAG.count * (FLAG.askMs + FLAG.revealMs), rules: `${FLAG.count} Flaggen: Welches Land ist es? Schnell sein lohnt sich.` },
     stroop: { title: 'Farbe oder Wort', kind: 'solo', playMs: 34000, max: 5000, rules: 'Ein Farbwort erscheint in einer anderen Farbe. Tippe die Farbe, in der es geschrieben ist, nicht das Wort! 30 Sekunden, Fehler kosten Punkte.' },
     stopwatch: { title: 'Stoppuhr', kind: 'solo', playMs: 36000, max: 900, rules: 'Die Uhr zählt hoch und wird dann unsichtbar. Stoppe sie so genau wie möglich bei der Zielzeit. Drei Versuche.' },
-    mole: { title: 'Maulwurf', kind: 'solo', playMs: 24000, max: 3000, rules: 'Tippe die gelben Ziele, sobald sie auftauchen. Die pinken Bomben lässt du in Ruhe! 20 Sekunden.' },
+    mole: { title: 'Maulwurf', kind: 'solo', playMs: 24000, max: 3000, rules: 'Tippe die goldenen Ziele, sobald sie auftauchen. Die roten Bomben lässt du in Ruhe! 20 Sekunden.' },
     oddone: { title: 'Ausreißer', kind: 'solo', playMs: 34000, max: 5000, rules: 'Ein Feld hat einen minimal anderen Farbton. Finde und tippe es, die Unterschiede werden immer kleiner. 30 Sekunden.' },
     numberhunt: { title: 'Zahlenjagd', kind: 'solo', playMs: 49000, max: 1200, rules: 'Tippe die Zahlen von 1 bis 25 in der richtigen Reihenfolge, so schnell du kannst. Wer fertig ist, bekommt Zeitbonus.' },
     sortblitz: { title: 'Sortierblitz', kind: 'solo', playMs: 39000, max: 6000, rules: 'Links oder rechts? Sortiere die Karten nach der Regel, die oben steht. Die Regel wechselt alle 8 Karten, dann gibt es eine kurze Pause zum Lesen. 35 Sekunden.' },

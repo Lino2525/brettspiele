@@ -124,7 +124,7 @@ Spiellogik, Engines und Netzwerk sind davon unberührt.
 - Farben: Tiefschwarz `--ink`, Nachtblau `--night`, Signalblau `--signal` (Aktion), Eisblau `--ice` (Info, Münzen),
   Sternweiß `--star` (Text), Gold `--gold` (Sterne, „du bist dran“, Sieg); dazu `--rose` (Gefahr), `--mint` (richtig),
   `--iris`, `--amber`. Die alten Namen (`--yellow`, `--cyan`, `--pink` …) zeigen auf die neue Palette. Spielerfarben `--p0` bis `--p5`
-- Schriften: Instrument Serif kursiv für Überschriften, Geist für Text (tabellarische Ziffern), über Google Fonts
+- Schrift: Geist für alles (Überschriften kräftig und eng gesetzt, Zahlen mit tabellarischen Ziffern), über Google Fonts
 - Formen: Glas mit 1px-Kontur. Jedes Element setzt nur `--bc` (Kontur) und `--fill` (Fläche). Rundungen nach Rang:
   Knöpfe und Chips als Pille, Felder 14px, Flächen 22px, Steine 9px
 - Hintergrund (`nachtfeld.js`, Canvas): Im Menü formen ein paar tausend Partikel über Wellenringen das Symbol des
@@ -133,6 +133,11 @@ Spiellogik, Engines und Netzwerk sind davon unberührt.
   und treiben danach ruhig als Sternenstaub. Die Partikelzahl richtet sich nach Bildschirmgröße und Gerät
 - Menü: Spiele als Glas-Pillen auf dem Wasser, darunter das Dock mit Beschreibung, Name, Start und Beitreten.
   Wer per Einladungslink kommt, sieht das Beitreten zuerst
-- Sternenjagd: Figuren liegen auf einer eigenen Ebene und gleiten per CSS-Transition; vor jedem Minispiel läuft die
-  Slot-Walze (`runReel` in `js/games/party/ui.js`), deren Ziel das vom Host gewählte Minispiel ist
+- Sternenjagd: Felder sind runde Glasscheiben in der Farbe ihrer Wirkung, auf Einbahnstraßen fließen Lichtpunkte in
+  Fahrtrichtung. Figuren liegen auf einer eigenen Ebene, springen von Feld zu Feld und ziehen eine Lichtspur; die
+  Felder leuchten beim Überlaufen auf. Der Würfel ist ein 3D-Würfel, der sich auf die gewürfelte Zahl dreht. Oben zeigt
+  eine Leiste die Runden (Sternrunden golden). Vor jedem Minispiel läuft das Warp-Intro (`runReel` in
+  `js/games/party/ui.js`): Titel rasen heran, werden langsamer und rasten auf dem vom Host gewählten Minispiel ein,
+  der Sternenhimmel fliegt mit (`nachtfeld.warp`)
 - `prefers-reduced-motion: reduce` zeigt den Hintergrund als Standbild und schaltet alle Animationen ab
+- Minispiel „Maulwurf“: goldene Ziele, rote Bomben; „Farbe oder Wort“ nutzt Rot, Blau, Gelb und Grün

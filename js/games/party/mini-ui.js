@@ -191,16 +191,20 @@ function hoops(box, mini, api) {
         ctl.frame(now => {
             hx = hoopX(now);
             g.clearRect(0, 0, W, H);
-            g.fillStyle = '#0a0d14';
+            // Nachthimmel mit Licht von unten
+            const sky = g.createLinearGradient(0, 0, 0, H);
+            sky.addColorStop(0, '#040a1e');
+            sky.addColorStop(1, '#0c1f4d');
+            g.fillStyle = sky;
             g.fillRect(0, 0, W, H);
             // Korb
-            g.strokeStyle = '#ff9a00';
+            g.strokeStyle = '#ff5c7c';
             g.lineWidth = 6;
             g.beginPath();
             g.moveTo(hx - 36, 90);
             g.lineTo(hx + 36, 90);
             g.stroke();
-            g.strokeStyle = 'rgba(5,217,232,.7)';
+            g.strokeStyle = 'rgba(143,216,255,.7)';
             g.lineWidth = 2;
             for (let k = -3; k <= 3; k++) {
                 g.beginPath();
@@ -224,13 +228,13 @@ function hoops(box, mini, api) {
                     by = H - 50 - (H - 140) * p;
                 }
             }
-            g.fillStyle = '#ff2a6d';
+            g.fillStyle = '#ffa45c';
             g.beginPath();
             g.arc(W / 2, by, 13, 0, Math.PI * 2);
             g.fill();
             if (now - flash < 400) {
-                g.fillStyle = '#39ff14';
-                g.font = 'bold 34px system-ui';
+                g.fillStyle = '#4fe0a6';
+                g.font = '700 34px Geist, system-ui';
                 g.textAlign = 'center';
                 g.fillText('Treffer!', W / 2, 220);
             }
@@ -273,7 +277,7 @@ function reaction(box, mini, api) {
                 state = 'go';
                 goAt = performance.now();
                 pad.className = 'rx-pad go';
-                text.textContent = 'JETZT!';
+                text.textContent = 'Jetzt!';
                 sub.textContent = '';
             }, delays[tryNo]);
         };
@@ -312,7 +316,7 @@ function reaction(box, mini, api) {
 
 function tapping(box, mini, api) {
     return solo(box, api, ctl => {
-        box.innerHTML = '<div class="tp-count">0</div><button class="btn primary big tp-btn" type="button">TIPPEN!</button><div class="tp-time">Tippe los, die Zeit startet beim ersten Tipp.</div>';
+        box.innerHTML = '<div class="tp-count">0</div><button class="btn primary big tp-btn" type="button">Tippen!</button><div class="tp-time">Tippe los, die Zeit startet beim ersten Tipp.</div>';
         const countEl = box.querySelector('.tp-count');
         const btn = box.querySelector('.tp-btn');
         const timeEl = box.querySelector('.tp-time');
@@ -350,7 +354,7 @@ function memory(box, mini, api) {
     return solo(box, api, ctl => {
         const rng = mulberry32(mini.params.seed);
         const seq = Array.from({ length: 30 }, () => Math.floor(rng() * 4));
-        const colors = ['#ff2a6d', '#05d9e8', '#fcee0a', '#b967ff'];
+        const colors = ['#ff5c7c', '#4f9bff', '#ffcf6b', '#9d8cff'];
         box.innerHTML = '<div class="mem-info">Merke dir die Reihenfolge …</div><div class="mem-pads">' +
             colors.map((c, i) => `<button type="button" class="mem-pad" data-i="${i}" style="--c:${c}" disabled></button>`).join('') + '</div>';
         const info = box.querySelector('.mem-info');
@@ -503,7 +507,7 @@ function quiz(box, mini, api) {
 
 // ---------- Zeichnen und Raten ----------
 
-const DRAW_COLORS = ['#e8f9ff', '#ff2a6d', '#05d9e8', '#39ff14', '#fcee0a', '#ff9a00'];
+const DRAW_COLORS = ['#eaf2ff', '#ff5c7c', '#4f9bff', '#4fe0a6', '#ffcf6b', '#ffa45c'];
 
 function draw(box, mini, api) {
     const isDrawer = mini.params.drawer === api.seat;
@@ -518,7 +522,7 @@ function draw(box, mini, api) {
     let current = null;
     let color = 0;
     const paint = strokes => {
-        g.fillStyle = '#0a0d14';
+        g.fillStyle = '#050c22';
         g.fillRect(0, 0, 500, 500);
         g.lineCap = 'round';
         g.lineJoin = 'round';
@@ -641,11 +645,11 @@ function draw(box, mini, api) {
 
 // ---------- Farbe oder Wort (Stroop) ----------
 
-const NEON = [
-    { name: 'PINK', color: '#ff2a6d' },
-    { name: 'CYAN', color: '#05d9e8' },
-    { name: 'GELB', color: '#fcee0a' },
-    { name: 'GRÜN', color: '#39ff14' },
+const INKS = [
+    { name: 'Rot', color: '#ff5c7c' },
+    { name: 'Blau', color: '#4f9bff' },
+    { name: 'Gelb', color: '#ffcf6b' },
+    { name: 'Grün', color: '#4fe0a6' },
 ];
 
 // Spieldauer auf dem Gerät: Spielzeit des Hosts minus Puffer (fürs Melden), bei spätem Einstieg entsprechend weniger
@@ -655,7 +659,7 @@ function stroop(box, mini, api) {
     return solo(box, api, ctl => {
         const rng = mulberry32(mini.params.seed);
         box.innerHTML = `<div class="st-info">Punkte: 0</div><div class="st-word"></div>
-            <div class="st-btns">${NEON.map((c, i) => `<button type="button" class="btn st-btn" data-i="${i}">${c.name}</button>`).join('')}</div><div class="st-fb"></div>`;
+            <div class="st-btns">${INKS.map((c, i) => `<button type="button" class="btn st-btn" data-i="${i}">${c.name}</button>`).join('')}</div><div class="st-fb"></div>`;
         const info = box.querySelector('.st-info');
         const wordEl = box.querySelector('.st-word');
         const fb = box.querySelector('.st-fb');
@@ -665,9 +669,9 @@ function stroop(box, mini, api) {
             const word = Math.floor(rng() * 4);
             const ink = rng() < 0.25 ? word : (word + 1 + Math.floor(rng() * 3)) % 4;
             cur = { word, ink };
-            wordEl.textContent = NEON[word].name;
-            wordEl.style.color = NEON[ink].color;
-            wordEl.style.textShadow = `0 0 16px ${NEON[ink].color}`;
+            wordEl.textContent = INKS[word].name;
+            wordEl.style.color = INKS[ink].color;
+            wordEl.style.textShadow = `0 0 30px ${INKS[ink].color}66`;
         };
         next();
         box.querySelectorAll('.st-btn').forEach(b => b.addEventListener('pointerdown', e => {
@@ -761,7 +765,7 @@ function stopwatch(box, mini, api) {
 function mole(box, mini, api) {
     return solo(box, api, ctl => {
         const rng = mulberry32(mini.params.seed);
-        box.innerHTML = `<div class="mo-info">Punkte: 0</div><div class="mo-grid">${Array.from({ length: 9 }, (_, i) => `<button type="button" class="mo-hole" data-i="${i}"></button>`).join('')}</div><div class="mo-hint">Gelb tippen, Pink meiden!</div>`;
+        box.innerHTML = `<div class="mo-info">Punkte: 0</div><div class="mo-grid">${Array.from({ length: 9 }, (_, i) => `<button type="button" class="mo-hole" data-i="${i}"></button>`).join('')}</div><div class="mo-hint">Gold tippen, Rot meiden!</div>`;
         const info = box.querySelector('.mo-info');
         const holes = [...box.querySelectorAll('.mo-hole')];
         const active = new Map(); // Loch -> { kind, id }
@@ -908,10 +912,10 @@ function numberhunt(box, mini, api) {
 const SB_ANIMALS = ['Katze', 'Hund', 'Fuchs', 'Adler', 'Löwe', 'Hase', 'Pferd', 'Delfin', 'Krokodil', 'Igel', 'Giraffe', 'Wolf'];
 const SB_PLANTS = ['Rose', 'Eiche', 'Tulpe', 'Farn', 'Birke', 'Kaktus', 'Tanne', 'Klee', 'Sonnenblume', 'Bambus', 'Efeu', 'Moos'];
 const SB_RULES = [
-    { left: 'GERADE', right: 'UNGERADE', make: rng => { const n = 10 + Math.floor(rng() * 90); return { text: String(n), side: n % 2 === 0 ? 'left' : 'right' }; } },
-    { left: 'KLEINER ALS 50', right: 'GRÖSSER ALS 50', make: rng => { let n = 1 + Math.floor(rng() * 99); if (n === 50) n = 49; return { text: String(n), side: n < 50 ? 'left' : 'right' }; } },
-    { left: 'TIER', right: 'PFLANZE', make: rng => { const animal = rng() < 0.5; const list = animal ? SB_ANIMALS : SB_PLANTS; return { text: list[Math.floor(rng() * list.length)], side: animal ? 'left' : 'right' }; } },
-    { left: 'KURZ (bis 5 Buchstaben)', right: 'LANG (ab 6)', make: rng => { const list = [...SB_ANIMALS, ...SB_PLANTS]; const w = list[Math.floor(rng() * list.length)]; return { text: w, side: w.length <= 5 ? 'left' : 'right' }; } },
+    { left: 'gerade', right: 'ungerade', make: rng => { const n = 10 + Math.floor(rng() * 90); return { text: String(n), side: n % 2 === 0 ? 'left' : 'right' }; } },
+    { left: 'kleiner als 50', right: 'größer als 50', make: rng => { let n = 1 + Math.floor(rng() * 99); if (n === 50) n = 49; return { text: String(n), side: n < 50 ? 'left' : 'right' }; } },
+    { left: 'Tier', right: 'Pflanze', make: rng => { const animal = rng() < 0.5; const list = animal ? SB_ANIMALS : SB_PLANTS; return { text: list[Math.floor(rng() * list.length)], side: animal ? 'left' : 'right' }; } },
+    { left: 'kurz (bis 5 Buchstaben)', right: 'lang (ab 6)', make: rng => { const list = [...SB_ANIMALS, ...SB_PLANTS]; const w = list[Math.floor(rng() * list.length)]; return { text: w, side: w.length <= 5 ? 'left' : 'right' }; } },
 ];
 
 function sortblitz(box, mini, api) {

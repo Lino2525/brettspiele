@@ -3,11 +3,12 @@
 import { NODES, SEGMENTS, BOARD_W, BOARD_H, STAR_SPOTS, COIN_GAIN, COIN_LOSS } from './board.js';
 import { createMiniGame } from './mini-ui.js';
 import { MINIS, MINI_TYPES, DUEL_TYPES } from './minigames.js';
+import { nachtfeld } from '../../core/nachtfeld.js';
 
 const esc = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-// Neon-Grid: gelb, cyan, pink, violett; ab dem 5. Platz orange und grün
-export const PLAYER_COLORS = ['#fcee0a', '#05d9e8', '#ff2a6d', '#b967ff', '#ff9a00', '#39ff14'];
+// Gold, Eisblau, Rose, Iris; ab dem 5. Platz Bernstein und Mint (wie --p0 bis --p5 in style.css)
+export const PLAYER_COLORS = ['#ffcf6b', '#8fd8ff', '#ff5c7c', '#9d8cff', '#ffa45c', '#4fe0a6'];
 const SPACE_LABEL = { start: '▶', blue: `+${COIN_GAIN}`, red: `−${COIN_LOSS}`, luck: '?', shield: '🛡', duel: 'VS', teleport: 'TP' };
 const SPACE_NAME = { start: 'Start', blue: `+${COIN_GAIN} Münzen`, red: `−${COIN_LOSS} Münzen`, luck: 'Glücksfeld', shield: 'Schild', duel: 'Duell', teleport: 'Teleport zum Stern' };
 const REDUCED = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -15,6 +16,10 @@ const MINI_TITLES = MINI_TYPES.map(t => MINIS[t].title);
 const DUEL_TITLES = DUEL_TYPES.map(t => MINIS[t].title);
 const ARROWS = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'];
 const PORTRAIT = '(max-width: 640px) and (orientation: portrait)';
+// 3D-Würfel: Augen je Seite (Zeile, Spalte im 3 x 3 Raster) und die Drehung, die eine Seite nach vorn bringt
+const PIPS = { 1: [[2, 2]], 2: [[1, 1], [3, 3]], 3: [[1, 1], [2, 2], [3, 3]], 4: [[1, 1], [1, 3], [3, 1], [3, 3]], 5: [[1, 1], [1, 3], [2, 2], [3, 1], [3, 3]], 6: [[1, 1], [2, 1], [3, 1], [1, 3], [2, 3], [3, 3]] };
+const FACE_TURN = { 1: [0, 0], 2: [0, -90], 3: [-90, 0], 4: [90, 0], 5: [0, 90], 6: [0, 180] };
+const DIE_FACES = Object.entries(PIPS).map(([n, pips]) => `<span class="face f${n}">${pips.map(([r, c]) => `<i style="grid-area:${r}/${c}"></i>`).join('')}</span>`).join('');
 // Versatz bei mehreren Figuren auf einem Feld (2 x 2)
 const TOKEN_OFFSETS = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0], [0, -1.6]];
 
@@ -27,7 +32,7 @@ const TEMPLATE = `
     <div class="pmini" hidden></div>
   </div>
   <div class="pcontrol">
-    <div class="pdice"><span class="pdie">?</span></div>
+    <div class="pdice" role="img" aria-label="Würfel"><span class="pdie">${DIE_FACES}</span></div>
     <div class="pmain"><div class="pstatus"></div><div class="pact"></div></div>
     <div class="pfeed"></div>
   </div>
@@ -47,7 +52,7 @@ export function mountParty(root, session) {
 
     const st = {
         view: null, avatars: [], displayPos: [], lastEvent: 0, receivedAt: 0, mini: null, dicePlaying: false, shownDice: null,
-        movingSeat: null, laidOut: false, prevScore: [], gainAt: [], pending: 0, portrait: false, statusBase: '', stake: 'star',
+        movingSeat: null, laidOut: false, prevScore: [], gainAt: [], pending: 0, portrait: false, statusBase: '', stake: 'star', spins: 0, topHTML: '',
     };
     let toastTimer = null;
     let dead = false;
@@ -108,6 +113,8 @@ export function mountParty(root, session) {
             const [x2, y2] = unit(seg.b);
             svg += `<line class="seg ${seg.kind}${seg.oneway ? ' oneway' : ''}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
             if (seg.oneway) {
+                // Lichtpunkte, die in Fahrtrichtung fließen
+                svg += `<line class="flow ${seg.kind}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
                 const len = Math.hypot(x2 - x1, y2 - y1);
                 const [dx, dy] = [(x2 - x1) / len, (y2 - y1) / len];
                 const [mx, my] = [(x1 + x2) / 2, (y1 + y2) / 2];
@@ -136,7 +143,7 @@ export function mountParty(root, session) {
         });
         if (first) {
             st.lastEvent = v.eventSeq;
-            if (v.dice) setDice(v.dice.value);
+            if (v.dice) setDice(v.dice.value, { instant: true });
         } else {
             const fresh = v.events.filter(e => e.id > st.lastEvent);
             if (fresh.length) {
@@ -152,10 +159,38 @@ export function mountParty(root, session) {
         renderTokens();
     }
 
-    function setDice(value) {
+    // Dreht den Würfel auf die Zahl; beim Wurf mit zusätzlichen ganzen Umdrehungen, damit er sichtbar rollt
+    function setDice(value, { roll = false, instant = false } = {}) {
         st.shownDice = value;
-        ui.dice.textContent = value ? String(value) : '?';
-        ui.dice.classList.remove('rolling');
+        if (roll) st.spins++;
+        const [x, y] = value ? FACE_TURN[value] : [0, 0];
+        const tilt = value ? 'rotateX(-16deg) rotateY(20deg)' : 'rotateX(-28deg) rotateY(38deg)';
+        if (instant) ui.dice.classList.add('instant');
+        ui.dice.style.transform = `${tilt} rotateX(${x + st.spins * 360}deg) rotateY(${y + st.spins * 720}deg)`;
+        ui.dice.parentElement.setAttribute('aria-label', value ? `Würfel: ${value}` : 'Würfel');
+        if (instant) {
+            void ui.dice.offsetWidth;
+            ui.dice.classList.remove('instant');
+        }
+    }
+
+    // Kurze Effekte beim Laufen: Figur springt, Feld leuchtet auf, hinter der Figur bleibt eine Lichtspur
+    const restart = (node, cls) => {
+        if (!node || REDUCED) return;
+        node.classList.remove(cls);
+        void node.offsetWidth;
+        node.classList.add(cls);
+    };
+    function trail(seat, cellIndex) {
+        const c = cellCenter(cellIndex);
+        if (!c || REDUCED) return;
+        const t = document.createElement('i');
+        t.className = 'ptrail';
+        t.style.left = `${c.x}px`;
+        t.style.top = `${c.y}px`;
+        t.style.setProperty('--pc', PLAYER_COLORS[seat]);
+        el.board.appendChild(t);
+        setTimeout(() => t.remove(), 750);
     }
 
     function feed(text, kind = '') {
@@ -206,21 +241,19 @@ export function mountParty(root, session) {
     async function playEvent(e) {
         switch (e.type) {
             case 'dice': {
-                ui.dice.classList.add('rolling');
                 ui.dice.classList.toggle('safe', !!e.safe);
-                for (let i = 0; i < 7; i++) {
-                    ui.dice.textContent = String(e.safe ? 2 + Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 6));
-                    await sleep(80);
-                }
-                setDice(e.value);
-                await sleep(200);
+                setDice(e.value, { roll: !REDUCED });
+                await sleep(REDUCED ? 200 : 1000);
                 break;
             }
             case 'move': {
                 st.movingSeat = e.seat;
                 for (const id of e.path) {
+                    trail(e.seat, st.displayPos[e.seat]);
                     st.displayPos[e.seat] = id;
                     renderTokens();
+                    restart(tokEls[e.seat], 'hop');
+                    restart(cells[id], 'step');
                     await sleep(300);
                 }
                 st.movingSeat = null;
@@ -233,17 +266,17 @@ export function mountParty(root, session) {
                 renderTokens();
                 feed(`${name(e.seat)} teleportiert sich zum Stern!`, 'tele');
                 await sleep(350);
-                fx(e.to, 'TELEPORT', 'tele');
+                fx(e.to, 'Teleport', 'tele');
                 await sleep(500);
                 break;
             case 'shield':
                 feed(`🛡 ${name(e.seat)} hat ein Schild (3 Runden)`, 'evt');
-                fx(e.pos, '🛡 SCHILD', 'evt');
+                fx(e.pos, '🛡 Schild', 'evt');
                 await sleep(600);
                 break;
             case 'trap':
                 feed(`${name(e.seat)} legt eine Falle`, 'neg');
-                fx(e.pos, '✖ FALLE', 'neg');
+                fx(e.pos, '✖ Falle', 'neg');
                 await sleep(400);
                 break;
             case 'trapHit':
@@ -257,7 +290,7 @@ export function mountParty(root, session) {
                 break;
             case 'star':
                 feed(`★ ${name(e.seat)} kauft den Stern!`, 'star');
-                fx(e.pos, '★ STERN!', 'star');
+                fx(e.pos, '★ Stern!', 'star');
                 flash();
                 await sleep(500);
                 break;
@@ -310,12 +343,23 @@ export function mountParty(root, session) {
 
     function renderTop() {
         const v = st.view;
+        // Nur neu schreiben, wenn sich etwas ändert, sonst springt das Pulsieren der Rundenleiste
+        const setTop = html => {
+            if (st.topHTML !== html) el.round.innerHTML = st.topHTML = html;
+        };
         if (v.phase === 'waiting') {
-            el.round.textContent = 'Sternenjagd';
+            setTop('Sternenjagd');
             el.hint.textContent = '';
         } else {
-            const star = v.round % 3 === 0 || v.round === v.rounds;
-            el.round.textContent = `Runde ${Math.max(1, v.round)} von ${v.rounds}`;
+            const round = Math.max(1, v.round);
+            const isStar = k => k % 3 === 0 || k === v.rounds;
+            const star = isStar(v.round);
+            // Rundenleiste: gespielt, aktuell, Sternrunden golden
+            const track = Array.from({ length: v.rounds }, (_, i) => {
+                const k = i + 1;
+                return `<i class="${k < round ? 'done' : k === round ? 'now' : ''}${isStar(k) ? ' star' : ''}"></i>`;
+            }).join('');
+            setTop(`<span>Runde <b>${round}</b> von ${v.rounds}</span><span class="rtrack" aria-hidden="true">${track}</span>`);
             el.hint.textContent = star ? '★ Sternrunde: Im Minispiel gewinnt man einen Stern' : `Ein Stern kostet ${v.starPrice} Münzen und zählt am Ende 10`;
         }
     }
@@ -581,7 +625,7 @@ export function mountParty(root, session) {
         const duel = m.duel;
         const playsHere = !duel || duel.includes(v.seat);
         const cycle = duel ? `<span class="phint">${esc(name(duel[0]))} gegen ${esc(name(duel[1]))}</span>` : v.miniCycle ? `<span class="phint">Minispiel ${v.miniCycle.done} von ${v.miniCycle.total}</span>` : '';
-        const heading = m.phase === 'intro' && cur.reeling ? (duel ? 'Duell' : 'Minispiel') : duel ? `Duell · ${m.title}` : m.title;
+        const heading = m.phase === 'intro' && cur.reeling ? (duel ? 'Duell' : 'Minispiel') : duel ? `Duell: ${m.title}` : m.title;
         head.innerHTML = `<strong>${esc(heading)}</strong>${cycle}${m.star ? '<span class="mstar">★ Sternrunde</span>' : ''}<span class="mtimer"></span>`;
         if (m.phase !== cur.phase) {
             cur.instance?.destroy();
@@ -635,23 +679,31 @@ export function mountParty(root, session) {
         const secs = Math.max(0.5, (cur.deadline - performance.now()) / 1000);
         const title = esc(m.title);
         const vs = m.duel ? `<div class="pduel-vs">${duelSide(v, m.duel[0])}<b>VS</b>${duelSide(v, m.duel[1])}</div><p class="pduel-stake">Es geht um ${m.stake === 'coins' ? 'bis zu 10 Münzen' : 'einen Stern'}.</p>${m.duel.includes(v.seat) ? '' : '<p class="muted">Du schaust zu.</p>'}` : '';
-        return `<div class="mintro"><i class="scanbar"></i>${vs}<h2 class="glitch" data-text="${title}">${title}</h2><p>${esc(m.rules)}</p>${teamIntroHTML(v)}${m.star ? '<p class="mstar">Wer gewinnt, bekommt einen Stern!</p>' : ''}<p class="muted">Gleich geht’s los …</p><div class="mprog"><i style="--ms:${secs.toFixed(2)}s"></i></div></div>`;
+        return `<div class="mintro">${vs}<h2 class="glitch" data-text="${title}">${title}</h2><p>${esc(m.rules)}</p>${teamIntroHTML(v)}${m.star ? '<p class="mstar">Wer gewinnt, bekommt einen Stern!</p>' : ''}<p class="muted">Gleich geht’s los …</p><div class="mprog"><i style="--ms:${secs.toFixed(2)}s"></i></div></div>`;
     }
 
-    // Minispiel-Zufall: Slot-Walze mit allen Titeln. Das Ziel ist das Spiel, das der Host wirklich gewählt hat.
-    // Die Walze bremst von 40 ms auf ca. 370 ms je Zeile ab (kubisch), rastet grün ein und wartet 1,3 s.
+    // Minispiel-Zufall als Warp: Titel rasen nacheinander aus der Tiefe heran. Das Ziel ist das Spiel, das der Host
+    // wirklich gewählt hat. Die Folge bremst von 40 ms auf ca. 370 ms je Titel ab (kubisch), rastet golden ein und wartet 1,3 s.
+    // Der Sternenhimmel im Hintergrund fliegt dabei mit.
     function runReel(cur, body, v, m, titles) {
         const len = titles.length;
         const target = titles.indexOf(m.title);
         const STEPS = 16;
         let idx = (((target - STEPS) % len) + len) % len;
-        body.innerHTML = `<div class="reel"><div class="reel-label">${m.duel ? 'Duell-Zufall' : 'Minispiel-Zufall'}</div><div class="reel-win">${['d2', 'd1', 'c', 'd1', 'd2'].map(c => `<div class="reel-row ${c}"></div>`).join('')}<div class="reel-bracket"></div></div><div class="reel-lock">ZIEL ERFASST</div></div>`;
+        body.innerHTML = `<div class="warp"><div class="warp-tunnel" aria-hidden="true"></div><div class="warp-label">${m.duel ? 'Gespielt wird im Duell …' : 'Das nächste Minispiel ist …'}</div><div class="warp-title"></div><div class="warp-lock">Ausgewählt</div></div>`;
         cur.reeling = true;
         const heading = el.mini.querySelector('.mhead strong');
         if (heading) heading.textContent = m.duel ? 'Duell' : 'Minispiel';
-        const reel = body.querySelector('.reel');
-        const rows = [...body.querySelectorAll('.reel-row')];
-        const paint = () => rows.forEach((row, k) => (row.textContent = titles[(idx + k - 2 + 2 * len) % len]));
+        const warp = body.querySelector('.warp');
+        const titleEl = warp.querySelector('.warp-title');
+        const tunnel = warp.querySelector('.warp-tunnel');
+        const paint = ms => {
+            titleEl.textContent = titles[idx];
+            titleEl.style.setProperty('--d', `${Math.round(ms)}ms`);
+            titleEl.classList.remove('tick');
+            void titleEl.offsetWidth;
+            titleEl.classList.add('tick');
+        };
         const later = (fn, ms) => {
             const id = setTimeout(() => {
                 cur.timers.delete(id);
@@ -659,24 +711,27 @@ export function mountParty(root, session) {
             }, ms);
             cur.timers.add(id);
         };
+        nachtfeld.warp(1800);
         let k = 0;
         const step = () => {
             idx = (idx + 1) % len;
             k++;
-            paint();
+            const wait = 40 + 330 * Math.pow(k / (STEPS - 1), 3);
+            paint(Math.max(60, wait));
+            tunnel.style.setProperty('--v', (1 - k / STEPS).toFixed(2));
             if (k >= STEPS) {
-                reel.classList.add('locked');
+                warp.classList.add('locked');
                 later(() => {
                     cur.reeling = false;
                     body.innerHTML = introHTML(cur, st.view, st.view.mini ?? m);
                     const head = el.mini.querySelector('.mhead strong');
-                    if (head) head.textContent = m.duel ? `Duell · ${m.title}` : m.title;
+                    if (head) head.textContent = m.duel ? `Duell: ${m.title}` : m.title;
                 }, 1300);
                 return;
             }
-            later(step, 40 + 330 * Math.pow(k / (STEPS - 1), 3));
+            later(step, wait);
         };
-        paint();
+        paint(60);
         later(step, 40);
     }
 
@@ -727,7 +782,7 @@ export function mountParty(root, session) {
                 return `<tr style="--i:${i}" class="${r.rank === 1 && r.score > 0 ? 'win' : ''}${r.seat === v.seat ? ' me' : ''}"><td>${r.rank}.</td><td>${esc(v.players[r.seat].name)}</td><td>${r.score}</td><td>${prize}</td></tr>`;
             })
             .join('');
-        const teams = m.teams && m.teamScores ? `<p class="center">${[0, 1].map(t => `<b style="color:${t ? 'var(--cyan)' : 'var(--pink)'}">${esc(m.teams.names[t])}: Ø ${m.teamScores[t]}</b>`).join(' · ')}</p>` : '';
+        const teams = m.teams && m.teamScores ? `<p class="center">${[0, 1].map(t => `<b style="color:${t ? 'var(--cyan)' : 'var(--pink)'}">${esc(m.teams.names[t])}: Ø ${m.teamScores[t]}</b>`).join('<span class="muted"> gegen </span>')}</p>` : '';
         return `${duelText}${teams}<table class="ranking"><thead><tr><th></th><th></th><th>Punkte</th><th>Gewinn</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
 
@@ -781,7 +836,7 @@ export function mountParty(root, session) {
             el.overlayBox.dataset.html = html;
             el.overlayBox.innerHTML = html;
         }
-        // Endwertung: fallende Neon-Partikel hinter der Tabelle
+        // Endwertung: fallende Sterne hinter der Tabelle
         const fall = el.overlay.querySelector('.fall');
         if (v.phase === 'over' && !fall && !REDUCED) {
             const f = document.createElement('div');

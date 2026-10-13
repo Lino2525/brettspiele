@@ -7,6 +7,7 @@
 //   nachtfeld.show(id)           Form wechseln: 'rummy', 'songquiz', 'party', 'monopoly'
 //   nachtfeld.ripple(x, y)       Welle an einer Bildschirmstelle
 //   nachtfeld.mode('game')       Übergang ins Spiel (Warp, danach Sternenstaub); 'lobby' zurück
+//   nachtfeld.warp(ms)           kurzer Flug durch die Sterne im Spiel (z. B. vor einem Minispiel)
 
 const TAU = Math.PI * 2;
 const SAMPLE = 220; // Kantenlänge der Hilfsfläche, auf der die Formen gezeichnet und abgetastet werden
@@ -465,6 +466,11 @@ export const nachtfeld = {
         if (now - lastRipple < 120) return;
         lastRipple = now;
         ripples.push({ x, y, t: now, flat });
+    },
+    // Kurzer Flug durch die Sterne, z. B. vor einem Minispiel (nur im Spiel)
+    warp(ms = 1200) {
+        if (mode !== 'game' || reduced() || !ctx) return;
+        warpUntil = performance.now() + ms;
     },
     mode(next) {
         if (next === mode || !ctx) return;
