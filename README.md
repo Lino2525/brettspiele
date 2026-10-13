@@ -139,6 +139,13 @@ Spiellogik, Engines und Netzwerk sind davon unberührt.
   eine Leiste die Runden (Sternrunden golden). Vor jedem Minispiel läuft das Warp-Intro (`runReel` in
   `js/games/party/ui.js`): Titel rasen heran, werden langsamer und rasten auf dem vom Host gewählten Minispiel ein,
   der Sternenhimmel fliegt mit (`nachtfeld.warp`)
+- Mini Rummy (`css/rummy.css`): Steine gleiten an ihren neuen Platz (auch live bei den anderen, beim Sortieren und
+  Zurücksetzen). Neu gelegte Steine tragen einen Punkt, veränderte Reihen einen Rahmen in der Farbe der Person, die
+  gelegt hat; das bleibt bis zum nächsten Legen. Im eigenen Zug zeigt jede geänderte Reihe sofort grün (gültig),
+  gestrichelt (unter drei Steinen) oder rot. Der Joker zeigt auf dem Tisch, für welche Zahl er steht, und hat beim
+  Einsetzen einen Regenbogenring. Dazu: Austeilen zu Rundenbeginn, gezogener Stein fliegt in den Ständer, Ständer
+  leuchtet auf, wenn man dran ist, Hinweis „nur noch ein Stein“, Steine-Feuerwerk beim Sieg. Ab 36 Steinen auf dem
+  Tisch werden sie dort kleiner
 - Würfel: `js/core/dice.js` baut einen 3D-Würfel (Sternenjagd einer, Immobilienspiel zwei, die gegeneinander rollen)
 - Immobilienspiel: Spielplan aus dunklem Glas mit Kacheln, Figuren springen von Feld zu Feld, das Zielfeld leuchtet auf,
   Häuser „wachsen“ beim Bauen, Besitzkarten als helle Blätter, Ereigniskarten drehen sich ins Bild
