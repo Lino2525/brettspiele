@@ -1,6 +1,6 @@
 # Brettspiele
 
-Zwei bis vier (Lieder-Raten: bis zehn) Personen spielen zusammen im Browser, egal wo. Kein Server, keine Kosten:
+Zwei bis sechs (Lieder-Raten: bis zehn) Personen spielen zusammen im Browser, egal wo. Kein Server, keine Kosten:
 Die Browser verbinden sich direkt (WebRTC über PeerJS), ein Spieler ist der Host.
 
 ## Lokal starten
@@ -92,6 +92,18 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
   gewinnt der Erste einen Stern. Am Ende zählt ein Stern 10 Münzen. Rundenzahl (5-15) wählt der Host in der Lobby.
   Inhalte (Fragen, Flaggen, Begriffe) stehen in `js/games/party/data.js`. Eigenständiges Design, keine geschützten Figuren.
 
+- **Kritzelrennen** (2-6 Personen, ab 4 auch in zwei Teams; frei nach dem Zeichen-Brettspiel-Klassiker; intern "sketch"):
+  Spielbrett als Schlangenlinie mit fünf Feldfarben: Gegenstand, Lebewesen & Orte, Tätigkeit, Schwierig, Allerlei
+  (rund 400 Begriffe in `js/games/sketch/words.js`). Die Farbe unter der eigenen Figur bestimmt die Kategorie. Wer zeichnet,
+  wählt einen von zwei Begriffen (15 s) und zeichnet ihn auf einem hellen Blatt (7 Stifte inkl. Radierer, 4 Strichstärken,
+  Zurück, Blatt leeren, Aufgeben); die anderen tippen ihre Vermutung, Tippfehler werden verziehen. Nach 60 % der Zeit
+  erscheinen die Anfangsbuchstaben. Einzeln: Klappt es, würfelt die zeichnende Person und zieht vor; wer zuerst rät, zieht
+  2 Felder, jeder weitere Treffer 1 Feld; danach ist die nächste Person dran. Teams: Nur das eigene Team rät, bei Erfolg
+  würfelt es und zeichnet gleich weiter (höchstens 3 Begriffe in Folge), sonst ist das andere Team dran. ★-Felder
+  („Alle zeichnen“): In Teams zeichnen beide Teams denselben Begriff gleichzeitig, das schnellere Team würfelt und ist dran;
+  einzeln zählt dort jeder Treffer 2 Felder. Wer zuerst im Ziel ist, gewinnt. Der Host wählt Brettlänge (25, 37 oder 49 Felder)
+  und Zeichenzeit (45, 60 oder 90 s). Würfeln geht per Knopf, nach 10 s würfelt das Spiel selbst.
+
 ### Gesellschaftsspiele für 3 bis 6 Personen
 
 **Diese vier Spiele sind keine eigenen Spiele mehr, sondern Minispiele in Sternenjagd** (js/games/party/subgames.js; Sternenjagd läuft mit 2 bis 6 Personen; es gibt zusammen 20 Minispiele pro Durchlauf, zu zweit 19, weil Undercover mindestens 3 Personen braucht). In Teams (ab 4 Personen, nicht in Sternrunden) wird der Teamdurchschnitt gewertet, das bessere Team bekommt Platz 1. Die gemeinsame Grundlage (Mitspieler, Teams, Warteraum,
@@ -145,7 +157,7 @@ Spiellogik, Engines und Netzwerk sind davon unberührt.
 - Formen: Glas mit 1px-Kontur. Jedes Element setzt nur `--bc` (Kontur) und `--fill` (Fläche). Rundungen nach Rang:
   Knöpfe und Chips als Pille, Felder 14px, Flächen 22px, Steine 9px
 - Hintergrund (`nachtfeld.js`, Canvas): Im Menü formen ein paar tausend Partikel über Wellenringen das Symbol des
-  gewählten Spiels (Zahlensteine, Schallwelle, Stern, Häuser) und wechseln beim Durchgehen der Spiele die Form; bis zur
+  gewählten Spiels (Zahlensteine, Schallwelle, Stern, Häuser, Bleistift) und wechseln beim Durchgehen der Spiele die Form; bis zur
   ersten Berührung stellt das Menü alle Spiele nacheinander vor. Beim Spielstart fliegen die Partikel auseinander (Warp)
   und treiben danach ruhig als Sternenstaub. Die Partikelzahl richtet sich nach Bildschirmgröße und Gerät
 - Menü: Spiele als Glas-Pillen auf dem Wasser, darunter das Dock mit Beschreibung, Name, Start und Beitreten.
@@ -171,4 +183,6 @@ Spiellogik, Engines und Netzwerk sind davon unberührt.
 - Gesellschaftsspiele (Stadt-Land-Fluss, Undercover, Stufenquiz, Wortraten): gleiche Glasflächen, Stufen von Mint über
   Gold nach Rose, Teams Rose gegen Eisblau
 - `prefers-reduced-motion: reduce` zeigt den Hintergrund als Standbild und schaltet alle Animationen ab
+- Kritzelrennen (`css/sketch.css`): Zeichenblatt in warmem Papierweiß, das beim Zeichnen golden umrandet ist; Felder
+  als Glaskacheln in den Kategoriefarben, verbunden durch eine Linie, Figuren hüpfen Feld für Feld, Würfel wie in Sternenjagd
 - Minispiel „Maulwurf“: goldene Ziele, rote Bomben; „Farbe oder Wort“ nutzt Rot, Blau, Gelb und Grün
