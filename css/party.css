@@ -4,7 +4,7 @@
    Richtung mit fließenden Lichtpunkten, der Würfel rollt in 3D.
    ========================================================================== */
 
-.game:has(.party) { height: auto; min-height: 100dvh; }
+.game:has(.party) { height: auto; min-height: 100svh; }
 
 .party {
     position: relative;
@@ -67,7 +67,7 @@
     --cell: calc(1.55 / var(--cols) * 100cqw);
     position: relative;
     container-type: inline-size;
-    width: min(100%, calc((100dvh - 290px) * 33 / 18));
+    width: min(100%, calc((100svh - 290px) * 33 / 18));
     min-width: 300px;
     aspect-ratio: var(--cols) / var(--rows);
     border-radius: 28px;
@@ -421,6 +421,14 @@
 .mhead strong { font-size: 1.2rem; font-weight: 700; letter-spacing: -.02em; }
 .mhead .mtimer { margin-left: auto; min-width: 3.4em; padding: 4px 12px; border-radius: var(--r-pill); text-align: center; font-weight: 600; color: var(--ice); background: rgba(143, 216, 255, .1); border: 1px solid rgba(143, 216, 255, .25); }
 .mhead .mtimer:empty { display: none; }
+/* Handy: Titel und Zeit immer in der ersten Zeile, Zusatzinfos darunter, damit die Kopfzeile nicht mal ein-, mal zweizeilig ist */
+@media (max-width: 520px) {
+    .mhead { gap: 4px 12px; }
+    .mhead strong { flex: 1 1 auto; min-width: 0; }
+    .mhead .mtimer { order: 1; }
+    .mhead .phint { order: 2; flex-basis: 100%; }
+    .mhead .mstar { order: 3; }
+}
 .mstar { color: var(--gold); font-size: .88rem; font-weight: 600; }
 .mintro { position: relative; text-align: center; padding: 22px 8px 12px; width: 100%; animation: introIn .6s var(--ease-out); }
 @keyframes introIn { from { opacity: 0; transform: translateY(12px); } }

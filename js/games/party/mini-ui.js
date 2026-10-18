@@ -561,6 +561,8 @@ function draw(box, mini, api) {
                 api.send({ kind: 'clear' });
             }
         });
+        // Ältere iPhones beachten touch-action nicht immer: Wischen auf dem Blatt darf die Seite nicht verschieben
+        for (const type of ['touchstart', 'touchmove']) canvas.addEventListener(type, e => e.preventDefault(), { passive: false });
         const pos = e => {
             const r = canvas.getBoundingClientRect();
             return [Math.round(Math.min(1000, Math.max(0, ((e.clientX - r.left) / r.width) * 1000))), Math.round(Math.min(1000, Math.max(0, ((e.clientY - r.top) / r.height) * 1000)))];

@@ -97,6 +97,8 @@ export function createSketchUI() {
     function setupCanvas(canvas) {
         g = canvas.getContext('2d');
         paint([]);
+        // Ältere iPhones beachten touch-action nicht immer: Wischen beim Zeichnen darf die Seite nicht verschieben
+        for (const type of ['touchstart', 'touchmove']) canvas.addEventListener(type, e => drawing && e.preventDefault(), { passive: false });
         const pos = e => {
             const r = canvas.getBoundingClientRect();
             const clamp = x => Math.round(Math.min(1000, Math.max(0, x * 1000)));

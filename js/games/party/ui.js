@@ -328,6 +328,9 @@ export function mountParty(root, session) {
             renderBoard();
         }
         renderOverlay();
+        // Zeiten sofort eintragen, nicht erst beim nächsten Takt: Ein Status ohne "(12 s)" ist kürzer und kann auf dem
+        // Handy eine Zeile weniger brauchen, dann springt die Seite bei jeder neuen Ansicht kurz hoch und wieder runter
+        updateTimers();
     }
 
     function renderTop() {
@@ -615,7 +618,12 @@ export function mountParty(root, session) {
         const playsHere = !duel || duel.includes(v.seat);
         const cycle = duel ? `<span class="phint">${esc(name(duel[0]))} gegen ${esc(name(duel[1]))}</span>` : v.miniCycle ? `<span class="phint">Minispiel ${v.miniCycle.done} von ${v.miniCycle.total}</span>` : '';
         const heading = m.phase === 'intro' && cur.reeling ? (duel ? 'Duell' : 'Minispiel') : duel ? `Duell: ${m.title}` : m.title;
-        head.innerHTML = `<strong>${esc(heading)}</strong>${cycle}${m.star ? '<span class="mstar">★ Sternrunde</span>' : ''}<span class="mtimer"></span>`;
+        // Nur bei Änderung neu schreiben: Sonst ist die Zeitanzeige kurz leer, die Zeile wird niedriger und alles darunter springt
+        const headHTML = `<strong>${esc(heading)}</strong>${cycle}${m.star ? '<span class="mstar">★ Sternrunde</span>' : ''}<span class="mtimer"></span>`;
+        if (cur.headHTML !== headHTML) {
+            head.innerHTML = cur.headHTML = headHTML;
+            updateTimers();
+        }
         if (m.phase !== cur.phase) {
             cur.instance?.destroy();
             cur.instance = null;

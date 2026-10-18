@@ -6,7 +6,7 @@
 .row.center { justify-content: center; }
 .row.end { justify-content: flex-end; margin-top: 14px; }
 
-.game:has(.mono) { height: auto; min-height: 100dvh; }
+.game:has(.mono) { height: auto; min-height: 100svh; }
 
 .mono {
     position: relative;
@@ -16,10 +16,10 @@
     max-width: 1500px;
     margin: 0 auto;
     padding: 12px 14px;
-    height: calc(100dvh - 60px);
+    height: calc(100svh - 60px);
 }
 .mono-main { display: flex; justify-content: center; align-items: flex-start; min-height: 0; overflow: auto; }
-.board-wrap { position: relative; width: min(100%, calc(100dvh - 92px)); aspect-ratio: 1; flex: none; }
+.board-wrap { position: relative; width: min(100%, calc(100svh - 92px)); aspect-ratio: 1; flex: none; }
 .mono-side { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; padding-right: 2px; }
 
 .panel { --bc: var(--line); --fill: rgba(6, 12, 32, .6); padding: 14px 16px; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }

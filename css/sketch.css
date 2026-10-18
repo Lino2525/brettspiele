@@ -15,9 +15,9 @@
 
 /* Zeichenblatt */
 .sk-paper { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--line-hi); box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .95), 0 0 0 6px rgba(120, 160, 255, .05); }
-.sk-paper canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; touch-action: none; }
+.sk-paper canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; }
 .sk-paper.live { border-color: rgba(255, 207, 107, .75); box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .95), 0 0 30px -8px rgba(255, 207, 107, .55); }
-.sk-paper.live canvas { cursor: crosshair; }
+.sk-paper.live canvas { cursor: crosshair; touch-action: none; } /* Wer nur zuschaut, kann über dem Blatt weiter scrollen */
 .sk-veil { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 1.15rem; font-weight: 600; color: #1b2440; background: repeating-linear-gradient(-45deg, rgba(27, 36, 64, .04) 0 14px, transparent 14px 28px); animation: fadeIn .3s ease-out; }
 .sk-veil[hidden] { display: none; }
 
