@@ -4,7 +4,7 @@
 // Bei "weniger Bewegung" wird nur ein Standbild gezeichnet.
 //   nachtfeld.start(canvas)      einmal beim Laden
 //   nachtfeld.anchor(el)         Element, über dem die Form schwebt (Menü)
-//   nachtfeld.show(id)           Form wechseln: 'rummy', 'songquiz', 'party', 'monopoly'
+//   nachtfeld.show(id)           Form wechseln: 'rummy', 'songquiz', 'party', 'monopoly', 'sketch'
 //   nachtfeld.ripple(x, y)       Welle an einer Bildschirmstelle
 //   nachtfeld.mode('game')       Übergang ins Spiel (Warp, danach Sternenstaub); 'lobby' zurück
 //   nachtfeld.warp(ms)           kurzer Flug durch die Sterne im Spiel (z. B. vor einem Minispiel)
@@ -96,6 +96,38 @@ const DRAW = {
         g.fillRect(62, 126, 24, 22);
         g.fillRect(140, 126, 24, 22);
         g.globalCompositeOperation = 'source-over';
+    },
+    // Schräger Bleistift, der eine Schlangenlinie kritzelt
+    sketch(g) {
+        g.lineCap = 'round';
+        g.lineJoin = 'round';
+        g.lineWidth = 9;
+        g.beginPath();
+        g.moveTo(18, 186);
+        g.bezierCurveTo(46, 136, 70, 214, 98, 170);
+        g.bezierCurveTo(118, 138, 128, 182, 146, 160);
+        g.stroke();
+        g.save();
+        g.translate(150, 150);
+        g.rotate(-Math.PI / 4);
+        g.beginPath();
+        g.moveTo(0, 0);
+        g.lineTo(26, -18);
+        g.lineTo(130, -18);
+        g.lineTo(130, 18);
+        g.lineTo(26, 18);
+        g.closePath();
+        g.fill();
+        g.globalCompositeOperation = 'destination-out';
+        g.fillRect(104, -22, 6, 44);
+        g.beginPath();
+        g.moveTo(26, -18);
+        g.lineTo(26, 18);
+        g.lineTo(32, 18);
+        g.lineTo(32, -18);
+        g.fill();
+        g.globalCompositeOperation = 'source-over';
+        g.restore();
     },
 };
 

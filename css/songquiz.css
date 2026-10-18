@@ -10,7 +10,7 @@
     margin: 0 auto;
     padding: 14px 14px 28px;
 }
-.game:has(.quiz) { height: auto; min-height: 100dvh; }
+.game:has(.quiz) { height: auto; min-height: 100svh; }
 
 .qtop { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 34px; font-weight: 600; font-size: 1.05rem; }
 .qbar { height: 6px; border-radius: 3px; background: rgba(160, 190, 255, .12); overflow: hidden; }

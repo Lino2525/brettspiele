@@ -1,0 +1,124 @@
+/* ---------- Kritzelrennen ---------- */
+/* Helles Zeichenblatt auf dunklem Glas, daneben das Spielbrett als Schlangenlinie aus Glasfeldern in den Kategoriefarben */
+
+.cg:has(.sk) { max-width: 1120px; }
+.sk { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr); gap: 18px; align-items: start; }
+.sk-turn, .sk-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+/* Kopfzeile */
+.sk-head { min-height: 2.2em; display: flex; flex-direction: column; gap: 6px; }
+.sk-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 1.05rem; }
+.sk-word { font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; color: var(--gold); }
+.sk-mask { font-size: 1.4rem; font-weight: 600; letter-spacing: .12em; color: var(--gold); white-space: pre-wrap; word-break: break-word; }
+.sk-cat { --cc: var(--gold); padding: 2px 12px; border-radius: var(--r-pill); font-size: .8rem; font-weight: 600; color: var(--ink); background: var(--cc); box-shadow: 0 0 18px -6px var(--cc); }
+.sk-all { padding: 2px 10px; border-radius: var(--r-pill); font-size: .8rem; font-weight: 600; color: var(--gold); border: 1px solid rgba(255, 207, 107, .6); background: rgba(255, 207, 107, .1); }
+
+/* Zeichenblatt */
+.sk-paper { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--line-hi); box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .95), 0 0 0 6px rgba(120, 160, 255, .05); }
+.sk-paper canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.sk-paper.live { border-color: rgba(255, 207, 107, .75); box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .95), 0 0 30px -8px rgba(255, 207, 107, .55); }
+.sk-paper.live canvas { cursor: crosshair; touch-action: none; } /* Wer nur zuschaut, kann über dem Blatt weiter scrollen */
+.sk-veil { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 1.15rem; font-weight: 600; color: #1b2440; background: repeating-linear-gradient(-45deg, rgba(27, 36, 64, .04) 0 14px, transparent 14px 28px); animation: fadeIn .3s ease-out; }
+.sk-veil[hidden] { display: none; }
+
+/* Werkzeuge */
+.sk-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px; }
+.sk-pens, .sk-widths, .sk-acts { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; justify-content: center; }
+.sk-pen { width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .28); background: var(--c); cursor: pointer; transition: transform .15s var(--ease-spring), box-shadow .15s; touch-action: manipulation; }
+.sk-pen.eraser { background: repeating-linear-gradient(45deg, #f7f3e8 0 5px, #d9d3c3 5px 10px); }
+.sk-pen.on { border-color: #fff; transform: scale(1.18); box-shadow: 0 0 14px rgba(255, 255, 255, .5); }
+.sk-width { width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 1px solid var(--line-hi); background: var(--glass); cursor: pointer; touch-action: manipulation; }
+.sk-width i { width: var(--w); height: var(--w); border-radius: 50%; background: var(--star); }
+.sk-width.on { border-color: var(--gold); background: rgba(255, 207, 107, .16); }
+.sk-rule { margin: 0; font-size: .8rem; text-align: center; }
+
+/* Begriff aussuchen */
+.sk-choose { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sk-card {
+    --cc: var(--gold);
+    display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 10px;
+    font: inherit; color: var(--star); cursor: pointer; border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--cc) 60%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--cc) 20%, transparent), rgba(4, 9, 26, .65));
+    transition: transform .2s var(--ease-spring), box-shadow .2s;
+    animation: boxIn .45s var(--ease-spring);
+}
+.sk-card small { color: var(--cc); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
+.sk-card b { font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
+.sk-card:hover { transform: translateY(-3px); box-shadow: 0 0 28px -6px var(--cc); }
+
+/* Raten und Auflösung */
+.sk-guess { display: flex; gap: 8px; }
+.sk-guess input { flex: 1; min-width: 0; font-size: 1.1rem; }
+.sk-right { color: var(--mint); font-weight: 600; margin: 4px 0; }
+.sk-res { margin: 0; text-align: center; font-weight: 600; }
+.sk-res.ok { color: var(--mint); }
+.sk-res.bad { color: #ff8da3; }
+.sk-moves { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 0; }
+.sk-moves span { padding: 3px 12px; border-radius: var(--r-pill); background: rgba(79, 224, 166, .12); border: 1px solid rgba(79, 224, 166, .4); }
+.sk-moves b { color: var(--mint); }
+.sk-roll { min-width: 180px; animation: rollPulse 1.4s ease-in-out infinite; }
+@keyframes rollPulse { 50% { box-shadow: 0 0 30px -4px var(--signal-hi); } }
+.sk-dice { display: flex; justify-content: center; }
+.sk-dice[hidden] { display: none; }
+.sk-dice.waiting .pdie { animation: dieWobble 1.2s ease-in-out infinite; }
+@keyframes dieWobble { 50% { translate: 0 -6px; } }
+.sk-feed { display: flex; flex-direction: column; gap: 3px; font-size: .9rem; min-height: 0; }
+.sk-feed:empty { display: none; }
+.sk-feed .ok { color: var(--mint); font-weight: 600; }
+
+/* Spielbrett */
+.sk-board { --cols: 7; --rows: 7; position: relative; width: 100%; padding: 0; }
+.sk-path { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sk-path polyline { fill: none; stroke: rgba(160, 200, 255, .22); stroke-width: .2; stroke-linecap: round; stroke-linejoin: round; }
+.sk-cells { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(var(--cols), 1fr); grid-template-rows: repeat(var(--rows), 1fr); gap: clamp(3px, 1.2vw, 8px); }
+.sk-cell {
+    --cc: var(--gold);
+    position: relative; display: grid; place-items: center; min-width: 0;
+    border-radius: 28%;
+    border: 1px solid color-mix(in srgb, var(--cc) 60%, transparent);
+    background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--cc) 34%, transparent), color-mix(in srgb, var(--cc) 10%, rgba(4, 9, 26, .8)));
+    color: var(--cc); font-weight: 700; font-size: clamp(.6rem, 1.6vw, .85rem);
+    transition: box-shadow .3s, transform .3s var(--ease-spring);
+}
+.sk-cell span { opacity: .85; }
+.sk-cell i { position: absolute; top: -4px; right: -3px; font-style: normal; font-size: .7rem; color: var(--gold); text-shadow: 0 0 8px var(--gold); }
+.sk-cell.all { box-shadow: inset 0 0 0 2px rgba(255, 207, 107, .45); }
+.sk-cell.start, .sk-cell.goal { --cc: var(--star); font-size: clamp(.5rem, 1.3vw, .72rem); text-transform: uppercase; letter-spacing: .04em; }
+.sk-cell.goal { --cc: var(--gold); box-shadow: 0 0 22px -4px var(--gold); }
+.sk-cell.lit { box-shadow: 0 0 18px -2px var(--cc); transform: scale(1.06); }
+.sk-tokens { position: absolute; inset: 0; pointer-events: none; }
+.sk-token {
+    --tc: var(--gold);
+    position: absolute; width: 9%; aspect-ratio: 1; translate: -50% -50%;
+    display: grid; place-items: center; border-radius: 50%;
+    border: 2px solid #fff; background: var(--tc) center / cover no-repeat;
+    color: var(--ink); font-style: normal; font-weight: 700; font-size: clamp(.55rem, 1.4vw, .8rem);
+    box-shadow: 0 6px 14px -4px rgba(0, 0, 0, .9), 0 0 0 3px color-mix(in srgb, var(--tc) 35%, transparent);
+    transition: left .2s var(--ease-out), top .2s var(--ease-out);
+    z-index: 1;
+}
+.sk-token.team { width: 12%; }
+.sk-token.turn { z-index: 2; box-shadow: 0 6px 14px -4px rgba(0, 0, 0, .9), 0 0 18px 2px var(--tc); }
+.sk-token.hop { animation: tokenHop .23s ease-out; }
+@keyframes tokenHop { 40% { scale: 1.25; translate: -50% -85%; } }
+.sk-legend { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; font-size: .78rem; color: var(--muted); }
+.sk-leg { --cc: var(--gold); display: inline-flex; align-items: center; gap: 5px; }
+.sk-leg b { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 6px; background: var(--cc); color: var(--ink); font-size: .7rem; }
+.sk-leg.all b { background: transparent; color: var(--gold); border: 1px solid rgba(255, 207, 107, .6); }
+
+@media (max-width: 860px) {
+    .sk { grid-template-columns: 1fr; }
+    .sk-side { max-width: 460px; width: 100%; margin: 0 auto; }
+}
+@media (max-width: 520px) {
+    .sk-pen { width: 28px; height: 28px; }
+    .sk-width { width: 32px; height: 32px; }
+    .sk-word { font-size: 1.3rem; }
+    .sk-mask { font-size: 1.15rem; }
+    .sk-card b { font-size: 1.15rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .sk-token, .sk-cell { transition: none; }
+    .sk-token.hop, .sk-roll, .sk-dice.waiting .pdie, .sk-card, .sk-veil { animation: none; }
+}

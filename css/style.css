@@ -78,6 +78,9 @@
 
 html, body { margin: 0; min-height: 100%; }
 html { height: 100%; background: var(--ink); }
+/* Handy: kein Doppeltipp-Zoom (schnelles Tippen in Minispielen ließ die Seite springen) und kein Zurückfedern oder
+   Neuladen-durch-Ziehen am Seitenrand. Verschieben und Zoomen mit zwei Fingern bleiben möglich. */
+html, body { touch-action: manipulation; overscroll-behavior-y: none; }
 body { height: 100%; }
 
 body {
@@ -142,7 +145,7 @@ input:not([type=range], [type=checkbox], [type=radio], [type=file], [type=color]
     padding: 28px 24px 48px;
     display: flex;
     flex-direction: column;
-    min-height: 100dvh;
+    min-height: 100svh;
 }
 
 .lobby-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
@@ -373,7 +376,8 @@ input.code::placeholder { letter-spacing: 0; text-transform: none; font-weight: 
 
 /* ---------- Spielrahmen und Spielleiste ---------- */
 
-.game { display: flex; flex-direction: column; height: 100dvh; animation: gameIn .7s var(--ease-out) .25s both; }
+/* svh statt dvh: bleibt gleich, wenn auf dem Handy die Browserleiste ein- und ausfährt (sonst ändert sich dabei das Layout) */
+.game { display: flex; flex-direction: column; height: 100svh; animation: gameIn .7s var(--ease-out) .25s both; }
 @keyframes gameIn { from { opacity: 0; transform: scale(.985); filter: blur(6px); } }
 
 .topbar {

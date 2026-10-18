@@ -1,0 +1,75 @@
+// Begriffe für Kritzelrennen, nach den fünf Feldfarben des Spielbretts.
+// Mehrere erlaubte Antworten mit "|" trennen, die erste wird angezeigt. Kein Begriff darf in zwei Listen vorkommen.
+
+export const CATEGORIES = {
+    G: { name: 'Gegenstand', color: '#ffcf6b' },
+    L: { name: 'Lebewesen & Orte', color: '#8fd8ff' },
+    T: { name: 'Tätigkeit', color: '#ffa45c' },
+    S: { name: 'Schwierig', color: '#ff5c7c' },
+    A: { name: 'Allerlei', color: '#4fe0a6' },
+};
+export const CATEGORY_KEYS = Object.keys(CATEGORIES);
+
+export const TERMS = {
+    G: [
+        'Regenschirm', 'Brille', 'Schlüssel', 'Glühbirne', 'Kerze', 'Schere', 'Hammer', 'Leiter', 'Zahnbürste', 'Gitarre',
+        'Trompete', 'Fotoapparat|Kamera', 'Fernseher', 'Kühlschrank', 'Waschmaschine', 'Staubsauger', 'Bügeleisen', 'Toaster',
+        'Kochtopf|Topf', 'Pfanne', 'Gabel', 'Löffel', 'Teekanne|Kanne', 'Weinglas', 'Flasche', 'Koffer', 'Rucksack',
+        'Handtasche', 'Geldbörse|Portemonnaie|Geldbeutel', 'Briefumschlag|Brief', 'Briefmarke', 'Zeitung', 'Buch',
+        'Bleistift|Stift', 'Radiergummi', 'Lineal', 'Taschenrechner', 'Schaukel', 'Rutsche', 'Fahrrad', 'Roller',
+        'Skateboard', 'Kinderwagen', 'Einkaufswagen', 'Ampel', 'Briefkasten', 'Mülleimer|Mülltonne', 'Gießkanne',
+        'Schubkarre', 'Rasenmäher', 'Sonnenschirm', 'Liegestuhl', 'Hängematte', 'Zelt', 'Taschenlampe', 'Kompass',
+        'Fernglas', 'Lupe', 'Mikrofon', 'Kopfhörer', 'Wecker', 'Sanduhr', 'Thermometer', 'Pflaster', 'Krone', 'Ring',
+        'Halskette|Kette', 'Krawatte', 'Socke', 'Handschuh', 'Schal', 'Mütze', 'Stiefel', 'Badewanne', 'Spiegel', 'Kamm',
+        'Föhn|Haartrockner', 'Kissen', 'Bett', 'Sofa|Couch', 'Stuhl', 'Tisch', 'Anker', 'Fallschirm', 'Würfel', 'Puzzle',
+        'Luftballon|Ballon', 'Geschenk', 'Pinsel', 'Säge', 'Schraube', 'Magnet', 'Batterie', 'Steckdose',
+    ],
+    L: [
+        'Elefant', 'Giraffe', 'Pinguin', 'Krokodil', 'Schildkröte', 'Schnecke', 'Igel', 'Eule', 'Papagei', 'Flamingo',
+        'Känguru', 'Koala', 'Zebra', 'Löwe', 'Tiger', 'Affe', 'Schlange', 'Spinne', 'Biene', 'Schmetterling', 'Marienkäfer',
+        'Ameise', 'Hai', 'Wal', 'Delfin', 'Krake|Tintenfisch|Oktopus', 'Qualle', 'Seestern', 'Pferd', 'Kuh', 'Schwein',
+        'Schaf', 'Huhn|Hahn|Henne', 'Ente', 'Frosch', 'Hase', 'Maus', 'Fledermaus', 'Kamel', 'Nashorn', 'Eichhörnchen',
+        'Fuchs', 'Wolf', 'Bär', 'Einhorn', 'Drache', 'Meerjungfrau', 'Hexe', 'Zauberer', 'Pirat', 'Ritter', 'Prinzessin',
+        'König', 'Clown', 'Astronaut', 'Feuerwehrmann|Feuerwehrfrau|Feuerwehr', 'Polizist|Polizistin|Polizei',
+        'Koch|Köchin', 'Arzt|Ärztin', 'Schneemann', 'Vampir', 'Gespenst|Geist', 'Roboter', 'Leuchtturm', 'Burg|Schloss',
+        'Kirche', 'Pyramide', 'Eiffelturm', 'Freiheitsstatue', 'Insel', 'Vulkan', 'Wüste', 'Strand', 'Bahnhof', 'Flughafen',
+        'Krankenhaus', 'Spielplatz', 'Zoo', 'Bauernhof', 'Iglu', 'Baumhaus', 'Wasserfall', 'Höhle', 'Brücke', 'Windmühle',
+        'Riesenrad', 'Zirkus', 'Kino',
+    ],
+    T: [
+        'schwimmen', 'tauchen', 'tanzen', 'singen', 'schlafen', 'schnarchen', 'gähnen', 'niesen', 'weinen', 'lachen',
+        'winken', 'klatschen', 'springen|hüpfen', 'rennen|laufen', 'klettern', 'Ski fahren|Skifahren',
+        'Schlittschuh laufen|Eislaufen|Schlittschuhlaufen', 'surfen', 'angeln', 'reiten', 'kochen', 'backen', 'grillen',
+        'essen', 'trinken', 'putzen', 'staubsaugen', 'bügeln', 'Wäsche waschen|waschen', 'duschen',
+        'Zähne putzen|Zähneputzen', 'kämmen|frisieren', 'fotografieren', 'malen|zeichnen', 'lesen', 'schreiben',
+        'telefonieren', 'fernsehen', 'zelten|campen', 'wandern', 'joggen', 'Fahrrad fahren|Radfahren|Rad fahren',
+        'Auto fahren|Autofahren', 'fliegen', 'segeln', 'rudern', 'jonglieren', 'zaubern', 'boxen',
+        'Fußball spielen|Fußball', 'Tennis spielen|Tennis', 'kegeln|bowlen|Bowling', 'Blumen gießen|gießen', 'pflanzen',
+        'graben|buddeln', 'sägen', 'nähen', 'stricken', 'einkaufen', 'bezahlen', 'warten', 'klingeln', 'klopfen',
+        'flüstern', 'schreien', 'pfeifen', 'küssen', 'umarmen', 'streiten', 'auspacken', 'Kerzen auspusten|auspusten',
+        'aufwachen', 'stolpern|hinfallen', 'frieren', 'schwitzen', 'Gassi gehen|Hund ausführen',
+        'Schneeballschlacht', 'Seil springen|Seilspringen', 'Purzelbaum', 'Handstand', 'Liegestütze',
+    ],
+    S: [
+        'Zeit', 'Liebe', 'Angst', 'Traum', 'Musik', 'Echo', 'Schatten', 'Stille', 'Geheimnis', 'Erinnerung', 'Glück',
+        'Hunger', 'Durst', 'Fieber', 'Muskelkater', 'Heimweh', 'Langeweile', 'Eifersucht', 'Freundschaft', 'Urlaub',
+        'Wochenende', 'Geburtstag', 'Hochzeit', 'Silvester', 'Weihnachten', 'Ostern', 'Frühling', 'Herbst', 'Winter',
+        'Sommer', 'Gewitter', 'Nebel', 'Erdbeben', 'Schwerkraft', 'Strom|Elektrizität', 'Internet', 'WLAN', 'Passwort',
+        'Stau', 'Verspätung', 'Ferien', 'Pause', 'Rente', 'Demokratie', 'Wahl|Wahlen', 'Frieden', 'Freiheit', 'Zukunft',
+        'Vergangenheit', 'Mitternacht', 'Sonnenaufgang', 'Sonnenuntergang', 'Jetlag', 'Ohrwurm', 'Lampenfieber',
+        'Gänsehaut', 'Schluckauf', 'Kopfschmerzen|Kopfweh', 'Spiegelbild', 'Unendlichkeit', 'Gleichgewicht', 'Vertrauen',
+        'Wut', 'Überraschung', 'Diät', 'Müdigkeit', 'Ruhm', 'Reichtum', 'Faulheit', 'Höhenangst', 'Kreislauf',
+    ],
+    A: [
+        'Pizza', 'Spaghetti|Nudeln', 'Hamburger|Burger', 'Pommes|Pommes frites', 'Brezel', 'Eis|Eiscreme', 'Torte|Kuchen',
+        'Popcorn', 'Zuckerwatte', 'Spiegelei', 'Banane', 'Ananas', 'Erdbeere', 'Kirsche', 'Wassermelone|Melone',
+        'Karotte|Möhre', 'Zwiebel', 'Pilz', 'Kaktus', 'Palme', 'Sonnenblume', 'Rose', 'Tannenbaum|Weihnachtsbaum',
+        'Kürbis', 'Regenbogen', 'Blitz', 'Tornado', 'Mond', 'Sonnenfinsternis', 'Sternschnuppe|Komet', 'Rakete', 'Ufo',
+        'Satellit', 'U-Boot', 'Hubschrauber', 'Heißluftballon', 'Zug|Eisenbahn', 'Feuerwerk', 'Lagerfeuer', 'Achterbahn',
+        'Karussell', 'Fußballtor|Tor', 'Medaille', 'Pokal', 'Olympische Spiele|Olympia', 'Marathon', 'Schach', 'Domino',
+        'Zahnfee', 'Weihnachtsmann', 'Osterhase', 'Kuckucksuhr', 'Gartenzwerg', 'Sandburg', 'Schneeflocke', 'Pfütze',
+        'Wolkenkratzer|Hochhaus', 'Fußabdruck', 'Fingerabdruck', 'Schatzkarte', 'Flaschenpost', 'Kleeblatt|Glücksklee',
+        'Hufeisen', 'Spinnennetz', 'Vogelnest|Nest', 'Regentropfen', 'Seifenblase', 'Sparschwein', 'Vogelscheuche',
+        'Wetterfahne',
+    ],
+};

@@ -13,6 +13,8 @@ import { mountSongQuiz } from './games/songquiz/ui.js';
 import { resolveSong } from './games/songquiz/itunes.js';
 import { PartyGame, MIN_PLAYERS as PARTY_MIN, MAX_PLAYERS as PARTY_MAX } from './games/party/engine.js';
 import { mountParty } from './games/party/ui.js';
+import { SketchGame, MIN_PLAYERS as SKETCH_MIN, MAX_PLAYERS as SKETCH_MAX } from './games/sketch/engine.js';
+import { mountSketch } from './games/sketch/ui.js';
 
 // Neue Spiele werden hier eingetragen: Engine (Host), Oberfläche (alle).
 // Lieder-Raten: schon gespielte Songs merkt sich der Host im Browser, damit bei einem neuen Spiel nicht dieselben kommen.
@@ -34,6 +36,7 @@ const ICONS = {
     songquiz: '<path d="M3 12v0M6.5 9v6M10 5v14M13.5 8v8M17 10v4M20.5 12v0"/>',
     party: '<path d="m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>',
     monopoly: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>',
+    sketch: '<path d="M4 20l1.2-4.4L15.8 5a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L8.4 18.8z"/><path d="M13.8 7l3.2 3.2"/><path d="M13 20h7"/>',
 };
 
 // text: ein Satz, der das Spiel im Menü beschreibt
@@ -71,6 +74,14 @@ const GAMES = {
         Engine: MonopolyGame,
         mount: mountMonopoly,
         resumable: state => state.phase === 'playing',
+    },
+    sketch: {
+        title: 'Kritzelrennen',
+        text: 'Begriffe zeichnen, die anderen raten. Jeder Treffer bringt die Figuren auf dem Spielbrett weiter, einzeln oder in Teams.',
+        players: [SKETCH_MIN, SKETCH_MAX],
+        Engine: SketchGame,
+        mount: mountSketch,
+        resumable: state => state.phase !== 'waiting' && state.phase !== 'over',
     },
 };
 

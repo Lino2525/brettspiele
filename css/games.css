@@ -1,9 +1,9 @@
 /* ---------- Gesellschaftsspiele für 3 bis 6 Personen (gemeinsame Teile) ---------- */
 /* Laufen als Minispiele in Sternenjagd; gleiche Glasflächen, Teams Rose gegen Eisblau */
 
-.game:has(.cg) { height: auto; min-height: 100dvh; }
+.game:has(.cg) { height: auto; min-height: 100svh; }
 
-.cg { position: relative; max-width: 760px; margin: 0 auto; padding: 14px 14px 28px; display: flex; flex-direction: column; gap: 12px; min-height: 70dvh; }
+.cg { position: relative; max-width: 760px; margin: 0 auto; padding: 14px 14px 28px; display: flex; flex-direction: column; gap: 12px; min-height: 70svh; }
 .cg-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-weight: 600; }
 .cg-title { font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
 .cg-info { color: var(--muted); font-weight: 400; font-size: .88rem; }
@@ -29,7 +29,7 @@
 .cg-stage[hidden] { display: none; }
 .cg-overlay { position: absolute; inset: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center; background: rgba(2, 4, 12, .62); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); padding: 24px 12px; animation: fadeIn .3s ease-out; }
 .cg-overlay[hidden] { display: none; }
-.cg-box { --bc: var(--line-hi); --fill: linear-gradient(180deg, rgba(20, 40, 96, .7), rgba(6, 12, 32, .92)); width: min(100%, 480px); padding: 24px 26px; text-align: center; max-height: calc(100dvh - 90px); overflow-y: auto; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .95); animation: boxIn .5s var(--ease-spring); }
+.cg-box { --bc: var(--line-hi); --fill: linear-gradient(180deg, rgba(20, 40, 96, .7), rgba(6, 12, 32, .92)); width: min(100%, 480px); padding: 24px 26px; text-align: center; max-height: calc(100svh - 90px); overflow-y: auto; box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .95); animation: boxIn .5s var(--ease-spring); }
 .cg-box h2 { margin: 0 0 12px; font-size: 1.6rem; }
 .cg-box p { color: var(--muted); }
 .cg-box .row { margin-bottom: 10px; }
