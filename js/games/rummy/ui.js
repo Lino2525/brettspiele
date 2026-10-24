@@ -5,13 +5,16 @@ import { tileInfo, analyzeSet, evaluateMove, rackPoints } from './rules.js';
 
 const TEMPLATE = `
 <div class="rummy">
+  <div class="rummy-scene" aria-hidden="true"></div>
   <div class="opp-bar">
     <div class="players"></div>
     <div class="info"><span class="pool"></span></div>
   </div>
   <div class="table-wrap">
-    <div class="banner" hidden></div>
-    <div class="table"></div>
+    <div class="mat">
+      <div class="banner" hidden></div>
+      <div class="table"></div>
+    </div>
   </div>
   <div class="me-bar">
     <div class="turn"><img class="turn-avatar small" alt="" hidden><span class="turn-text"></span></div>
@@ -43,6 +46,15 @@ const DENSE_AT = 36;
 
 // o.pc: Farbe der Person, die den Stein gelegt hat (Markierung), o.fresh/o.pending: zuletzt gelegt bzw. wird gerade gelegt,
 // o.anim: einmalige Animation (land, deal, drawn, joker-in), o.k: Versatz für gestaffelte Animationen, o.jv: Wert des Jokers
+// Steinbilder liegen in einem Sprite (assets/rummy/steine.webp): Zeilen rot, gelb, grün, blau; Spalten 1–13 und Joker.
+// Farbe im Spiel -> Zeile im Sprite (0 rot, 1 blau, 2 gelb, 3 grün); die beiden Joker nehmen das rote und das blaue Motiv.
+const SPRITE_ROW = [0, 3, 1, 2];
+function spritePos(id, t) {
+    const row = t.joker ? (id % 2 === 0 ? 0 : 3) : SPRITE_ROW[t.color];
+    const col = t.joker ? 13 : t.num - 1;
+    return `--sx:${((col / 13) * 100).toFixed(3)}%;--sy:${((row / 3) * 100).toFixed(3)}%`;
+}
+
 function tileHTML(id, o = {}) {
     const t = tileInfo(id);
     const cls = ['tile', t.joker ? 'joker' : `c${t.color}`];
@@ -50,7 +62,7 @@ function tileHTML(id, o = {}) {
     if (o.pending) cls.push('pending');
     if (o.last) cls.push('last-one');
     if (o.anim) cls.push(o.anim);
-    const style = [o.pc ? `--pc:${o.pc}` : '', o.k !== undefined ? `--k:${o.k}` : ''].filter(Boolean).join(';');
+    const style = [spritePos(id, t), o.pc ? `--pc:${o.pc}` : '', o.k !== undefined ? `--k:${o.k}` : ''].filter(Boolean).join(';');
     const inner = t.joker
         ? `<span class="n">JOKER</span>${o.jv ? `<i class="jv" title="Joker als ${o.jv}">${o.jv}</i>` : '<span class="n r">JOKER</span>'}`
         : `<span class="n">${t.num}</span><span class="n r">${t.num}</span>`;
@@ -484,6 +496,10 @@ export function mountRummy(root, session) {
             drag.active = true;
             drag.ghost = drag.tileEl.cloneNode(true);
             drag.ghost.classList.add('ghost');
+            // Der Geist hängt am body: Größe vom Original übernehmen (Tisch- und Ständersteine sind verschieden groß)
+            const r = drag.tileEl.getBoundingClientRect();
+            drag.ghost.style.width = `${r.width}px`;
+            drag.ghost.style.height = `${r.height}px`;
             document.body.appendChild(drag.ghost);
             drag.tileEl.classList.add('dragging');
         }
