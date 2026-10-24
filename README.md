@@ -20,7 +20,7 @@ Tests der Spielregeln: `node --test tests/*.test.mjs`
 
 Die Seite muss im Internet erreichbar sein (z. B. GitHub Pages, Netlify oder Cloudflare Pages,
 alle kostenlos). Es ist eine rein statische Seite, hochgeladen wird der ganze Ordner.
-Danach: Host klickt "Mini Rummy starten", kopiert den Einladungslink und schickt ihn. Sobald 2 bis 4 Personen in der Lobby sind, startet der Host mit "Spiel starten" (danach kann niemand Neues mehr beitreten, wer rausfliegt kommt aber zurück).
+Danach: Host wählt am Automaten eine Dose (z. B. Mini Rummy), tippt auf „Weiter“ und dann „Mini Rummy starten“, kopiert den Einladungslink und schickt ihn. Sobald 2 bis 4 Personen in der Lobby sind, startet der Host mit "Spiel starten" (danach kann niemand Neues mehr beitreten, wer rausfliegt kommt aber zurück).
 
 ## Verbindung über verschiedene Netze
 
