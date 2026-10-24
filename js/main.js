@@ -5,6 +5,7 @@ import { music } from './core/music.js';
 import { nachtfeld } from './core/nachtfeld.js';
 import { probeIce } from './core/ice.js';
 import { automat } from './core/automat.js';
+import { intro } from './core/intro.js';
 import { RummyGame, MIN_PLAYERS as RUMMY_MIN, MAX_PLAYERS as RUMMY_MAX } from './games/rummy/engine.js';
 import { mountRummy } from './games/rummy/ui.js';
 import { MonopolyGame, MIN_PLAYERS as MONO_MIN, MAX_PLAYERS as MONO_MAX } from './games/monopoly/engine.js';
@@ -48,6 +49,7 @@ const GAMES = {
         players: [RUMMY_MIN, RUMMY_MAX],
         Engine: RummyGame,
         mount: mountRummy,
+        backdrop: false, // eigener Hintergrund (Laden bei Nacht)
         resumable: state => state.phase !== 'waiting',
     },
     songquiz: {
@@ -177,22 +179,34 @@ function setBusy(busy) {
 
 let current = null;
 
+// Die Dose dieses Spiels für den Übergang (Titel, Bild, Farbe)
+const doseOf = gameId => ({
+    title: GAMES[gameId].title,
+    img: DOSEN[gameId]?.img || 'assets/automat/dose-party.webp',
+    color: DOSEN[gameId]?.color || '#2f7bff',
+});
+
+// Ins Spiel wechseln: unter der Farbflut der Dose (js/core/intro.js), danach wird der Tisch sichtbar
 function showGame(session, gameId) {
     const game = GAMES[gameId];
-    $('lobby').hidden = true;
-    $('gameScreen').hidden = false;
-    if (game.music !== false) music.start();
-    // Der Sternenhimmel läuft erst im Spiel, im Menü steht der Automat
-    nachtfeld.start($('nachtfeld'));
-    nachtfeld.mode('game');
-    const info = $('roomInfo');
-    info.innerHTML = '<span class="rtitle"></span><span class="rcode">Raum <b></b></span>';
-    info.querySelector('.rtitle').textContent = game.title;
-    info.querySelector('b').textContent = session.roomCode;
-    session.onStatus = text => ($('status').textContent = text);
-    watchLinked(session);
-    const ui = game.mount($('gameRoot'), session);
-    current = { session, ui };
+    return intro.through(doseOf(gameId), () => {
+        $('lobby').hidden = true;
+        $('gameScreen').hidden = false;
+        if (game.music !== false) music.start();
+        // Spiele mit eigenem Hintergrund brauchen den Sternenhimmel nicht; die anderen bekommen ihn ohne Sternenflug
+        if (game.backdrop !== false) {
+            nachtfeld.start($('nachtfeld'));
+            nachtfeld.mode('game', { warp: false });
+        }
+        const info = $('roomInfo');
+        info.innerHTML = '<span class="rtitle"></span><span class="rcode">Raum <b></b></span>';
+        info.querySelector('.rtitle').textContent = game.title;
+        info.querySelector('b').textContent = session.roomCode;
+        session.onStatus = text => ($('status').textContent = text);
+        watchLinked(session);
+        const ui = game.mount($('gameRoot'), session);
+        current = { session, ui };
+    });
 }
 
 // Spielleiste: "3 von 4 verbunden" aus den Spielerlisten der Ansichten (nur Anzeige, die Spiele selbst bleiben unberührt)
@@ -237,6 +251,7 @@ async function hostGame(gameId, saved = null) {
     if (typeof Peer === 'undefined') return lobbyMsg('Die Verbindungsbibliothek konnte nicht geladen werden. Bist du online?');
     const password = roomPassword();
     setBusy(true);
+    intro.start(doseOf(gameId), saved ? null : document.querySelector('.vm-lying'));
     lobbyMsg('Raum wird eingerichtet…');
     lcd('RAUM WIRD GEÖFFNET …');
     const G = GAMES[gameId];
@@ -266,11 +281,12 @@ async function hostGame(gameId, saved = null) {
                 }
                 throw e;
             }
-            showGame(session, gameId);
+            await showGame(session, gameId);
             session.start();
             return;
         }
     } catch (e) {
+        intro.cancel();
         lcd('FEHLER BEIM ÖFFNEN', true);
         lobbyMsg(`Raum konnte nicht eingerichtet werden (${e.code || e.message}). Bitte noch einmal versuchen.`);
         setBusy(false);
@@ -292,7 +308,7 @@ async function joinGame(rawCode) {
     const session = new ClientSession({ roomCode, token, name, password, avatar });
     try {
         await session.connect();
-        showGame(session, session.gameId);
+        await showGame(session, session.gameId);
     } catch (e) {
         session.close();
         lcd('KEINE VERBINDUNG', true);

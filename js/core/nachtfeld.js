@@ -6,7 +6,7 @@
 //   nachtfeld.anchor(el)         Element, über dem die Form schwebt (Menü)
 //   nachtfeld.show(id)           Form wechseln: 'rummy', 'songquiz', 'party', 'monopoly', 'sketch'
 //   nachtfeld.ripple(x, y)       Welle an einer Bildschirmstelle
-//   nachtfeld.mode('game')       Übergang ins Spiel (Warp, danach Sternenstaub); 'lobby' zurück
+//   nachtfeld.mode('game', { warp }) ins Spiel (Sternenstaub, mit warp: true vorher ein Sternenflug); 'lobby' zurück
 //   nachtfeld.warp(ms)           kurzer Flug durch die Sterne im Spiel (z. B. vor einem Minispiel)
 
 const TAU = Math.PI * 2;
@@ -536,10 +536,10 @@ export const nachtfeld = safe({
         if (mode !== 'game' || reduced() || !ctx) return;
         warpUntil = performance.now() + ms;
     },
-    mode(next) {
+    mode(next, { warp = true } = {}) {
         if (next === mode || !ctx) return;
         mode = next;
-        if (next === 'game') warpUntil = performance.now() + 900;
+        if (next === 'game' && warp) warpUntil = performance.now() + 900;
         else scatter(true);
         if (reduced()) still();
     },
