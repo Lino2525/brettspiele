@@ -4,6 +4,7 @@ import { fileToAvatar } from './core/avatar.js';
 import { music } from './core/music.js';
 import { nachtfeld } from './core/nachtfeld.js';
 import { probeIce } from './core/ice.js';
+import { automat } from './core/automat.js';
 import { RummyGame, MIN_PLAYERS as RUMMY_MIN, MAX_PLAYERS as RUMMY_MAX } from './games/rummy/engine.js';
 import { mountRummy } from './games/rummy/ui.js';
 import { MonopolyGame, MIN_PLAYERS as MONO_MIN, MAX_PLAYERS as MONO_MAX } from './games/monopoly/engine.js';
@@ -30,13 +31,13 @@ function attachSongQuiz(engine) {
     });
 }
 
-// Symbole auf den Pillen im Menü (gleiches Motiv wie die Partikelform in nachtfeld.js)
-const ICONS = {
-    rummy: '<rect x="3" y="6" width="7" height="11" rx="1.6" transform="rotate(-10 6.5 11.5)"/><rect x="8.5" y="4.5" width="7" height="11" rx="1.6"/><rect x="14" y="6" width="7" height="11" rx="1.6" transform="rotate(10 17.5 11.5)"/>',
-    songquiz: '<path d="M3 12v0M6.5 9v6M10 5v14M13.5 8v8M17 10v4M20.5 12v0"/>',
-    party: '<path d="m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>',
-    monopoly: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>',
-    sketch: '<path d="M4 20l1.2-4.4L15.8 5a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L8.4 18.8z"/><path d="M13.8 7l3.2 3.2"/><path d="M13 20h7"/>',
+// Dosen im Automaten-Menü: Wahltaste, Bild und Rahmenfarbe je Spiel (Reihenfolge = Fach von links nach rechts)
+const DOSEN = {
+    rummy: { code: 'A1', img: 'assets/automat/dose-rummy.webp', color: '#d8402f' },
+    songquiz: { code: 'A2', img: 'assets/automat/dose-songquiz.webp', color: '#3f6fe0' },
+    party: { code: 'A3', img: 'assets/automat/dose-party.webp', color: '#8a7cf0' },
+    monopoly: { code: 'A4', img: 'assets/automat/dose-monopoly.webp', color: '#32b07a' },
+    sketch: { code: 'A5', img: 'assets/automat/dose-sketch.webp', color: '#f0c22c' },
 };
 
 // text: ein Satz, der das Spiel im Menü beschreibt
@@ -149,6 +150,7 @@ function playerName() {
     const name = $('name').value.trim();
     if (!name) {
         lobbyMsg('Bitte zuerst deinen Namen eingeben.');
+        lcd('BITTE NAMEN EINGEBEN', true);
         $('name').focus();
         return null;
     }
@@ -180,6 +182,8 @@ function showGame(session, gameId) {
     $('lobby').hidden = true;
     $('gameScreen').hidden = false;
     if (game.music !== false) music.start();
+    // Der Sternenhimmel läuft erst im Spiel, im Menü steht der Automat
+    nachtfeld.start($('nachtfeld'));
     nachtfeld.mode('game');
     const info = $('roomInfo');
     info.innerHTML = '<span class="rtitle"></span><span class="rcode">Raum <b></b></span>';
@@ -234,6 +238,7 @@ async function hostGame(gameId, saved = null) {
     const password = roomPassword();
     setBusy(true);
     lobbyMsg('Raum wird eingerichtet…');
+    lcd('RAUM WIRD GEÖFFNET …');
     const G = GAMES[gameId];
     const engine = saved ? G.Engine.restore(saved.state) : new G.Engine();
     G.attach?.(engine);
@@ -266,6 +271,7 @@ async function hostGame(gameId, saved = null) {
             return;
         }
     } catch (e) {
+        lcd('FEHLER BEIM ÖFFNEN', true);
         lobbyMsg(`Raum konnte nicht eingerichtet werden (${e.code || e.message}). Bitte noch einmal versuchen.`);
         setBusy(false);
     }
@@ -282,12 +288,14 @@ async function joinGame(rawCode) {
     const password = roomPassword();
     setBusy(true);
     lobbyMsg('Verbinde…');
+    lcd(`VERBINDE MIT RAUM ${roomCode} …`);
     const session = new ClientSession({ roomCode, token, name, password, avatar });
     try {
         await session.connect();
         showGame(session, session.gameId);
     } catch (e) {
         session.close();
+        lcd('KEINE VERBINDUNG', true);
         lobbyMsg(
             e.message === 'not-found' ? 'Diesen Raum gibt es nicht (oder er ist gerade nicht online).'
             : e.message === 'full' ? 'Dieser Raum ist voll oder das Spiel hat schon begonnen.'
@@ -346,91 +354,133 @@ $('code').addEventListener('keydown', e => {
 });
 $('hostBtn').addEventListener('click', () => hostGame(selected));
 
-// ---------- Spielauswahl: Pillen auf dem Wasser, Partikelform und Dock ----------
+// ---------- Automat: Spiel ziehen, dann Raum einrichten oder beitreten ----------
 
 const ids = Object.keys(GAMES);
-let selected = GAMES[store.get('bsp.lastGame')] ? store.get('bsp.lastGame') : 'party';
-let showcase = null; // wechselt die Spiele automatisch, bis jemand etwas anfasst
+let selected = null;
 
-function select(id, { user = false } = {}) {
-    if (user) stopShowcase();
-    if (id === selected && $('dockTitle').textContent) return;
-    selected = id;
-    if (user) store.set('bsp.lastGame', id);
-    const game = GAMES[id];
-    document.querySelectorAll('.pill').forEach(p => {
-        const on = p.dataset.game === id;
-        p.setAttribute('aria-checked', String(on));
-        p.tabIndex = on ? 0 : -1;
-    });
-    const dock = $('dockTitle').parentElement;
-    dock.classList.remove('swap');
-    void dock.offsetWidth; // Animation neu starten
-    dock.classList.add('swap');
-    $('dockTitle').textContent = game.title;
-    $('dockText').textContent = game.text;
-    $('dockMeta').textContent = playersText(game.players);
-    $('hostBtn').textContent = `${game.title} starten`;
-    nachtfeld.show(id);
-}
+const lcd = (text, warn = false) => {
+    $('vmLcdText').textContent = text;
+    $('vmLcd').classList.toggle('warn', warn);
+};
 
-function stopShowcase() {
-    clearInterval(showcase);
-    showcase = null;
-}
+const dosen = ids.map((id, i) => ({
+    id,
+    title: GAMES[id].title,
+    code: DOSEN[id]?.code || `A${i + 1}`,
+    img: DOSEN[id]?.img || 'assets/automat/dose-party.webp',
+}));
 
-// Pillen liegen auf dem vorderen Bogen der Wellenringe (Position in Prozent der Bühne)
+const vm = automat($('vmScene'), dosen, { onPick: id => pick(id), onTake: () => openSetup('host') });
+
+const keys = new Map();
 ids.forEach((id, i) => {
     const game = GAMES[id];
-    const a = Math.PI * (0.92 - (i * 0.84) / Math.max(1, ids.length - 1));
     const btn = document.createElement('button');
-    btn.className = 'pill';
     btn.type = 'button';
-    btn.dataset.game = id;
-    btn.setAttribute('role', 'radio');
-    btn.style.setProperty('--i', i);
-    btn.style.setProperty('--px', `${50 + Math.cos(a) * 40}%`);
-    btn.style.setProperty('--py', `${60 + Math.sin(a) * 24}%`);
-    btn.style.setProperty('--tilt', `${Math.cos(a) * -5}deg`);
-    btn.innerHTML = `<span class="pill-ic"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[id] || ICONS.party}</svg></span><span><span class="pill-name"></span><span class="pill-meta"></span></span>`;
-    btn.querySelector('.pill-name').textContent = game.title;
-    btn.querySelector('.pill-meta').textContent = playersText(game.players);
-    btn.addEventListener('click', () => {
-        const r = btn.getBoundingClientRect();
-        nachtfeld.ripple(r.left + r.width / 2, r.bottom - 6);
-        select(id, { user: true });
-    });
-    // Mit der Maus reicht Drüberfahren, um die Form zu sehen; die Auswahl bleibt, bis geklickt wird
-    btn.addEventListener('pointerenter', e => {
-        if (e.pointerType !== 'mouse') return;
-        stopShowcase();
-        nachtfeld.show(id);
-    });
-    btn.addEventListener('pointerleave', e => {
-        if (e.pointerType === 'mouse') nachtfeld.show(selected);
-    });
+    btn.className = 'vm-key';
+    btn.setAttribute('aria-pressed', 'false');
+    btn.style.setProperty('--pc', DOSEN[id]?.color || 'var(--ice)');
+    btn.innerHTML = '<span class="vm-code"></span><img alt="" width="24" height="46"><span class="vm-name"></span><span class="vm-tag"></span>';
+    btn.querySelector('.vm-code').textContent = dosen[i].code;
+    btn.querySelector('img').src = dosen[i].img;
+    btn.querySelector('.vm-name').textContent = game.title;
+    const [min, max] = game.players;
+    btn.querySelector('.vm-tag').textContent = min === max ? `${min} Pers.` : `${min}–${max} Pers.`;
+    btn.querySelector('.vm-tag').title = playersText(game.players);
+    btn.addEventListener('click', () => pick(id));
     $('gameList').appendChild(btn);
+    keys.set(id, btn);
 });
 
-// Pfeiltasten wandern durch die Spiele (Radiogruppe)
-$('gameList').addEventListener('keydown', e => {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    if (!step) return;
-    e.preventDefault();
-    const next = ids[(ids.indexOf(selected) + step + ids.length) % ids.length];
-    select(next, { user: true });
-    document.querySelector(`.pill[data-game="${next}"]`).focus();
-});
-
-nachtfeld.start($('nachtfeld'));
-nachtfeld.anchor($('stageSpace'));
-select(selected);
-
-// Bis zur ersten Berührung zeigt das Menü nacheinander alle Spiele
-if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    showcase = setInterval(() => select(ids[(ids.indexOf(selected) + 1) % ids.length]), 5200);
-    for (const ev of ['pointerdown', 'keydown', 'focusin']) addEventListener(ev, stopShowcase, { once: true });
+async function pick(id) {
+    if (vm.busy) return;
+    selected = id;
+    store.set('bsp.lastGame', id);
+    keys.forEach((b, k) => b.setAttribute('aria-pressed', String(k === id)));
+    $('againBtn').hidden = true;
+    $('nextBtn').hidden = true;
+    lobbyMsg('');
+    const code = dosen[ids.indexOf(id)].code;
+    lcd(`${code} · VERBINDE …`);
+    setTimeout(() => vm.busy && lcd('AUSGABE LÄUFT …'), 750);
+    await vm.dispense(id);
+    lcd(`${GAMES[id].title.toUpperCase()} IST DA`);
+    $('againBtn').hidden = false;
+    $('nextBtn').hidden = false;
 }
+
+function showMenu() {
+    $('viewSetup').hidden = true;
+    $('viewMenu').hidden = false;
+    $('netResult').hidden = true;
+    lobbyMsg('');
+    const out = selected && vm.current === selected;
+    $('againBtn').hidden = !out;
+    $('nextBtn').hidden = !out;
+    lcd(out ? `${GAMES[selected].title.toUpperCase()} IST DA` : 'BITTE SORTE WÄHLEN');
+}
+
+// mode 'host': Raum für das gezogene Spiel eröffnen, 'join': mit Raumcode beitreten
+function openSetup(mode) {
+    const host = mode === 'host';
+    if (host && !selected) return;
+    $('viewMenu').hidden = true;
+    $('viewSetup').hidden = false;
+    $('againBtn').hidden = true;
+    $('nextBtn').hidden = true;
+    $('setupGame').hidden = !host;
+    $('hostBtn').hidden = !host;
+    $('codeField').hidden = host;
+    $('joinBtn').hidden = host;
+    $('pwHint').textContent = host ? 'Wer beitreten will, muss es eingeben' : 'Nur nötig, wenn der Raum eins hat';
+    $('password').placeholder = host ? 'leer lassen für einen offenen Raum' : 'Raumpasswort';
+    lobbyMsg('');
+    if (host) {
+        const game = GAMES[selected];
+        const i = ids.indexOf(selected);
+        $('setupGame').style.setProperty('--pc', DOSEN[selected]?.color || 'var(--ice)');
+        $('setupCan').src = dosen[i].img;
+        $('dockTitle').textContent = game.title;
+        $('dockText').textContent = game.text;
+        $('dockMeta').textContent = playersText(game.players);
+        $('hostBtn').textContent = `${game.title} starten`;
+        lcd(`RAUM EINRICHTEN · ${dosen[i].code}`);
+    } else {
+        joinLcd();
+    }
+    ($('name').value ? (host ? $('hostBtn') : $('joinBtn')) : $('name')).focus({ preventScroll: true });
+}
+
+function joinLcd() {
+    const code = normalizeRoomCode($('code').value);
+    lcd(code ? `RAUM ${code} · BEREIT` : 'RAUMCODE EINGEBEN');
+}
+
+$('nextBtn').addEventListener('click', () => openSetup('host'));
+$('againBtn').addEventListener('click', () => {
+    vm.reset();
+    selected = null;
+    keys.forEach(b => b.setAttribute('aria-pressed', 'false'));
+    showMenu();
+});
+$('backBtn').addEventListener('click', showMenu);
+$('code').addEventListener('input', joinLcd);
+
+function quickJoin() {
+    const code = normalizeRoomCode($('codeQuick').value);
+    if (!code) {
+        lcd('ERST RAUMCODE EINGEBEN', true);
+        $('codeQuick').focus();
+        return;
+    }
+    $('code').value = code;
+    openSetup('join');
+}
+$('quickJoinBtn').addEventListener('click', quickJoin);
+$('codeQuick').addEventListener('keydown', e => {
+    if (e.key === 'Enter') quickJoin();
+});
 
 if (store.get('bsp.password')) $('pwBox').open = true;
 
@@ -466,11 +516,10 @@ for (const [id, game] of Object.entries(GAMES)) {
     }
 }
 
-
 const invited = new URLSearchParams(location.search).get('raum');
 if (invited) {
     $('code').value = normalizeRoomCode(invited);
+    openSetup('join');
     $('inviteNote').hidden = false;
     $('inviteNote').textContent = `Du bist in Raum ${$('code').value} eingeladen. Name eingeben und beitreten.`;
-    $('lobby').classList.add('invited');
 }

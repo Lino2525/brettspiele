@@ -7,8 +7,9 @@
     <meta name="theme-color" content="#02040c">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DotGothic16&family=Geist:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/automat.css">
     <link rel="stylesheet" href="css/rummy.css">
     <link rel="stylesheet" href="css/monopoly.css">
     <link rel="stylesheet" href="css/songquiz.css">
@@ -19,64 +20,102 @@
 </head>
 <body>
 <canvas id="nachtfeld" aria-hidden="true"></canvas>
-<main id="lobby" class="screen lobby">
-    <header class="lobby-head">
-        <div>
-            <h1>Brettspiele</h1>
-            <p class="sub">Zusammen spielen, egal wie weit weg.</p>
-        </div>
-        <span class="music-slot"></span>
-    </header>
-
-    <section class="stage" aria-label="Spiel auswählen">
-        <div id="stageSpace" class="stage-space" aria-hidden="true"></div>
-        <div id="gameList" class="pills" role="radiogroup" aria-label="Spiel"></div>
-    </section>
-
-    <section class="dock" aria-labelledby="dockTitle">
-        <div class="dock-game" aria-live="polite">
-            <h2 id="dockTitle"></h2>
-            <p id="dockText" class="dock-text"></p>
-            <p id="dockMeta" class="dock-meta"></p>
-        </div>
-
-        <div class="dock-form">
-            <label class="field">Dein Name
-                <input id="name" maxlength="20" autocomplete="off" placeholder="z. B. Anna">
-            </label>
-            <div class="avatar-pick">
-                <button id="avatarBtn" class="avatar-btn" type="button" title="Avatar-Bild auswählen" aria-label="Avatar-Bild auswählen">
-                    <span id="avatarPlus"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="4"/><path d="M4.5 20c1.3-3.6 4.2-5.5 7.5-5.5s6.2 1.9 7.5 5.5"/></svg></span>
-                    <img id="avatarPreview" alt="Dein Avatar" hidden>
-                </button>
-                <button id="avatarClear" class="link" type="button" hidden>entfernen</button>
-                <input id="avatarFile" type="file" accept="image/*" hidden>
+<main id="lobby" class="screen lobby vm">
+    <div id="vmScene" class="vm-scene">
+        <div class="vm-stage">
+            <div class="vm-shaker">
+                <img class="vm-bg" src="assets/automat/strasse.webp"
+                     srcset="assets/automat/strasse-klein.webp 1200w, assets/automat/strasse.webp 1693w"
+                     sizes="(min-width: 900px) 100vw, 200vw"
+                     alt="Nächtliche Straßenecke mit leuchtendem Getränkeautomaten vor einem Kiosk">
+                <div class="vm-shelf vm-plane" role="group" aria-label="Dosen im Automaten">
+                    <div class="vm-back" aria-hidden="true"></div>
+                    <div class="vm-tube" aria-hidden="true"></div>
+                    <div class="vm-shade" aria-hidden="true"></div>
+                    <div class="vm-glare" aria-hidden="true"></div>
+                </div>
+                <div class="vm-tags vm-plane" aria-hidden="true"></div>
+                <div class="vm-hum" aria-hidden="true"></div>
+                <div class="vm-bin vm-plane">
+                    <div class="vm-bin-frame" aria-hidden="true"></div>
+                    <div class="vm-bin-hole"></div>
+                    <div class="vm-flap" aria-hidden="true">AUSGABE</div>
+                </div>
+                <div class="vm-dim" aria-hidden="true"></div>
+                <div class="vm-flick" aria-hidden="true"></div>
             </div>
-            <button id="hostBtn" class="btn primary big" type="button">Spiel starten</button>
+        </div>
+    </div>
+
+    <section class="vm-panel" aria-labelledby="vmTitle">
+        <header class="vm-head">
+            <div>
+                <p class="vm-kicker"><span class="vm-led" aria-hidden="true"></span>SPIELAUTOMAT<span class="long">&nbsp;· RUND UM DIE UHR</span></p>
+                <h1 id="vmTitle">Brettspiele</h1>
+                <p class="sub">Zusammen spielen, egal wie weit weg.</p>
+            </div>
+            <span class="music-slot"></span>
+        </header>
+
+        <div id="viewMenu" class="vm-view">
+            <div id="gameList" class="vm-games" role="group" aria-label="Spiel auswählen"></div>
+            <div class="vm-quickjoin">
+                <label for="codeQuick">Schon eingeladen?</label>
+                <input id="codeQuick" class="code" maxlength="12" autocomplete="off" placeholder="Raumcode">
+                <button id="quickJoinBtn" class="btn" type="button">Beitreten</button>
+            </div>
+            <section id="resumeCard" class="resume" hidden>
+                <h2>Unterbrochene Spiele</h2>
+                <div id="resumeList"></div>
+            </section>
         </div>
 
-        <details id="pwBox" class="pw">
-            <summary>Raumpasswort</summary>
-            <label class="field">Beim Starten festlegen, beim Beitreten eingeben
-                <input id="password" maxlength="40" autocomplete="off" placeholder="optional">
+        <div id="viewSetup" class="vm-view" hidden>
+            <button id="backBtn" class="vm-back-link" type="button">← Zurück zum Automaten</button>
+            <p id="inviteNote" class="invite" hidden></p>
+            <div id="setupGame" class="vm-pick">
+                <img id="setupCan" alt="" width="38" height="72">
+                <div>
+                    <div class="vm-pick-head"><h2 id="dockTitle"></h2><span id="dockMeta" class="vm-tag"></span></div>
+                    <p id="dockText"></p>
+                </div>
+            </div>
+            <label id="codeField" class="field">Raumcode
+                <input id="code" class="code" maxlength="12" autocomplete="off" placeholder="Raumcode">
             </label>
-        </details>
-        <p class="hint-small">Dein Avatar geht nur an die Leute in deinem Raum und ist weg, sobald du den Tab schließt.</p>
-        <p class="netline"><button id="netBtn" class="link" type="button">Verbindung prüfen</button></p>
-        <div id="netResult" class="netresult" role="status" hidden></div>
-
-        <div class="dock-join">
-            <label for="code" class="join-label">Schon eingeladen?</label>
-            <input id="code" maxlength="12" autocomplete="off" placeholder="Raumcode" class="code">
-            <button id="joinBtn" class="btn" type="button">Beitreten</button>
+            <div class="vm-who">
+                <label class="field">Dein Name
+                    <input id="name" maxlength="20" autocomplete="off" placeholder="z. B. Anna">
+                </label>
+                <div class="avatar-pick">
+                    <button id="avatarBtn" class="avatar-btn" type="button" title="Avatar-Bild auswählen" aria-label="Avatar-Bild auswählen">
+                        <span id="avatarPlus"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="4"/><path d="M4.5 20c1.3-3.6 4.2-5.5 7.5-5.5s6.2 1.9 7.5 5.5"/></svg></span>
+                        <img id="avatarPreview" alt="Dein Avatar" hidden>
+                    </button>
+                    <button id="avatarClear" class="link" type="button" hidden>entfernen</button>
+                    <input id="avatarFile" type="file" accept="image/*" hidden>
+                </div>
+            </div>
+            <details id="pwBox" class="pw">
+                <summary>Raumpasswort <span class="opt">(optional)</span></summary>
+                <label class="field"><span id="pwHint">Wer beitreten will, muss es eingeben</span>
+                    <input id="password" maxlength="40" autocomplete="off" placeholder="leer lassen für einen offenen Raum">
+                </label>
+            </details>
+            <button id="hostBtn" class="btn primary big vm-setup-btn" type="button">Spiel starten</button>
+            <button id="joinBtn" class="btn primary big vm-setup-btn" type="button">Beitreten</button>
+            <p class="hint-small">Dein Avatar geht nur an die Leute in deinem Raum und ist weg, sobald du den Tab schließt.
+                <button id="netBtn" class="link" type="button">Verbindung prüfen</button></p>
+            <div id="netResult" class="netresult" role="status" hidden></div>
         </div>
-        <p id="inviteNote" class="invite" hidden></p>
-        <p id="lobbyMsg" class="msg" role="status"></p>
-    </section>
 
-    <section id="resumeCard" class="resume" hidden>
-        <h2>Unterbrochene Spiele</h2>
-        <div id="resumeList"></div>
+        <p id="lobbyMsg" class="msg" role="status"></p>
+
+        <div class="vm-foot">
+            <div id="vmLcd" class="vm-lcd" aria-live="polite"><span id="vmLcdText">BITTE SORTE WÄHLEN</span><span class="vm-cursor" aria-hidden="true">_</span></div>
+            <button id="againBtn" class="btn" type="button" hidden>Andere Sorte</button>
+            <button id="nextBtn" class="btn primary" type="button" hidden>Weiter</button>
+        </div>
     </section>
 </main>
 
