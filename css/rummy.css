@@ -1,11 +1,14 @@
 /* ==========================================================================
    Mini Rummy: Tisch, Ständer, Steine, Bewegung und Hinweise
-   Helle Steine auf dunklem Glas. Neu gelegte Steine tragen einen Punkt in der Farbe der Person,
+   Nachts vor dem Laden: Der Laden ist der Hintergrund, die Spielmatte der Tisch, die Steine sind illustrierte Karten
+   (ein Sprite, assets/rummy/steine.webp). Leisten, Ständer und Knöpfe im Stil des Automaten-Menüs. Neu gelegte Steine tragen einen Punkt in der Farbe der Person,
    die sie gelegt hat, veränderte Reihen einen Rahmen in derselben Farbe (bis zum nächsten Legen).
    Steine gleiten an ihren neuen Platz (FLIP in js/games/rummy/ui.js).
    ========================================================================== */
 
 .rummy {
+    --tw: 52px;
+    --th: 78px;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -25,32 +28,75 @@
 .opp-bar { justify-content: space-between; }
 .players { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* Tisch: dunkles Glas mit blauem Licht von unten */
+/* Hintergrund: der Laden bei Nacht, abgedunkelt */
+.rummy-scene {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(rgba(3, 6, 14, .58), rgba(3, 6, 14, .66)), url(../assets/rummy/laden.webp) center / cover no-repeat;
+}
+
+/* Tisch: die Spielmatte. Sie behält ihr Seitenverhältnis, die Reihen liegen im Raster (Innenkante aus dem Bild). */
 .table-wrap {
-    --bc: var(--line);
-    --fill: radial-gradient(120% 90% at 50% 120%, rgba(47, 107, 255, .16), transparent 60%), rgba(4, 10, 28, .55);
+    --bc: transparent;
+    --fill: transparent;
     position: relative;
     flex: 1;
-    min-height: 140px;
-    overflow: auto;
+    min-height: 200px;
+    display: grid;
+    place-items: center;
+    container-type: size;
+}
+.mat {
+    position: relative;
+    box-sizing: border-box;
+    width: min(100cqw, 191.5cqh);
+    aspect-ratio: 1800 / 940;
+    padding: 10.6% 8.7% 2.2% 9.8%;
+    background: url(../assets/rummy/spielfeld.webp) center / 100% 100% no-repeat;
+    filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .6));
+}
+/* Hochformat (Handy): nur die Rasterfläche mit Rahmen in den Farben der Matte */
+@container (max-aspect-ratio: 4 / 3) {
+    .mat {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: auto;
+        padding: 6px;
+        border-radius: 14px;
+        border: 3px solid #d6c7a2;
+        background: url(../assets/rummy/spielfeld-innen.webp) center / cover no-repeat;
+        box-shadow: 0 0 0 4px #1e5a63;
+        filter: none;
+    }
+}
+@supports not (width: 1cqw) {
+    .mat { width: 100%; height: 100%; aspect-ratio: auto; padding: 6px; border-radius: 14px; border: 3px solid #d6c7a2; background: url(../assets/rummy/spielfeld-innen.webp) center / cover; filter: none; }
 }
 .table {
+    --tw: 40px;
+    --th: 60px;
     display: flex;
     flex-wrap: wrap;
     align-content: flex-start;
-    gap: 14px;
-    padding: 14px;
-    min-height: 100%;
+    gap: 14px 16px;
+    padding: 10px;
+    height: 100%;
+    box-sizing: border-box;
+    overflow: auto;
 }
 .table.live { outline: 1.5px dashed rgba(143, 216, 255, .5); outline-offset: -8px; border-radius: var(--r-panel); }
 .table.drop, .set.drop, .rack.drop { box-shadow: 0 0 0 2px var(--ice), 0 0 26px rgba(143, 216, 255, .45); }
 
 .banner {
-    position: sticky;
-    top: 8px;
+    position: absolute;
+    left: 50%;
+    top: 12%;
     z-index: 2;
+    transform: translateX(-50%);
     width: fit-content;
-    margin: 8px auto 0;
+    margin: 0;
     text-align: center;
     padding: 6px 16px;
     border-radius: var(--r-pill);
@@ -62,8 +108,10 @@
 }
 
 .set {
-    --bc: rgba(160, 190, 255, .14);
-    --fill: rgba(2, 6, 20, .4);
+    --bc: rgba(255, 240, 210, .24);
+    --fill: rgba(4, 18, 24, .45);
+    border-width: 1.5px;
+    border-radius: 9px;
     display: flex;
     gap: 3px;
     padding: 6px;
@@ -89,11 +137,27 @@
     font-size: .85rem;
     color: var(--muted);
 }
-.newset { --bc: var(--line-hi); --fill: transparent; border-style: dashed; }
-.empty { border: 0; max-width: none; flex: 1; font-size: 1rem; }
+.newset { --bc: rgba(255, 240, 210, .5); --fill: rgba(4, 18, 24, .25); border-style: dashed; color: #ece4cf; }
+.empty { border: 0; max-width: none; flex: 1; font-size: 1rem; color: #ece4cf; text-shadow: 0 1px 4px rgba(0, 0, 0, .8); }
 
 .me-bar { justify-content: space-between; min-height: 1.6em; }
-.turn { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--gold); }
+.turn { display: flex; align-items: center; gap: 8px; }
+/* Wer dran ist: grüne LCD-Zeile wie im Automaten */
+.turn-text:not(:empty) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 8px;
+    background: #071510;
+    border: 1px solid #1d3a2a;
+    font: 16px/1.2 'DotGothic16', ui-monospace, monospace;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #6dff9c;
+    text-shadow: 0 0 10px rgba(109, 255, 156, .5);
+}
+.hint { color: #dbe6ef; text-shadow: 0 1px 4px rgba(0, 0, 0, .8); }
 
 /* Avatar der Person am Zug: groß im freien Rand links, auf schmalen Bildschirmen klein neben "am Zug". */
 .turn-avatar { animation: avatar-in .45s var(--ease-out); }
@@ -114,19 +178,36 @@
 .hint.ok { color: var(--mint); }
 .hint.warn { color: #ff8da3; }
 
-/* Ständer: eigenes Glas mit goldener Kante oben */
+/* Ständer: dunkle Leiste mit Leuchtröhre oben, wie das Fach im Automaten */
 .rack {
-    --bc: rgba(255, 207, 107, .35);
-    --fill: linear-gradient(180deg, rgba(255, 207, 107, .06), rgba(2, 6, 20, .6) 40%);
+    --tw: 56px;
+    --th: 84px;
+    --bc: rgba(127, 230, 255, .28);
+    --fill: rgba(6, 10, 18, .86);
+    position: relative;
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    justify-content: center;
+    gap: 6px;
     align-content: flex-start;
-    padding: 10px;
-    min-height: calc(var(--th) * 2 + 30px);
+    padding: 16px 12px 10px;
+    min-height: calc(var(--th) + 28px);
     max-height: 34vh;
     overflow-y: auto;
-    box-shadow: inset 0 1px 0 rgba(255, 207, 107, .3);
+    border-radius: 14px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, .5);
+}
+.rack::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    top: 6px;
+    height: 3px;
+    border-radius: 2px;
+    background: #eaffff;
+    box-shadow: 0 0 12px 3px rgba(127, 230, 255, .6);
+    pointer-events: none;
 }
 
 .actions { justify-content: flex-start; }
@@ -143,10 +224,10 @@
     height: var(--th);
     display: flex;
     flex-direction: column;
-    border-radius: var(--r-tile);
+    border-radius: 9% / 6%;
     border: 0;
-    background: linear-gradient(180deg, #ffffff, var(--tile-bg) 60%, #d9e2f7);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 -3px 0 rgba(10, 26, 63, .18) inset, 0 6px 14px -6px rgba(0, 0, 0, .8);
+    background: #efe6d2 url(../assets/rummy/steine.webp) var(--sx, 0) var(--sy, 0) / 1400% 400% no-repeat;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .35) inset, 0 6px 12px -5px rgba(0, 0, 0, .8);
     color: var(--tc);
     font-weight: 700;
     font-size: calc(var(--tw) * .52);
@@ -157,19 +238,19 @@
     transition: transform .2s var(--ease-spring), box-shadow .2s;
 }
 .tile:hover { transform: translateY(-3px); }
+/* Die Zahl steht im Bild; der Text bleibt nur für Screenreader und Suche erhalten */
 .tile .n {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
-.tile .n.r { transform: rotate(180deg); opacity: .35; font-size: .6em; flex: .6; }
 .tile.c0 { --tc: #e8355c; }
 .tile.c1 { --tc: #1f6fe5; }
 .tile.c2 { --tc: #d68a00; }
 .tile.c3 { --tc: #11a073; }
-.tile.joker { font-size: calc(var(--tw) * .22); letter-spacing: .02em; }
-.tile.joker .n { background: linear-gradient(90deg, #e8355c, #d68a00, #1f6fe5, #11a073); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 .tile.dragging { opacity: .3; }
 .tile.ghost {
@@ -185,12 +266,9 @@
 
 
 /* ---------- Tisch übersichtlich halten ---------- */
-/* Auf dem Tisch reicht die Zahl oben (die Spiegelzahl bleibt im Ständer), bei vielen Steinen werden sie kleiner */
-.table .tile { height: calc(var(--th) * .8); }
-.table .tile .n.r { display: none; }
-.table.dense { --tw: 34px; --th: 48px; gap: 10px; padding: 10px; }
-.table.dense .set { padding: 5px; gap: 2px; }
-@media (max-width: 640px) { .table.dense { --tw: 30px; --th: 42px; } }
+/* Bei vielen Steinen auf dem Tisch werden sie kleiner */
+.table.dense { --tw: 32px; --th: 48px; gap: 10px; padding: 8px; }
+.table.dense .set { padding: 4px; gap: 2px; }
 
 /* ---------- Zuletzt gelegt (bleibt bis zum nächsten Legen) ---------- */
 .tile { position: relative; }
@@ -205,6 +283,7 @@
     background: var(--pc);
     box-shadow: 0 0 0 1.5px #fff, 0 0 8px var(--pc);
 }
+.tile.fresh { box-shadow: 0 0 0 2px var(--pc), 0 6px 12px -5px rgba(0, 0, 0, .8); }
 .set.touched { --bc: color-mix(in srgb, var(--pc) 55%, transparent); box-shadow: 0 0 22px -8px var(--pc); }
 /* Lichtstreif über eine Reihe, die gerade verändert wurde */
 .set.shine::after {
@@ -276,17 +355,20 @@
 /* Auf dem Tisch zeigt er, für welche Zahl er steht; beim Einsetzen ein kurzer Regenbogenring */
 .tile.joker .jv {
     position: absolute;
-    left: 50%;
-    bottom: 4px;
-    transform: translateX(-50%);
-    padding: 0 6px;
-    border-radius: var(--r-pill);
+    right: -5px;
+    top: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    font: 11px/1 'DotGothic16', ui-monospace, monospace;
     font-style: normal;
-    font-size: calc(var(--tw) * .3);
-    font-weight: 700;
-    line-height: 1.35;
-    color: var(--night);
-    background: linear-gradient(90deg, #ffd0da, #ffe8b0, #c8f5e3, #cfe3ff);
+    color: #ffd36b;
+    background: #10141a;
+    border: 1.5px solid #ffd36b;
 }
 .tile.joker-in { animation: jokerIn .8s var(--ease-spring) both; animation-delay: calc(var(--k, 0) * 55ms); }
 @keyframes jokerIn {
@@ -349,9 +431,57 @@
     .tile.joker-in::before, .rburst { display: none; }
 }
 
+/* ---------- Leisten und Knöpfe im Automaten-Stil ---------- */
+.rummy .pchip {
+    --bc: rgba(255, 255, 255, .12);
+    --fill: rgba(6, 10, 18, .82);
+}
+.rummy .pchip.on-turn { --bc: var(--pc); box-shadow: 0 0 18px -6px var(--pc); }
+.rummy .pchip .pc, .rummy .pchip .ps, .rummy .pool { font-family: 'DotGothic16', ui-monospace, monospace; letter-spacing: .04em; }
+.rummy .pchip .ps { padding: 1px 7px; border-radius: 5px; background: #10161d; border: 1px solid #26313c; color: #ffd36b; }
+.rummy .pool:not(:empty) {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(6, 10, 18, .82);
+    border: 1px solid #26313c;
+    color: #7fe6ff;
+}
+.rummy .actions .btn { border-radius: 10px; --fill: rgba(6, 10, 18, .85); --bc: rgba(255, 255, 255, .18); }
+.rummy .actions .btn.draw { --bc: rgba(127, 230, 255, .45); color: #dff8ff; }
+.rummy .actions .btn.reset { --fill: transparent; --bc: transparent; color: #b9c4d0; }
+.rummy .actions .btn.primary { --fill: #ffd36b; --bc: transparent; color: #1d1405; font-weight: 600; box-shadow: none; }
+.rummy .actions .btn.primary:hover:not(:disabled) { --fill: #ffdf8f; --bc: transparent; box-shadow: 0 0 24px -6px rgba(255, 211, 107, .8); }
+.rummy .actions .btn.primary:not(:disabled) { animation: none; box-shadow: 0 0 24px -6px rgba(255, 211, 107, .8); }
+#gameScreen:has(.rummy) .topbar { background: rgba(6, 10, 18, .82); border-bottom: 1px solid rgba(127, 230, 255, .22); }
+#gameScreen:has(.rummy) .topbar .rcode b { font-family: 'DotGothic16', ui-monospace, monospace; letter-spacing: .12em; color: #7fe6ff; }
+
 /* Handy: mehr Platz für den Tisch, kompaktere Knöpfe */
 @media (max-width: 640px) {
-    .rack { max-height: 27vh; min-height: calc(var(--th) * 2 + 24px); }
+    .rack { --tw: 44px; --th: 66px; max-height: 27vh; min-height: calc(var(--th) * 2 + 30px); gap: 5px; padding: 14px 6px 8px; }
+    .table { --tw: 30px; --th: 45px; gap: 10px 8px; padding: 6px; }
+    .table.dense { --tw: 26px; --th: 39px; }
+    .tile.joker .jv { min-width: 15px; height: 15px; font-size: 10px; right: -4px; top: -5px; }
+    .turn-text:not(:empty) { min-height: 32px; font-size: 14px; padding: 0 10px; }
+    .opp-bar { flex-wrap: nowrap; gap: 8px; }
+    .players { flex: 1; min-width: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .players::-webkit-scrollbar { display: none; }
+    .rummy .pchip { flex: none; font-size: .8rem; padding: 5px 10px; gap: 6px; }
+    .rummy .pool:not(:empty) { padding: 5px 8px; font-size: .75rem; white-space: nowrap; }
+    .table-wrap { min-height: 40svh; }
+    .mat {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: auto;
+        padding: 6px;
+        border-radius: 14px;
+        border: 3px solid #d6c7a2;
+        background: url(../assets/rummy/spielfeld-innen.webp) center / cover no-repeat;
+        box-shadow: 0 0 0 4px #1e5a63;
+        filter: none;
+    }
+    .mat .banner { top: 8px; }
+    .hint { font-size: .85rem; }
     .actions { gap: 6px; }
     .actions .spacer { display: none; }
     .actions .btn { padding: 8px 12px; font-size: .85rem; }
