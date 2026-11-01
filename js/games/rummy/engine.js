@@ -5,6 +5,8 @@ import { TILE_COUNT, HAND_SIZE, MELD_MIN, evaluateMove, rackPoints } from './rul
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 4;
 const HOST_SEAT = 0; // wer den Raum erstellt, sitzt auf Platz 0 und startet das Spiel
+// Zeit für einen Zug; läuft sie ab, wird automatisch ein Stein gezogen (bzw. ausgesetzt, wenn der Vorrat leer ist)
+export const TURN_MS = 2 * 60 * 1000;
 
 const isId = n => Number.isInteger(n) && n >= 0 && n < TILE_COUNT;
 const cleanIds = a => (Array.isArray(a) && a.every(isId) ? [...a] : null);
@@ -28,8 +30,10 @@ const err = error => ({ error });
 const OK = { ok: true };
 
 export class RummyGame {
-    constructor({ rng = defaultRng } = {}) {
+    constructor({ rng = defaultRng, now = () => Date.now(), turnMs = TURN_MS } = {}) {
         this.rng = rng;
+        this.now = now;
+        this.turnMs = turnMs;
         this.s = {
             phase: 'waiting', // waiting (Lobby) | playing | over
             players: [], // { name, token, connected, melded, rack }
@@ -45,6 +49,7 @@ export class RummyGame {
             overReason: '',
             draft: null, // { seat, table } Live-Vorschau der Person am Zug
             lastEvent: null,
+            deadline: 0, // bis wann die Person am Zug Zeit hat (Uhr des Hosts)
         };
     }
 
@@ -52,6 +57,8 @@ export class RummyGame {
         const game = new RummyGame(opts);
         game.s = data;
         game.s.draft = null;
+        // Nach dem Neuladen beim Host bekommt die Person am Zug wieder die volle Zeit
+        game.s.deadline = game.s.phase === 'playing' ? game.now() + game.turnMs : 0;
         game.s.scores = game.s.players.map((_, i) => game.s.scores?.[i] ?? 0);
         for (const p of game.s.players) p.connected = false;
         return game;
@@ -126,7 +133,18 @@ export class RummyGame {
             liveTable: s.draft && s.draft.seat !== seat ? s.draft.table : null,
             racks: s.phase === 'over' ? s.players.map(p => p.rack) : null, // am Rundenende wird aufgedeckt
             lastEvent: s.lastEvent,
+            // Restzeit statt Uhrzeit: die Uhren der Geräte gehen nicht gleich
+            msLeft: s.phase === 'playing' ? Math.max(0, s.deadline - this.now()) : null,
+            turnMs: this.turnMs,
         };
+    }
+
+    // Takt vom Host (alle 500 ms): Zeit abgelaufen -> automatisch ziehen. true, wenn sich etwas geändert hat.
+    tick(now = this.now()) {
+        const s = this.s;
+        if (s.phase !== 'playing' || !s.deadline || now < s.deadline) return false;
+        this.#draw(s.turn, { timeout: true });
+        return true;
     }
 
     #start(seat) {
@@ -159,6 +177,7 @@ export class RummyGame {
         s.overReason = '';
         s.draft = null;
         s.lastEvent = null;
+        s.deadline = this.now() + this.turnMs;
         s.round++;
         s.moveNo++;
     }
@@ -176,6 +195,7 @@ export class RummyGame {
         s.turn = (s.turn + 1) % s.players.length;
         s.moveNo++;
         s.draft = null;
+        s.deadline = this.now() + this.turnMs;
     }
 
     #draft(seat, action) {
@@ -217,17 +237,17 @@ export class RummyGame {
         return OK;
     }
 
-    #draw(seat) {
+    #draw(seat, { timeout = false } = {}) {
         const s = this.s;
         if (s.phase !== 'playing') return err('Gerade läuft keine Runde.');
         if (seat !== s.turn) return err('Du bist nicht am Zug.');
         if (s.pool.length) {
             s.players[seat].rack.push(s.pool.pop());
             s.passes = 0;
-            s.lastEvent = { seat, kind: 'draw' };
+            s.lastEvent = { seat, kind: 'draw', timeout };
         } else {
             s.passes++;
-            s.lastEvent = { seat, kind: 'pass' };
+            s.lastEvent = { seat, kind: 'pass', timeout };
             if (s.passes >= s.players.length) {
                 this.#finish(null, 'Der Vorrat ist leer und keiner kann mehr legen.');
                 return OK;
@@ -260,6 +280,7 @@ export class RummyGame {
         s.winner = winner;
         s.overReason = reason;
         s.draft = null;
+        s.deadline = 0;
         s.moveNo++;
     }
 }

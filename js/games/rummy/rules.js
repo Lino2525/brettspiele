@@ -97,3 +97,50 @@ export function evaluateMove({ oldTable, oldRack, table, rack, melded }) {
     }
     return { ok: true, added, points };
 }
+
+// ---------- Anzeige-Reihenfolge ----------
+// Die Reihenfolge der Steine spielt für die Regeln keine Rolle (siehe analyzeSet). Für die Anzeige werden die Steine
+// einer Kombination von klein nach groß gelegt (Joker an die Stelle, für die sie stehen) und die gültigen Kombinationen
+// nach ihrer kleinsten Zahl geordnet. Unfertige oder ungültige Reihen bleiben in ihrer Reihenfolge hinten.
+
+export function arrangeSet(set) {
+    const infos = set.map(tileInfo);
+    const fixed = infos.filter(t => !t.joker).sort((a, b) => a.num - b.num || a.color - b.color);
+    const jokers = infos.filter(t => t.joker);
+    const a = analyzeSet(set);
+    if (a.valid && a.kind === 'run' && fixed.length) {
+        const n = set.length;
+        const lo = fixed[0].num;
+        const hi = fixed[fixed.length - 1].num;
+        // übrige Joker zuerst oberhalb der höchsten Zahl (bis 13), der Rest darunter
+        const extra = n - (hi - lo + 1);
+        const start = lo - Math.max(0, extra - (13 - hi));
+        const out = [];
+        let j = 0;
+        for (let v = start; v < start + n; v++) {
+            const t = fixed.find(f => f.num === v);
+            out.push(t ? t.id : jokers[j++].id);
+        }
+        return out;
+    }
+    if (a.valid && a.kind === 'group') {
+        return [...fixed.sort((x, y) => x.color - y.color), ...jokers].map(t => t.id);
+    }
+    return [...fixed, ...jokers].map(t => t.id);
+}
+
+export function arrangeTable(table) {
+    const sets = table.map(arrangeSet);
+    const keyOf = set => {
+        const a = analyzeSet(set);
+        if (!a.valid) return null;
+        const first = set.map(tileInfo).find(t => !t.joker);
+        if (!first) return 0;
+        const low = a.kind === 'run' ? first.num - set.findIndex(id => id === first.id) : first.num;
+        return low * 100 + (a.kind === 'run' ? first.color * 10 : 50);
+    };
+    const keyed = sets.map((set, i) => ({ set, i, k: keyOf(set) }));
+    const valid = keyed.filter(x => x.k !== null).sort((x, y) => x.k - y.k || x.i - y.i);
+    const rest = keyed.filter(x => x.k === null);
+    return [...valid, ...rest].map(x => x.set);
+}

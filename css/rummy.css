@@ -49,21 +49,23 @@
     container-type: size;
 }
 .mat {
+    /* Innenfläche des Bildes; senkrechte Werte in % der Höhe (Rand im Bild: 10.6 % / 2.2 % der Breite) */
+    --inset: 20.3% 8.7% 4.2% 9.8%;
     position: relative;
     box-sizing: border-box;
     width: min(100cqw, 191.5cqh);
     aspect-ratio: 1800 / 940;
-    padding: 10.6% 8.7% 2.2% 9.8%;
     background: url(../assets/rummy/spielfeld.webp) center / 100% 100% no-repeat;
     filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .6));
 }
-/* Hochformat (Handy): nur die Rasterfläche mit Rahmen in den Farben der Matte */
-@container (max-aspect-ratio: 4 / 3) {
+/* Hochformat oder wenig Höhe (Tablet/Handy quer): nur die Rasterfläche mit Rahmen in den Farben der Matte,
+   damit der Tisch den ganzen Platz bekommt. Die große Matte mit Bildrand nur, wenn reichlich Platz ist. */
+@container (max-aspect-ratio: 4 / 3) or (max-height: 560px) {
     .mat {
+        --inset: 4px;
         width: 100%;
         height: 100%;
         aspect-ratio: auto;
-        padding: 6px;
         border-radius: 14px;
         border: 3px solid #d6c7a2;
         background: url(../assets/rummy/spielfeld-innen.webp) center / cover no-repeat;
@@ -72,19 +74,24 @@
     }
 }
 @supports not (width: 1cqw) {
-    .mat { width: 100%; height: 100%; aspect-ratio: auto; padding: 6px; border-radius: 14px; border: 3px solid #d6c7a2; background: url(../assets/rummy/spielfeld-innen.webp) center / cover; filter: none; }
+    .mat { --inset: 4px; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 14px; border: 3px solid #d6c7a2; background: url(../assets/rummy/spielfeld-innen.webp) center / cover; filter: none; }
 }
+/* Der Tisch liegt fest in der Innenfläche und scrollt notfalls selbst (vorher wuchs er über die Matte hinaus).
+   Die Steinbreite --tw setzt js/games/rummy/ui.js (fitTable) so groß, wie es ohne Scrollen geht. */
 .table {
     --tw: 40px;
-    --th: 60px;
+    --th: calc(var(--tw) * 1.5);
+    position: absolute;
+    inset: var(--inset);
     display: flex;
     flex-wrap: wrap;
     align-content: flex-start;
-    gap: 14px 16px;
-    padding: 10px;
-    height: 100%;
+    gap: calc(var(--tw) * .3) calc(var(--tw) * .34);
+    padding: calc(var(--tw) * .2);
     box-sizing: border-box;
     overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 .table.live { outline: 1.5px dashed rgba(143, 216, 255, .5); outline-offset: -8px; border-radius: var(--r-panel); }
 .table.drop, .set.drop, .rack.drop { box-shadow: 0 0 0 2px var(--ice), 0 0 26px rgba(143, 216, 255, .45); }
@@ -113,10 +120,9 @@
     border-width: 1.5px;
     border-radius: 9px;
     display: flex;
-    gap: 3px;
-    padding: 6px;
-    min-height: calc(var(--th) + 14px);
-    min-width: 48px;
+    gap: max(2px, calc(var(--tw) * .07));
+    padding: max(3px, calc(var(--tw) * .13));
+    min-width: calc(var(--tw) * 1.2);
     transition: box-shadow .25s, border-color .25s;
 }
 .set { position: relative; }
@@ -130,9 +136,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 150px;
+    min-width: calc(var(--tw) * 2.6);
     max-width: 200px;
-    padding: 8px 12px;
+    padding: 6px 10px;
     text-align: center;
     font-size: .85rem;
     color: var(--muted);
@@ -197,18 +203,34 @@
     border-radius: 14px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, .5);
 }
-.rack::before {
-    content: '';
+/* Leuchtröhre über dem Ständer = Zugzeit (2 Minuten): läuft von voll nach leer, für die Person am Zug.
+   Liegt außerhalb des scrollbaren Ständers, damit sie beim Scrollen stehen bleibt. */
+.rack-wrap { position: relative; }
+.timebar {
     position: absolute;
     left: 20px;
     right: 20px;
     top: 6px;
-    height: 3px;
+    z-index: 1;
+    height: 4px;
     border-radius: 2px;
-    background: #eaffff;
-    box-shadow: 0 0 12px 3px rgba(127, 230, 255, .6);
     pointer-events: none;
 }
+.timebar.running { background: rgba(255, 255, 255, .08); }
+.timebar i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    transform-origin: left center;
+    background: #eaffff;
+    box-shadow: 0 0 12px 3px rgba(127, 230, 255, .6);
+    transition: background-color .4s, box-shadow .4s;
+}
+/* Andere am Zug: Leiste in deren Farbe, etwas ruhiger */
+.timebar.running:not(.mine) i { background: color-mix(in srgb, var(--pc) 70%, #fff); box-shadow: 0 0 10px 2px color-mix(in srgb, var(--pc) 45%, transparent); }
+.timebar.warn i { background: #ffd36b; box-shadow: 0 0 12px 3px rgba(255, 211, 107, .6); }
+.timebar.alert i { background: #ff5c7c; box-shadow: 0 0 14px 4px rgba(255, 92, 124, .7); animation: timeAlert .9s ease-in-out infinite; }
+@keyframes timeAlert { 50% { opacity: .45; } }
 
 .actions { justify-content: flex-start; }
 /* "Zug beenden" leuchtet, sobald er gültig ist (nicht deaktiviert) */
@@ -265,10 +287,6 @@
 }
 
 
-/* ---------- Tisch übersichtlich halten ---------- */
-/* Bei vielen Steinen auf dem Tisch werden sie kleiner */
-.table.dense { --tw: 32px; --th: 48px; gap: 10px; padding: 8px; }
-.table.dense .set { padding: 4px; gap: 2px; }
 
 /* ---------- Zuletzt gelegt (bleibt bis zum nächsten Legen) ---------- */
 .tile { position: relative; }
@@ -427,6 +445,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .timebar.alert i { animation: none; }
     .tile.land, .tile.joker-in, .rack .tile.deal, .rack .tile.drawn, .rack .tile.last-one, .pchip .last, .rnote, .set.shine::after { animation: none; }
     .tile.joker-in::before, .rburst { display: none; }
 }
@@ -459,8 +478,6 @@
 /* Handy: mehr Platz für den Tisch, kompaktere Knöpfe */
 @media (max-width: 640px) {
     .rack { --tw: 44px; --th: 66px; max-height: 27vh; min-height: calc(var(--th) * 2 + 30px); gap: 5px; padding: 14px 6px 8px; }
-    .table { --tw: 30px; --th: 45px; gap: 10px 8px; padding: 6px; }
-    .table.dense { --tw: 26px; --th: 39px; }
     .tile.joker .jv { min-width: 15px; height: 15px; font-size: 10px; right: -4px; top: -5px; }
     .turn-text:not(:empty) { min-height: 32px; font-size: 14px; padding: 0 10px; }
     .opp-bar { flex-wrap: nowrap; gap: 8px; }
@@ -470,10 +487,10 @@
     .rummy .pool:not(:empty) { padding: 5px 8px; font-size: .75rem; white-space: nowrap; }
     .table-wrap { min-height: 40svh; }
     .mat {
+        --inset: 4px;
         width: 100%;
         height: 100%;
         aspect-ratio: auto;
-        padding: 6px;
         border-radius: 14px;
         border: 3px solid #d6c7a2;
         background: url(../assets/rummy/spielfeld-innen.webp) center / cover no-repeat;
@@ -486,3 +503,72 @@
     .actions .spacer { display: none; }
     .actions .btn { padding: 8px 12px; font-size: .85rem; }
 }
+
+/* ---------- Ganze Bildschirmhöhe nutzen ---------- */
+/* dvh: auf dem iPad bleibt sonst unten ein leerer Streifen, wenn die Browserleiste eingeklappt ist.
+   Der Tisch passt seine Steine bei jeder Größenänderung neu ein. */
+#gameScreen:has(.rummy) { height: 100svh; height: 100dvh; }
+
+/* Tablet quer: Ständer etwas kleiner, damit der Tisch mehr Höhe bekommt */
+@media (orientation: landscape) and (max-height: 900px) {
+    .rack { --tw: 48px; --th: 72px; }
+}
+/* Handy quer: alles kompakt, der Tisch bekommt den Rest */
+@media (orientation: landscape) and (max-height: 600px) {
+    .rummy { padding: 6px 10px 8px; gap: 6px; }
+    .table-wrap { min-height: 120px; }
+    .rack { --tw: 36px; --th: 54px; max-height: 30vh; min-height: calc(var(--th) + 22px); gap: 4px; padding: 12px 8px 6px; }
+    .timebar { top: 4px; height: 3px; }
+    .turn-text:not(:empty) { min-height: 28px; font-size: 13px; padding: 0 10px; white-space: nowrap; }
+    .me-bar { min-height: 0; }
+    .hint { font-size: .8rem; }
+    .rummy .pchip { font-size: .8rem; padding: 4px 10px; }
+    .rummy .pool:not(:empty) { padding: 4px 8px; font-size: .75rem; }
+    .actions { gap: 6px; }
+    .actions .btn { padding: 6px 10px; font-size: .8rem; }
+    #gameScreen:has(.rummy) .topbar { padding: 4px 12px; }
+    /* "Am Zug" und Hinweis neben die Spieler statt in eine eigene Zeile */
+    .rummy { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; }
+    .opp-bar { grid-column: 1; grid-row: 1; flex-wrap: nowrap; }
+    .me-bar { grid-column: 2; grid-row: 1; flex-wrap: nowrap; justify-content: flex-end; min-width: 0; }
+    .me-bar .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .table-wrap, .rack-wrap, .actions { grid-column: 1 / -1; }
+    .actions .spacer { flex: 1; }
+}
+
+/* ---------- Einfache Steine ---------- */
+/* Weiße Steine mit großer farbiger Zahl, ohne Bild (Knopf "Einfache Steine", wird im Browser gemerkt) */
+.style-toggle .short { display: none; }
+.rummy .actions .btn.style-toggle[aria-pressed="true"] { --bc: rgba(255, 211, 107, .7); color: #ffe3a1; }
+.rummy.plain .tile, .tile.ghost.plain {
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #fffdf8, #ebe5d6);
+    box-shadow: 0 1px 0 #fff inset, 0 -2px 0 rgba(0, 0, 0, .08) inset, 0 6px 12px -5px rgba(0, 0, 0, .8);
+}
+.rummy.plain .tile .n:not(.r), .tile.ghost.plain .n:not(.r) {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    font-size: calc(var(--tw) * .58);
+    font-weight: 800;
+    letter-spacing: -.03em;
+    color: var(--tc);
+}
+.rummy.plain .tile.joker .n:not(.r), .tile.ghost.plain.joker .n:not(.r) {
+    font-size: calc(var(--tw) * .2);
+    letter-spacing: .02em;
+    background: linear-gradient(135deg, #e8355c, #d68a00, #11a073, #1f6fe5);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.rummy.plain .tile.fresh { box-shadow: 0 0 0 2px var(--pc), 0 6px 12px -5px rgba(0, 0, 0, .8); }
+/* Schmale Bildschirme: Knopf kurz beschriften */
+@media (max-width: 1000px) {
+    .style-toggle .long { display: none; }
+    .style-toggle .short { display: inline; }
+}
+.rummy.plain .rack .tile.last-one { box-shadow: 0 1px 0 #fff inset, 0 0 26px rgba(255, 207, 107, .65); }
