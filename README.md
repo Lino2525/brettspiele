@@ -55,7 +55,7 @@ Persönliche Bilder gehören **nicht** in diesen Ordner, denn das Repository ist
 
 ## Spiele
 
-- **Mini Rummy** (2-4 Personen): Rummikub-Regeln, Wertung wie im Original.
+- **Mini Rummy** (2-4 Personen): Rummikub-Regeln, Wertung wie im Original. 2 Minuten pro Zug (Leiste über dem Ständer), danach wird automatisch gezogen. Der Tisch ist sortiert, die Steine passen sich der Bildschirmgröße an; „Einfache Steine“ zeigt schlichte weiße Steine.
 - **Immobilienspiel** (2-4 Personen, Handelsspiel nach klassischem Vorbild; intern "monopoly"): deutsche Straßennamen, alle Regeln: Würfeln (Pasch, dreimal Pasch), Kaufen und
   Versteigern, Miete mit Farbgruppen, Häusern und Hotels (gleichmäßig bauen, begrenzter Vorrat), Bahnhöfe und Werke,
   Steuern, Gefängnis (Geld, Freikarte, Pasch, dritter Versuch), Ereignis- und Gemeinschaftskarten, Hypotheken,

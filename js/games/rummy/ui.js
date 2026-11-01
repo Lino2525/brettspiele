@@ -1,7 +1,7 @@
 // Oberfläche für Mini Rummy: Tisch, Ständer, Drag & Drop (Maus und Touch).
 // Bewegung: Steine gleiten an ihren neuen Platz (FLIP), neu gelegte Steine und veränderte Reihen bleiben bis zum
 // nächsten Legen in der Farbe der Person markiert, die sie gelegt hat. Dazu Austeilen, Ziehen, Joker, letzter Stein, Sieg.
-import { tileInfo, analyzeSet, evaluateMove, rackPoints } from './rules.js';
+import { tileInfo, analyzeSet, evaluateMove, rackPoints, arrangeTable } from './rules.js';
 
 const TEMPLATE = `
 <div class="rummy">
@@ -20,10 +20,14 @@ const TEMPLATE = `
     <div class="turn"><img class="turn-avatar small" alt="" hidden><span class="turn-text"></span></div>
     <div class="hint"></div>
   </div>
-  <div class="rack"></div>
+  <div class="rack-wrap">
+    <div class="timebar" aria-hidden="true"><i></i></div>
+    <div class="rack"></div>
+  </div>
   <div class="actions">
     <button class="btn sort-color" type="button">Nach Farbe</button>
     <button class="btn sort-num" type="button">Nach Zahl</button>
+    <button class="btn style-toggle" type="button" aria-pressed="false" title="Schlichte weiße Steine mit farbigen Zahlen"><span class="long">Einfache Steine</span><span class="short">Einfach</span></button>
     <span class="spacer"></span>
     <button class="btn reset" type="button">Zurücksetzen</button>
     <button class="btn draw" type="button">Stein ziehen</button>
@@ -41,8 +45,20 @@ const sameSets = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // Reihe unabhängig von der Reihenfolge erkennen (zum Vergleich mit dem Tisch vor dem Zug)
 const setKey = set => [...set].sort((a, b) => a - b).join(',');
 const seatColor = seat => `var(--p${seat})`;
-// Ab so vielen Steinen auf dem Tisch werden die Steine dort kleiner
-const DENSE_AT = 36;
+// Steinbreite auf dem Tisch: so groß wie möglich, ohne dass gescrollt werden muss (Höhe = 1,5 × Breite)
+const TABLE_TW_MAX = 78;
+const TABLE_TW_MIN = 22;
+// Zugzeit: ab hier wird die Leiste gelb bzw. rot
+const WARN_MS = 30000;
+const ALERT_MS = 10000;
+const STYLE_KEY = 'rummy.plain';
+const loadPlain = () => {
+    try {
+        return localStorage.getItem(STYLE_KEY) === '1';
+    } catch {
+        return false;
+    }
+};
 
 // o.pc: Farbe der Person, die den Stein gelegt hat (Markierung), o.fresh/o.pending: zuletzt gelegt bzw. wird gerade gelegt,
 // o.anim: einmalige Animation (land, deal, drawn, joker-in), o.k: Versatz für gestaffelte Animationen, o.jv: Wert des Jokers
@@ -109,6 +125,8 @@ export function mountRummy(root, session) {
         avatarBig: $('.turn-avatar.big'), avatarSmall: $('.turn-avatar.small'),
         end: $('.end'), draw: $('.draw'), reset: $('.reset'),
         overlay: $('.overlay'), overlayBox: $('.overlay-box'), toast: $('.toast'),
+        wrap: $('.table-wrap'), timebar: $('.timebar'), timefill: $('.timebar i'), styleBtn: $('.style-toggle'),
+        game: $('.rummy'),
     };
 
     const st = {
@@ -117,6 +135,8 @@ export function mountRummy(root, session) {
         fresh: new Map(), touched: new Map(), // Stein bzw. Reihe -> Platz der Person, die zuletzt gelegt hat
         landing: new Set(), shine: new Set(), deal: false, drawn: new Set(), jokerIn: null, dropFrom: null, checkSet: null,
         flashRack: false, burstRound: 0,
+        plain: loadPlain(), tw: 0,
+        timer: { key: null, end: 0, total: 0, anim: null }, // Zugzeit: Ende als performance.now()
     };
     let toastTimer = null;
 
@@ -143,6 +163,9 @@ export function mountRummy(root, session) {
             const had = new Set(st.prevRack);
             st.drawn = new Set(v.rack.filter(id => !had.has(id)));
         }
+        if (v.lastEvent?.timeout && v.lastEvent.seat === v.seat && v.moveNo !== prev.moveNo) {
+            toast(v.lastEvent.kind === 'draw' ? 'Zeit abgelaufen, du hast automatisch einen Stein gezogen.' : 'Zeit abgelaufen, du setzt aus.');
+        }
         if (v.phase === 'playing') {
             v.players.forEach((p, i) => {
                 if (p.rackCount === 1 && prev.players[i]?.rackCount > 1) note(i === v.seat ? 'Nur noch ein Stein!' : `${p.name} hat nur noch einen Stein!`);
@@ -152,6 +175,8 @@ export function mountRummy(root, session) {
     }
 
     function applyView(v) {
+        // Tisch immer sortiert anzeigen (die Reihenfolge ist für die Regeln egal)
+        v = { ...v, table: arrangeTable(v.table), liveTable: v.liveTable ? arrangeTable(v.liveTable) : null };
         if (st.view && st.prevTable) noticeChanges(st.view, v);
         st.prevTable = clone(v.table);
         st.prevRack = [...v.rack];
@@ -218,6 +243,7 @@ export function mountRummy(root, session) {
     function render() {
         const before = REDUCED ? null : snapshot();
         paint();
+        fitTable();
         if (before) glide(before);
         afterDraw();
     }
@@ -262,7 +288,6 @@ export function mountRummy(root, session) {
         const committed = new Set(v.table.flat());
         const committedKeys = new Set(v.table.map(setKey));
         let landK = 0;
-        el.table.classList.toggle('dense', st.tableD.flat().length > DENSE_AT);
         el.table.innerHTML =
             st.tableD
                 .map((set, i) => {
@@ -306,6 +331,7 @@ export function mountRummy(root, session) {
         el.table.classList.toggle('live', !!live);
 
         renderTurnAndHint(mine);
+        renderTimer();
         renderAvatar();
         renderOverlay();
     }
@@ -367,10 +393,84 @@ export function mountRummy(root, session) {
         const e = st.view.lastEvent;
         if (!e) return '';
         const name = e.seat === st.view.seat ? 'Du' : st.view.players[e.seat].name;
-        if (e.kind === 'draw') return `${name} ${e.seat === st.view.seat ? 'hast' : 'hat'} einen Stein gezogen.`;
-        if (e.kind === 'pass') return `${name} ${e.seat === st.view.seat ? 'hast' : 'hat'} ausgesetzt.`;
+        const late = e.timeout ? 'Zeit abgelaufen: ' : '';
+        if (e.kind === 'draw') return `${late}${name} ${e.seat === st.view.seat ? 'hast' : 'hat'} einen Stein gezogen.`;
+        if (e.kind === 'pass') return `${late}${name} ${e.seat === st.view.seat ? 'hast' : 'hat'} ausgesetzt.`;
         return `${name} ${e.seat === st.view.seat ? 'hast' : 'hat'} ${e.count} ${e.count === 1 ? 'Stein' : 'Steine'} gelegt.`;
     }
+
+    // Tisch so groß wie möglich: größte Steinbreite suchen, bei der alles ohne Scrollen hineinpasst
+    function fitTable() {
+        const t = el.table;
+        if (!t.clientHeight || !t.clientWidth) return;
+        const fits = tw => {
+            t.style.setProperty('--tw', `${tw}px`);
+            return t.scrollHeight <= t.clientHeight + 1 && t.scrollWidth <= t.clientWidth + 1;
+        };
+        // Erst die bisherige Größe prüfen; nur wenn nötig neu suchen (Halbierung, 2-px-Schritte)
+        let lo = TABLE_TW_MIN;
+        let hi = TABLE_TW_MAX;
+        if (st.tw && fits(st.tw) && (st.tw >= TABLE_TW_MAX || !fits(st.tw + 2))) {
+            t.style.setProperty('--tw', `${st.tw}px`);
+            return;
+        }
+        if (!fits(lo)) {
+            st.tw = lo; // passt auch klein nicht: dann scrollt der Tisch
+            t.style.setProperty('--tw', `${lo}px`);
+            return;
+        }
+        while (hi - lo > 2) {
+            const mid = Math.round((lo + hi) / 4) * 2;
+            if (fits(mid)) lo = mid;
+            else hi = mid;
+        }
+        st.tw = fits(hi) ? hi : lo;
+        t.style.setProperty('--tw', `${st.tw}px`);
+    }
+
+    // Zugzeit als Leiste über dem Ständer: läuft für die Person am Zug von voll nach leer
+    function renderTimer() {
+        const v = st.view;
+        const tm = st.timer;
+        const running = v.phase === 'playing' && v.msLeft !== null && v.msLeft !== undefined;
+        el.timebar.classList.toggle('running', running);
+        el.timebar.classList.toggle('mine', running && v.turn === v.seat);
+        if (running) el.timebar.style.setProperty('--pc', seatColor(v.turn));
+        if (!running) {
+            tm.anim?.cancel();
+            tm.anim = null;
+            tm.key = null;
+            el.timefill.style.transform = '';
+            updateTimerColor();
+            return;
+        }
+        const key = `${v.round}:${v.moveNo}`;
+        const end = performance.now() + v.msLeft;
+        // Nur neu starten bei neuem Zug oder wenn die Uhr spürbar abweicht (Live-Vorschau schickt oft neue Stände)
+        if (key === tm.key && Math.abs(end - tm.end) < 1500) return;
+        tm.key = key;
+        tm.end = end;
+        tm.total = v.turnMs || 120000;
+        tm.anim?.cancel();
+        const from = Math.min(1, v.msLeft / tm.total);
+        el.timefill.style.transform = 'scaleX(0)';
+        tm.anim = el.timefill.animate?.([{ transform: `scaleX(${from})` }, { transform: 'scaleX(0)' }], { duration: v.msLeft, easing: 'linear', fill: 'forwards' }) || null;
+        updateTimerColor();
+    }
+
+    function updateTimerColor() {
+        const tm = st.timer;
+        const left = tm.key ? tm.end - performance.now() : Infinity;
+        el.timebar.classList.toggle('warn', left <= WARN_MS && left > ALERT_MS);
+        el.timebar.classList.toggle('alert', left <= ALERT_MS);
+    }
+    const colorTimer = setInterval(updateTimerColor, 500);
+
+    function applyStyle() {
+        el.game.classList.toggle('plain', st.plain);
+        el.styleBtn.setAttribute('aria-pressed', String(st.plain));
+    }
+    applyStyle();
 
     function renderOverlay() {
         const v = st.view;
@@ -456,6 +556,15 @@ export function mountRummy(root, session) {
     });
     root.querySelector('.sort-color').addEventListener('click', () => sortRack('color'));
     root.querySelector('.sort-num').addEventListener('click', () => sortRack('num'));
+    el.styleBtn.addEventListener('click', () => {
+        st.plain = !st.plain;
+        try {
+            localStorage.setItem(STYLE_KEY, st.plain ? '1' : '0');
+        } catch {
+            // ohne Speicher gilt die Wahl nur bis zum Neuladen
+        }
+        applyStyle();
+    });
     el.overlayBox.addEventListener('click', e => {
         const act = e.target.dataset.act;
         if (act === 'newRound') session.send({ t: 'newRound' });
@@ -496,6 +605,7 @@ export function mountRummy(root, session) {
             drag.active = true;
             drag.ghost = drag.tileEl.cloneNode(true);
             drag.ghost.classList.add('ghost');
+            if (st.plain) drag.ghost.classList.add('plain');
             // Der Geist hängt am body: Größe vom Original übernehmen (Tisch- und Ständersteine sind verschieden groß)
             const r = drag.tileEl.getBoundingClientRect();
             drag.ghost.style.width = `${r.width}px`;
@@ -589,13 +699,24 @@ export function mountRummy(root, session) {
         if (from) st.dropFrom = { id: d.id, rect: from };
         if (t.kind !== 'rack' && tileInfo(d.id).joker) st.jokerIn = d.id;
         const target = t.kind === 'set' ? st.tableD[t.setIndex] : t.kind === 'newset' ? st.tableD[st.tableD.length - 1] : null;
-        st.tableD = st.tableD.filter(s => s.length);
-        st.checkSet = target ? st.tableD.indexOf(target) : null;
+        const targetKey = target ? setKey(target) : null;
+        st.tableD = arrangeTable(st.tableD.filter(s => s.length));
+        st.checkSet = targetKey !== null ? st.tableD.findIndex(s => setKey(s) === targetKey) : null;
         render();
         pushDraft();
     }
 
     // ---------- Anbindung ----------
+
+    // Neue Fenstergröße oder Drehen: Tisch neu einpassen
+    const resizeObs = typeof ResizeObserver === 'function'
+        ? new ResizeObserver(() => {
+            if (!st.view) return;
+            st.tw = 0;
+            fitTable();
+        })
+        : null;
+    resizeObs?.observe(el.wrap);
 
     session.onView = v => {
         applyView(v);
@@ -610,6 +731,9 @@ export function mountRummy(root, session) {
     return {
         destroy() {
             cleanupDrag();
+            resizeObs?.disconnect();
+            clearInterval(colorTimer);
+            st.timer.anim?.cancel();
             root.innerHTML = '';
         },
     };

@@ -1,7 +1,7 @@
 // Ausführen mit:  node --test tests
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeSet, evaluateMove, rackPoints } from '../js/games/rummy/rules.js';
+import { analyzeSet, evaluateMove, rackPoints, arrangeSet, arrangeTable } from '../js/games/rummy/rules.js';
 import { RummyGame } from '../js/games/rummy/engine.js';
 
 // Hilfsfunktion: Stein-ID aus Farbe (0-3) und Zahl (1-13), erster Satz
@@ -263,4 +263,70 @@ test('Speichern und Wiederherstellen', () => {
     assert.equal(copy.s.players[0].connected, false);
     assert.equal(copy.join('t0', 'x'), 0);
     assert.equal(copy.s.scores.length, 3);
+});
+
+// ---- Zugzeit ----
+
+test('Zugzeit: nach Ablauf wird automatisch gezogen, danach ist der Nächste mit voller Zeit dran', () => {
+    let clock = 1000;
+    const g = new RummyGame({ rng: seeded(3), now: () => clock, turnMs: 120000 });
+    g.join('t0', 'Anna');
+    g.join('t1', 'Boris');
+    g.apply(0, { t: 'start' });
+    const seat = g.s.turn;
+    const before = g.s.players[seat].rack.length;
+    assert.equal(g.view(seat).msLeft, 120000);
+    clock += 119999;
+    assert.equal(g.tick(clock), false);
+    assert.equal(g.view(seat).msLeft, 1);
+    clock += 1;
+    assert.equal(g.tick(clock), true);
+    assert.equal(g.s.players[seat].rack.length, before + 1);
+    assert.equal(g.s.lastEvent.timeout, true);
+    assert.notEqual(g.s.turn, seat);
+    assert.equal(g.view(g.s.turn).msLeft, 120000);
+    assert.equal(g.tick(clock), false, 'nicht doppelt ziehen');
+});
+
+test('Zugzeit: ein Zug oder Ziehen startet die Uhr neu, am Rundenende steht sie', () => {
+    let clock = 0;
+    const g = new RummyGame({ rng: seeded(3), now: () => clock, turnMs: 1000 });
+    g.join('t0', 'Anna');
+    g.join('t1', 'Boris');
+    assert.equal(g.view(0).msLeft, null, 'Lobby ohne Uhr');
+    g.apply(0, { t: 'start' });
+    clock = 900;
+    g.apply(g.s.turn, { t: 'draw' });
+    assert.equal(g.view(0).msLeft, 1000);
+    g.s.pool = [];
+    clock = 5000;
+    g.tick(clock); // aussetzen
+    clock = 10000;
+    g.tick(clock); // beide ausgesetzt -> Ende
+    assert.equal(g.s.phase, 'over');
+    assert.equal(g.view(0).msLeft, null);
+    assert.equal(g.tick(clock + 99999), false);
+});
+
+// ---- Anzeige-Reihenfolge ----
+
+test('Tisch sortieren: Steine klein nach groß, Joker an ihrer Stelle, Kombinationen nach kleinster Zahl', () => {
+    assert.deepEqual(arrangeSet([T(0, 6), T(0, 4), T(0, 5)]), [T(0, 4), T(0, 5), T(0, 6)]);
+    // Joker füllt die Lücke
+    assert.deepEqual(arrangeSet([T(1, 7), J1, T(1, 5)]), [T(1, 5), J1, T(1, 7)]);
+    // überzähliger Joker oben, bei 13 unten
+    assert.deepEqual(arrangeSet([J1, T(2, 3), T(2, 4)]), [T(2, 3), T(2, 4), J1]);
+    assert.deepEqual(arrangeSet([T(2, 13), J1, T(2, 12)]), [J1, T(2, 12), T(2, 13)]);
+    // Satz nach Farbe, Joker hinten
+    assert.deepEqual(arrangeSet([T(3, 9), J1, T(0, 9)]), [T(0, 9), T(3, 9), J1]);
+    // unfertig: nach Zahl
+    assert.deepEqual(arrangeSet([T(0, 8), T(0, 2)]), [T(0, 2), T(0, 8)]);
+
+    const thirteens = [T(0, 13), T(1, 13), T(2, 13)];
+    const twos = [T(0, 2), T(1, 2), T(3, 2)];
+    const run = [T(1, 4), T(1, 3), T(1, 2)];
+    const open = [T(0, 9)];
+    const out = arrangeTable([thirteens, open, run, twos]);
+    assert.deepEqual(out, [[T(1, 2), T(1, 3), T(1, 4)], twos, thirteens, open]);
+    assert.equal(analyzeSet(out[0]).valid, true);
 });
